@@ -1,4 +1,4 @@
-set number
+"set number
 set title
 set expandtab
 set autoindent
