@@ -1,7 +1,7 @@
 # Install dein.vim
-curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > ./installer.sh
-sh ./install.sh .local/share/nvim
-rm ./install.sh
+curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > installer.sh
+sh ./installer.sh ~/.local/share/nvim
+rm ./installer.sh
 
 # Install nodejs
 # Using ubuntu
