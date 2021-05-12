@@ -1,0 +1,52 @@
+# dein
+[[plugins]]
+repo = 'Shougo/dein.vim'
+
+[[plugins]]
+repo = 'wsdjeg/dein-ui.vim'
+
+[[plugins]]
+repo = 'Shougo/denite.nvim'
+hook_add = '''
+source ~/.config/nvim/plugins/denite.rc.vim
+'''
+
+# 補完
+[[plugins]]
+repo = 'neoclide/coc.nvim'
+merged = 0
+rev = 'release'
+
+# Git
+[[plugins]] 
+repo = 'tpope/vim-fugitive'
+
+# Filer
+[[plugins]]
+repo = 'Shougo/defx.nvim'
+depends = ['defx-git', 'defx-icons'] 
+hook_add = '''
+source ~/.config/nvim/plugins/defx.rc.vim
+'''
+
+[[plugins]]
+repo = 'kristijanhusak/defx-icons'
+
+[[plugins]]
+repo = 'kristijanhusak/defx-git'
+
+# Line
+[[plugins]]
+repo = 'itchyny/lightline.vim'
+hook_add = '''
+source ~/.config/nvim/plugins/lightline.rc.vim
+'''
+
+# Icons
+[[plugins]]
+repo = 'ryanoasis/vim-devicons'
+
+# Auto pairs
+[[plugins]]
+repo = 'jiangmiao/auto-pairs'
+

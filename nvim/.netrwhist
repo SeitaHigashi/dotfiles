@@ -1,0 +1,12 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhistcnt =1
+let g:netrw_dirhist_1='/home/seita'
+let g:netrw_dirhist_0='/home/seita/Develop'
+let g:netrw_dirhist_9='/home/seita/Develop/go'
+let g:netrw_dirhist_8='/home/seita/.config/nvim/toml'
+let g:netrw_dirhist_7='/home/seita/.config/nvim'
+let g:netrw_dirhist_6='/home/seita/.config/spicetify'
+let g:netrw_dirhist_5='/home/seita/.config/spotify'
+let g:netrw_dirhist_4='/home/seita/.config'
+let g:netrw_dirhist_3='/home/seita/.config/spicetify'
+let g:netrw_dirhist_2='/home/seita/.config/spicetify/Extensions'
