@@ -11,8 +11,8 @@ if &compatible
   set nocompatible               " Be iMproved
 endif
 
-set runtimepath+=/home/seita/.local/share/nvim/repos/github.com/Shougo/dein.vim
-call dein#begin('/home/seita/.local/share/nvim')
+set runtimepath+=~/.local/share/nvim/repos/github.com/Shougo/dein.vim
+call dein#begin('~/.local/share/nvim')
 
 " Plugins
 call dein#load_toml('~/.config/nvim/toml/dein.toml', {'lazy': 0})
