@@ -16,6 +16,9 @@ source ~/.config/nvim/plugins/denite.rc.vim
 repo = 'neoclide/coc.nvim'
 merged = 0
 rev = 'release'
+hook_add = '''
+source ~/.config/nvim/plugins/coc.rc.vim
+'''
 
 # Git
 [[plugins]] 
