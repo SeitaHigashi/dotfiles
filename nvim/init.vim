@@ -7,6 +7,7 @@ set shiftwidth=2
 set softtabstop=2
 set tabstop=2
 
+
 if &compatible
   set nocompatible               " Be iMproved
 endif
@@ -28,3 +29,5 @@ call dein#end()
 filetype plugin indent on
 syntax enable
 
+set background=dark
+colorscheme hybrid

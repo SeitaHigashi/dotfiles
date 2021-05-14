@@ -64,6 +64,9 @@ repo = 'ryanoasis/vim-devicons'
 [[plugins]]
 repo = 'wsdjeg/dein-ui.vim'
 
+[[plugins]]
+repo = 'w0ng/vim-hybrid'
+
 # Auto pairs
 [[plugins]]
 repo = 'jiangmiao/auto-pairs'
