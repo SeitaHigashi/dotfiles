@@ -25,6 +25,25 @@ function! s:denite_filter_my_settings() abort
   imap <silent><buffer> <C-o> <Plug>(denite_filter_quit)
 endfunction
 
+" Floating
+let s:denite_win_width_percent = 0.9
+let s:denite_win_height_percent = 0.8
+
+" Change denite default options
+call denite#custom#option('default', {
+\ 'auto_action': 'preview',
+\ 'floating_preview': v:true,
+\ 'preview_height': float2nr(&lines * s:denite_win_height_percent),
+\ 'preview_width': float2nr(&columns * s:denite_win_width_percent / 2),
+\ 'prompt': '% ',
+\ 'split': 'floating',
+\ 'vertical_preview': v:true,
+\ 'wincol': float2nr((&columns - (&columns * s:denite_win_width_percent)) / 2),
+\ 'winheight': float2nr(&lines * s:denite_win_height_percent),
+\ 'winrow': float2nr((&lines - (&lines * s:denite_win_height_percent)) / 2),
+\ 'winwidth': float2nr(&columns * s:denite_win_width_percent / 2),
+\ })
+
 " For ripgrep
 call denite#custom#var('file/rec', 'command',
       \ ['rg', '--files', '--glob', '!.git', '--color', 'never'])
