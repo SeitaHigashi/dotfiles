@@ -54,9 +54,13 @@ repo = 'kristijanhusak/defx-git'
 # UI
 [[plugins]]
 repo = 'itchyny/lightline.vim'
+depends = ['lightline-hybrid.vim']
 hook_add = '''
 source ~/.config/nvim/plugins/lightline.rc.vim
 '''
+
+[[plugins]]
+repo = 'cocopon/lightline-hybrid.vim'
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
