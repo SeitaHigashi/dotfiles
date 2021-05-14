@@ -8,6 +8,13 @@ else
   rm ./installer.sh
 fi
 
+# Install ripgrep
+if type "rg" > /dev/null 2>&1; then
+  echo "ripgrep is already installed."
+else
+  echo "ripgrep not found."
+fi
+
 # Install nodejs
 if type "node" > /dev/null 2>&1; then
   echo "nodejs is already installed."

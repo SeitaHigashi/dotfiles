@@ -25,22 +25,9 @@ function! s:denite_filter_my_settings() abort
   imap <silent><buffer> <C-o> <Plug>(denite_filter_quit)
 endfunction
 
-" Change file/rec command.
-call denite#custom#var('file/rec', 'command',
-      \ ['ag', '--follow', '--nocolor', '--nogroup', '-g', ''])
 " For ripgrep
-" Note: rg is faster than ag
 call denite#custom#var('file/rec', 'command',
       \ ['rg', '--files', '--glob', '!.git', '--color', 'never'])
-" For Pt(the platinum searcher)
-" NOTE: It also supports windows.
-call denite#custom#var('file/rec', 'command',
-      \ ['pt', '--follow', '--nocolor', '--nogroup',
-      \  (has('win32') ? '-g:' : '-g='), ''])
-" For python script scantree.py
-" Read bellow on this file to learn more about scantree.py
-call denite#custom#var('file/rec', 'command',
-      \ ['scantree.py', '--path', ':directory'])
 
 " Change matchers.
 call denite#custom#source(
