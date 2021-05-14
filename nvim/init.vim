@@ -25,6 +25,11 @@ call dein#load_toml('~/.config/nvim/toml/dein_lazy.toml', {'lazy': 1})
 
 call dein#end()
 
+" If you want to install not installed plugins on startup.
+if dein#check_install()
+ call dein#install()
+endif
+
 " Required:
 filetype plugin indent on
 syntax enable
