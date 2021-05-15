@@ -1,5 +1,5 @@
 " Defx config
-nnoremap <silent>ff :<C-u>Defx -listed -columns=mark:indent:icons:filename:type<CR>
+nnoremap <silent>ff :<C-u>Defx -listed -columns=mark:indent:git:icons:filename:type<CR>
 
 autocmd FileType defx call s:defx_my_settings()
 function! s:defx_my_settings() abort
@@ -66,4 +66,15 @@ function! s:defx_my_settings() abort
   nnoremap <silent><buffer><expr> cd
         \ defx#do_action('change_vim_cwd')
 endfunction
+
+call defx#custom#column('git', 'indicators', {
+  \ 'Modified'  : '✹',
+  \ 'Staged'    : '+',
+  \ 'Untracked' : '✭',
+  \ 'Renamed'   : '➜',
+  \ 'Unmerged'  : '═',
+  \ 'Ignored'   : '☒',
+  \ 'Deleted'   : 'x',
+  \ 'Unknown'   : '?'
+  \ })
 
