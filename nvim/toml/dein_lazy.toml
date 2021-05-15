@@ -1,0 +1,19 @@
+# UI
+[[plugins]]
+repo = 'wsdjeg/dein-ui.vim'
+on_cmd = ['DeinUpdate']
+
+# 補完
+[[plugins]]
+repo = 'neoclide/coc.nvim'
+merged = 0
+rev = 'release'
+on_i = 1
+hook_add = '''
+source ~/.config/nvim/plugins/coc.rc.vim
+'''
+
+# Auto pairs
+[[plugins]]
+repo = 'jiangmiao/auto-pairs'
+on_i = 1

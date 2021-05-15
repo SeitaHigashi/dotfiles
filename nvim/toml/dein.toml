@@ -24,15 +24,6 @@ hook_post_update = '''
   let g:dein#plugin.build = cmd
 '''
 
-# 補完
-[[plugins]]
-repo = 'neoclide/coc.nvim'
-merged = 0
-rev = 'release'
-hook_add = '''
-source ~/.config/nvim/plugins/coc.rc.vim
-'''
-
 # Git
 [[plugins]] 
 repo = 'tpope/vim-fugitive'
@@ -66,12 +57,6 @@ repo = 'cocopon/lightline-hybrid.vim'
 repo = 'ryanoasis/vim-devicons'
 
 [[plugins]]
-repo = 'wsdjeg/dein-ui.vim'
-
-[[plugins]]
 repo = 'w0ng/vim-hybrid'
 
-# Auto pairs
-[[plugins]]
-repo = 'jiangmiao/auto-pairs'
 
