@@ -18,11 +18,17 @@ function! s:denite_my_settings() abort
         \ denite#do_map('open_filter_buffer')
   nnoremap <silent><buffer><expr> <Space>
         \ denite#do_map('toggle_select').'j'
+  nnoremap <silent><buffer><expr> E
+        \ denite#do_map('do_action', 'vsplit')
 endfunction
 
 autocmd FileType denite-filter call s:denite_filter_my_settings()
 function! s:denite_filter_my_settings() abort
   imap <silent><buffer> <C-o> <Plug>(denite_filter_quit)
+  inoremap <silent><buffer><expr> L
+        \ denite#do_map('do_action')
+  inoremap <silent><buffer><expr> E
+        \ denite#do_map('do_action', 'vsplit')
 endfunction
 
 " Floating
