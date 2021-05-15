@@ -1,5 +1,5 @@
 " Denite config 
-nnoremap <silent>fj :<C-u>Denite buffer file/rec<CR>
+nnoremap <silent>fj :<C-u>Denite file/rec file/old<CR>
 
 " Define mappings
 autocmd FileType denite call s:denite_my_settings()
