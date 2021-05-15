@@ -33,7 +33,7 @@ endfunction
 
 " Floating
 let s:denite_win_width_percent = 0.9
-let s:denite_win_height_percent = 0.9
+let s:denite_win_height_percent = 0.8
 
 " Change denite default options
 call denite#custom#option('default', {
