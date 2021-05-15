@@ -70,47 +70,7 @@ call denite#custom#kind('file', 'default_action', 'split')
 " Add custom menus
 let s:menus = {}
 
-let s:menus.zsh = {
-      \ 'description': 'Edit your import zsh configuration'
-      \ }
-let s:menus.zsh.file_candidates = [
-      \ ['zshrc', '~/.config/zsh/.zshrc'],
-      \ ['zshenv', '~/.zshenv'],
-      \ ]
-
-let s:menus.my_commands = {
-      \ 'description': 'Example commands'
-      \ }
-let s:menus.my_commands.command_candidates = [
-      \ ['Split the window', 'vnew'],
-      \ ['Open zsh menu', 'Denite menu:zsh'],
-      \ ['Format code', 'FormatCode', 'go,python'],
-      \ ]
-
 call denite#custom#var('menu', 'menus', s:menus)
-
-" Ag command on grep source
-call denite#custom#var('grep', {
-      \ 'command': ['ag'],
-      \ 'default_opts': ['-i', '--vimgrep'],
-      \ 'recursive_opts': [],
-      \ 'pattern_opt': [],
-      \ 'separator': ['--'],
-      \ 'final_opts': [],
-      \ })
-
-" Ack command on grep source
-call denite#custom#var('grep', {
-      \ 'command': ['ack'],
-      \ 'default_opts': [
-      \   '--ackrc', $HOME.'/.ackrc', '-H', '-i',
-      \   '--nopager', '--nocolor', '--nogroup', '--column'
-      \ ],
-      \ 'recursive_opts': [],
-      \ 'pattern_opt': ['--match'],
-      \ 'separator': ['--'],
-      \ 'final_opts': [],
-      \ })
 
 " Ripgrep command on grep source
 call denite#custom#var('grep', {
@@ -119,27 +79,6 @@ call denite#custom#var('grep', {
       \ 'recursive_opts': [],
       \ 'pattern_opt': ['--regexp'],
       \ 'separator': ['--'],
-      \ 'final_opts': [],
-      \ })
-
-" Pt command on grep source
-call denite#custom#var('grep', {
-      \ 'command': ['pt'],
-      \ 'default_opts': [
-      \   '-i', '--nogroup', '--nocolor', '--smart-case'],
-      \ 'recursive_opts': [],
-      \ 'pattern_opt': [],
-      \ 'separator': ['--'],
-      \ 'final_opts': [],
-      \ })
-
-" jvgrep command on grep source
-call denite#custom#var('grep', {
-      \ 'command': ['jvgrep'],
-      \ 'default_opts': ['-i'],
-      \ 'recursive_opts': ['-R'],
-      \ 'pattern_opt': [],
-      \ 'separator': [],
       \ 'final_opts': [],
       \ })
 
