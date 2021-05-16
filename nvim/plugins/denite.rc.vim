@@ -1,5 +1,5 @@
 " Denite config 
-nnoremap <silent>fj :<C-u>Denite file/rec file/old<CR>
+nnoremap <silent>fj :<C-u>Denite file/rec<CR>
 
 " Define mappings
 autocmd FileType denite call s:denite_my_settings()
@@ -41,13 +41,15 @@ call denite#custom#option('default', {
 \ 'floating_preview': v:true,
 \ 'preview_height': float2nr(&lines * s:denite_win_height_percent),
 \ 'preview_width': float2nr(&columns * s:denite_win_width_percent / 2),
-\ 'prompt': '% ',
+\ 'prompt': '>',
 \ 'split': 'floating',
 \ 'vertical_preview': v:true,
 \ 'wincol': float2nr((&columns - (&columns * s:denite_win_width_percent)) / 2),
-\ 'winheight': float2nr(&lines * s:denite_win_height_percent),
+\ 'winheight': float2nr(&lines * s:denite_win_height_percent) - 1,
 \ 'winrow': float2nr((&lines - (&lines * s:denite_win_height_percent)) / 2),
 \ 'winwidth': float2nr(&columns * s:denite_win_width_percent / 2),
+\ 'start_filter': v:true,
+\ 'auto-resize': v:true,
 \ })
 
 " For ripgrep
@@ -81,10 +83,6 @@ call denite#custom#var('grep', {
       \ 'separator': ['--'],
       \ 'final_opts': [],
       \ })
-
-" Specify multiple paths in grep source
-"call denite#start([{'name': 'grep',
-"      \ 'args': [['a.vim', 'b.vim'], '', 'pattern']}])
 
 " Define alias
 call denite#custom#alias('source', 'file/rec/git', 'file/rec')
