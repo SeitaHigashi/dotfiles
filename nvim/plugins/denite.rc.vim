@@ -34,8 +34,8 @@ function! s:denite_filter_my_settings() abort
 endfunction
 
 " Floating
-let s:denite_win_width_percent = 0.9
-let s:denite_win_height_percent = 0.8
+let s:denite_win_width_percent = 0.95
+let s:denite_win_height_percent = 0.75
 
 " Change denite default options
 call denite#custom#option('default', {
