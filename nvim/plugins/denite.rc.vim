@@ -29,6 +29,8 @@ function! s:denite_filter_my_settings() abort
         \ denite#do_map('do_action')
   inoremap <silent><buffer><expr> E
         \ denite#do_map('do_action', 'vsplit')
+  inoremap <silent><buffer><expr> Q
+        \ denite#do_map('quit')
 endfunction
 
 " Floating
