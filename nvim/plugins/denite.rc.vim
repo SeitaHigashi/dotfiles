@@ -57,15 +57,15 @@ call denite#custom#var('file/rec', 'command',
 " Change matchers.
 call denite#custom#source(
       \ 'file_mru', 'matchers', ['matcher/fuzzy', 'matcher/project_files'])
-call denite#custom#source(
-      \ 'file/rec', 'matchers', ['matcher/cpsm'])
+"call denite#custom#source(
+"      \ 'file/rec', 'matchers', ['matcher/cpsm'])
 
 " Change sorters.
 call denite#custom#source(
       \ 'file/rec', 'sorters', ['sorter/sublime'])
 
 " Change default action.
-call denite#custom#kind('file', 'default_action', 'split')
+call denite#custom#kind('file', 'default_action', 'vsplit')
 
 " Add custom menus
 let s:menus = {}
