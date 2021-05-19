@@ -1,14 +1,3 @@
-"set number
-set title
-set expandtab
-set autoindent
-set smartindent
-set shiftwidth=2
-set softtabstop=2
-set tabstop=2
-set noshowmode
-
-
 if &compatible
   set nocompatible               " Be iMproved
 endif
@@ -35,6 +24,14 @@ endif
 filetype plugin indent on
 syntax enable
 
+set title
+set expandtab
+set autoindent
+set smartindent
+set shiftwidth=2
+set softtabstop=2
+set tabstop=2
+set noshowmode
 set background=dark
 colorscheme hybrid
 
