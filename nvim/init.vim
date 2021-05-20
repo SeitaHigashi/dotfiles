@@ -34,3 +34,4 @@ set noshowmode
 set background=dark
 colorscheme hybrid
 
+tnoremap <ESC> <C-\><C-n>
