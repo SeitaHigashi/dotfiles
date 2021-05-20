@@ -1,5 +1,6 @@
 " Denite config 
 nnoremap <silent>fj :<C-u>Denite file/rec<CR>
+nnoremap <silent>fk :<C-u>Denite grep<CR>
 
 " Define mappings
 autocmd FileType denite call s:denite_my_settings()
@@ -49,8 +50,7 @@ call denite#custom#option('default', {
 \ 'wincol': float2nr((&columns - (&columns * g:floating_win_width_percent)) / 2),
 \ 'winrow': float2nr((&lines - (&lines * g:floating_win_height_percent)) / 2),
 \ 'winwidth': float2nr(&columns * g:floating_win_width_percent / 2),
-\ 'winheight': float2nr(&lines * g:floating_win_height_percent) - 1,
-\ 'start_filter': v:true,
+\ 'winheight': float2nr(&lines * g:floating_win_height_percent),
 \ 'auto-resize': v:true,
 \ })
 
