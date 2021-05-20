@@ -20,8 +20,6 @@ function! s:defx_my_settings() abort
         \ defx#do_action('multi', [['open', 'choose'], 'quit'])
   nnoremap <silent><buffer><expr> E
         \ defx#do_action('multi', [['open', 'vsplit'], 'quit'])
-  nnoremap <silent><buffer><expr> P
-        \ defx#do_action('preview')
   nnoremap <silent><buffer><expr> o
         \ defx#do_action('open_tree', 'toggle')
   nnoremap <silent><buffer><expr> K
@@ -55,14 +53,16 @@ function! s:defx_my_settings() abort
         \ defx#do_action('cd')
   nnoremap <silent><buffer><expr> q
         \ defx#do_action('quit')
+  nnoremap <silent><buffer><expr> Q
+        \ defx#do_action('quit')
   nnoremap <silent><buffer><expr> <Space>
         \ defx#do_action('toggle_select') . 'j'
   nnoremap <silent><buffer><expr> *
         \ defx#do_action('toggle_select_all')
   nnoremap <silent><buffer><expr> j
-        \ line('.') == line('$') ? 'gg' : 'j'
+        \ line('.') == line('$') ? 'gg' : 'j' . defx#do_action('preview')
   nnoremap <silent><buffer><expr> k
-        \ line('.') == 1 ? 'G' : 'k'
+        \ line('.') == 1 ? 'G' : 'k' . defx#do_action('preview')
   nnoremap <silent><buffer><expr> <C-l>
         \ defx#do_action('redraw')
   nnoremap <silent><buffer><expr> <C-g>
