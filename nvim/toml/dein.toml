@@ -42,6 +42,13 @@ repo = 'kristijanhusak/defx-icons'
 [[plugins]]
 repo = 'kristijanhusak/defx-git'
 
+[[plugins]]
+repo = 't9md/vim-choosewin'
+hook_add = '''
+let g:choosewin_overlay_enabled = 1
+let g:choosewin_overlay_clear_multibyte = 1
+'''
+
 # UI
 [[plugins]]
 repo = 'itchyny/lightline.vim'
