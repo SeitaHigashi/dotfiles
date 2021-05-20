@@ -28,6 +28,9 @@ hook_post_update = '''
 [[plugins]] 
 repo = 'tpope/vim-fugitive'
 
+[[plugins]]
+repo = 'airblade/vim-gitgutter'
+
 # Filer
 [[plugins]]
 repo = 'Shougo/defx.nvim'
