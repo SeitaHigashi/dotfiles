@@ -9,10 +9,6 @@ call dein#begin('~/.local/share/nvim')
 call dein#load_toml('~/.config/nvim/toml/dein.toml', {'lazy': 0})
 call dein#load_toml('~/.config/nvim/toml/dein_lazy.toml', {'lazy': 1})
 
-" Add or remove your plugins here like this:
-"call dein#add('Shougo/neosnippet.vim')
-"call dein#add('Shougo/neosnippet-snippets')
-
 call dein#end()
 
 " If you want to install not installed plugins on startup.
