@@ -2,6 +2,9 @@ if &compatible
   set nocompatible               " Be iMproved
 endif
 
+let g:floating_win_width_percent = 0.95
+let g:floating_win_height_percent = 0.75
+
 set runtimepath+=~/.local/share/nvim/repos/github.com/Shougo/dein.vim
 call dein#begin('~/.local/share/nvim')
 
