@@ -31,7 +31,7 @@ repo = 'tpope/vim-fugitive'
 # Filer
 [[plugins]]
 repo = 'Shougo/defx.nvim'
-depends = ['defx-git', 'defx-icons'] 
+depends = ['defx-git', 'defx-icons', 'vim-choosewin'] 
 hook_add = '''
 source ~/.config/nvim/plugins/defx.rc.vim
 '''
