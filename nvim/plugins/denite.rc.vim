@@ -1,5 +1,5 @@
 " Denite config 
-nnoremap <silent>fj :<C-u>Denite file/rec<CR>
+nnoremap <silent>fj :<C-u>Denite -start_filter file/rec<CR>
 nnoremap <silent>fk :<C-u>Denite grep<CR>
 
 " Define mappings
@@ -14,6 +14,8 @@ function! s:denite_my_settings() abort
   nnoremap <silent><buffer><expr> p
         \ denite#do_map('do_action', 'preview')
   nnoremap <silent><buffer><expr> q
+        \ denite#do_map('quit')
+  nnoremap <silent><buffer><expr> Q
         \ denite#do_map('quit')
   nnoremap <silent><buffer><expr> i
         \ denite#do_map('open_filter_buffer')
