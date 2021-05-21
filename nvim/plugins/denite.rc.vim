@@ -17,6 +17,8 @@ function! s:denite_my_settings() abort
         \ denite#do_map('quit')
   nnoremap <silent><buffer><expr> Q
         \ denite#do_map('quit')
+  nnoremap <silent><buffer><expr> :
+        \ denite#do_map('quit') . ':'
   nnoremap <silent><buffer><expr> i
         \ denite#do_map('open_filter_buffer')
   nnoremap <silent><buffer><expr> <Space>
