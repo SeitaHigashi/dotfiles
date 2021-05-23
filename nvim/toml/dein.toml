@@ -75,3 +75,5 @@ hook_add = '''
 source ~/.config/nvim/plugins/tmuxline.rc.vim
 '''
 
+[[plugins]]
+repo = 'voldikss/vim-translate-me'
