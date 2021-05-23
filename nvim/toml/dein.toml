@@ -76,4 +76,8 @@ source ~/.config/nvim/plugins/tmuxline.rc.vim
 '''
 
 [[plugins]]
-repo = 'voldikss/vim-translate-me'
+repo = 'voldikss/vim-translator'
+hook_add = '''
+let g:translator_target_lang = 'ja'
+let g:translator_default_engines = ['google']
+'''
