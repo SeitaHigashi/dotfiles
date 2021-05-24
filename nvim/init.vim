@@ -35,3 +35,5 @@ set background=dark
 colorscheme hybrid
 
 tnoremap <ESC> <C-\><C-n>
+
+nnoremap ft :TranslateW<CR>
