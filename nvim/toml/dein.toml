@@ -90,3 +90,6 @@ hook_add = '''
 let g:translator_target_lang = 'ja'
 let g:translator_default_engines = ['google']
 '''
+
+[[plugins]]
+repo = 'tpope/vim-surround'
