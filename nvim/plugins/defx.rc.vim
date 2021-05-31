@@ -82,14 +82,19 @@ call defx#custom#column('git', 'indicators', {
   \ 'Unknown'   : '?'
   \ })
 
-call defx#custom#option('_', {
-      \ 'split': 'floating',
-      \ 'vertical_preview': v:true,
-      \ 'floating_preview': v:true,
-      \ 'preview_width': float2nr(&columns * g:floating_win_width_percent / 2),
-      \ 'preview_height': float2nr(&lines * g:floating_win_height_percent),
-      \ 'wincol': float2nr((&columns - (&columns * g:floating_win_width_percent)) / 2),
-      \ 'winrow': float2nr((&lines - (&lines * g:floating_win_height_percent)) / 2),
-      \ 'winwidth': float2nr(&columns * g:floating_win_width_percent / 2),
-      \ 'winheight': float2nr(&lines * g:floating_win_height_percent),
-      \ })
+function s:window_setting() abort
+  call defx#custom#option('_', {
+        \ 'split': 'floating',
+        \ 'vertical_preview': v:true,
+        \ 'floating_preview': v:true,
+        \ 'preview_width': float2nr(&columns * g:floating_win_width_percent / 2),
+        \ 'preview_height': float2nr(&lines * g:floating_win_height_percent),
+        \ 'wincol': float2nr((&columns - (&columns * g:floating_win_width_percent)) / 2),
+        \ 'winrow': float2nr((&lines - (&lines * g:floating_win_height_percent)) / 2),
+        \ 'winwidth': float2nr(&columns * g:floating_win_width_percent / 2),
+        \ 'winheight': float2nr(&lines * g:floating_win_height_percent),
+        \ })
+endfunction
+
+call s:window_setting()
+autocmd VimResized * call s:window_setting()
