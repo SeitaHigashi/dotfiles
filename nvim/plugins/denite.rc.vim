@@ -41,11 +41,6 @@ function! s:denite_filter_my_settings() abort
         \ denite#do_map('quit')
 endfunction
 
-" Floating
-"let s:denite_win_width_percent = 0.95
-"let s:denite_win_height_percent = 0.75
-
-
 " Change denite default options
 function s:window_setting() abort
   call denite#custom#option('default', {
@@ -74,8 +69,6 @@ call denite#custom#var('file/rec', 'command',
 " Change matchers.
 call denite#custom#source(
       \ 'file_mru', 'matchers', ['matcher/fuzzy', 'matcher/project_files'])
-"call denite#custom#source(
-"      \ 'file/rec', 'matchers', ['matcher/cpsm'])
 
 " Change sorters.
 call denite#custom#source(
@@ -83,11 +76,6 @@ call denite#custom#source(
 
 " Change default action.
 call denite#custom#kind('file', 'default_action', 'vsplit')
-
-" Add custom menus
-let s:menus = {}
-
-call denite#custom#var('menu', 'menus', s:menus)
 
 " Ripgrep command on grep source
 call denite#custom#var('grep', {
