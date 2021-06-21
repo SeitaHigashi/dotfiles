@@ -19,3 +19,13 @@ let g:auto_save_in_insert_mode = 0
 [[plugins]]
 repo = 'tpope/vim-rhubarb'
 on_source = ['vim-fugitive']
+
+[[plugins]]
+repo = 'kassio/neoterm'
+on_cmd = ['Tnew', 'Ttoggle']
+hook_add = '''
+let g:neoterm_autoinsert = 1
+let g:neoterm_autoscroll = 1
+let g:neoterm_default_mod = "belowright"
+'''
+
