@@ -38,6 +38,5 @@ tnoremap <ESC> <C-\><C-n>
 
 nnoremap fT :TranslateW<CR>
 noremap ft :Ttoggle 'resize=15'<CR>
-tnoremap ft <C-\><C-n>:Ttoggle 'resize=15'<CR>
 tnoremap fk <UP>
 tnoremap fj <DOWN>
