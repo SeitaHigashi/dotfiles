@@ -26,6 +26,6 @@ on_cmd = ['Tnew', 'Ttoggle']
 hook_add = '''
 let g:neoterm_autoinsert = 1
 let g:neoterm_autoscroll = 1
-let g:neoterm_default_mod = "belowright"
+let g:neoterm_default_mod = "botright"
 '''
 
