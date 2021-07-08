@@ -24,8 +24,12 @@ on_source = ['vim-fugitive']
 repo = 'kassio/neoterm'
 on_cmd = ['Tnew', 'Ttoggle']
 hook_add = '''
-let g:neoterm_autoinsert = 1
+let g:neoterm_autoinsert = 0
+let g:neoterm_autojump = 1
 let g:neoterm_autoscroll = 1
 let g:neoterm_default_mod = "botright"
 '''
 
+[[plugins]]
+repo = 'shime/vim-livedown'
+on_ft = ['markdown']
