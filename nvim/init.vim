@@ -32,6 +32,7 @@ set softtabstop=2
 set tabstop=2
 set noshowmode
 set background=dark
+set relativenumber
 colorscheme hybrid
 
 tnoremap <ESC> <C-\><C-n>
