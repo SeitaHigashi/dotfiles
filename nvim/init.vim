@@ -37,7 +37,7 @@ colorscheme hybrid
 
 tnoremap <ESC> <C-\><C-n>
 
-nnoremap <silent> fT :TranslateW<CR>
-nnoremap <silent> ft :Ttoggle 'resize=15'<CR>
+nnoremap <silent> fT <cmd>TranslateW<CR>
+nnoremap <silent> ft <cmd>Ttoggle 'resize=15'<CR>
 tnoremap fk <UP>
 tnoremap fj <DOWN>
