@@ -35,6 +35,8 @@ set background=dark
 set relativenumber
 colorscheme hybrid
 
+au BufNewFile,BufRead *.dart setf dart
+
 tnoremap <ESC> <C-\><C-n>
 
 nnoremap <silent> fT :TranslateW<CR>
