@@ -32,7 +32,7 @@ set softtabstop=2
 set tabstop=2
 set noshowmode
 set background=dark
-set relativenumber
+set number relativenumber
 colorscheme hybrid
 
 au BufNewFile,BufRead *.dart setf dart
