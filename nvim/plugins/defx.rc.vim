@@ -20,6 +20,8 @@ function! s:defx_my_settings() abort
         \ defx#do_action('multi', [['open', 'choose'], 'quit'])
   nnoremap <silent><buffer><expr> E
         \ defx#do_action('multi', [['open', 'vsplit'], 'quit'])
+  nnoremap <silent><buffer><expr> H
+        \ defx#do_action('multi', [['open', 'split'], 'quit'])
   nnoremap <silent><buffer><expr> o
         \ defx#do_action('open_tree', 'toggle')
   nnoremap <silent><buffer><expr> K

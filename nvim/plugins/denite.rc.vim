@@ -28,6 +28,8 @@ function! s:denite_my_settings() abort
         \ denite#do_map('toggle_select').'j'
   nnoremap <silent><buffer><expr> E
         \ denite#do_map('do_action', 'vsplit')
+  nnoremap <silent><buffer><expr> H
+        \ denite#do_map('do_action', 'split')
 endfunction
 
 autocmd FileType denite-filter call s:denite_filter_my_settings()
@@ -37,6 +39,8 @@ function! s:denite_filter_my_settings() abort
         \ denite#do_map('do_action')
   inoremap <silent><buffer><expr> E
         \ denite#do_map('do_action', 'vsplit')
+  inoremap <silent><buffer><expr> H
+        \ denite#do_map('do_action', 'split')
   inoremap <silent><buffer><expr> Q
         \ denite#do_map('quit')
 endfunction
