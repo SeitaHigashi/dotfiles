@@ -120,4 +120,4 @@ mount-0 = /
 
 fixed-values = true
 
-label-mounted = %used%/%total%
+label-mounted = %used%/%total%
