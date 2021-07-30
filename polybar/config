@@ -1,7 +1,7 @@
 [bar/mybar]
 width = 100%
 height = 26
-radius = 6.0
+;radius = 12.0
 
 font-0 = HackGenNerd:size=18;0
 
@@ -74,7 +74,7 @@ interface = wlan0
 interval = 10.0
 format-connected = 直<label-connected>
 label-connected = %essid%
-label-disconnected = 睊not connected
+label-disconnected = 睊
 
 [module/powermenu]
 type = custom/menu
