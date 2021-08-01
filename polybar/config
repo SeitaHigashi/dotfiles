@@ -47,7 +47,6 @@ format = <label-state> <label-mode>
 
 label-mode = %mode%
 label-mode-padding = 2
-;label-mode-background = #e60053
 label-mode-background = ${colors.red}
 label-mode-foreground = ${colors.black}
 
