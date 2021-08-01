@@ -19,8 +19,8 @@ module-margin-left = 0
 module-margin-center = 0
 module-margin-right = 1
 
-modules-left = i3
-modules-center = date
+modules-left = date
+modules-center = i3
 modules-right = volume network filesystem battery powermenu
 
 
@@ -83,6 +83,8 @@ ramp-capacity-6 = 
 ramp-capacity-7 = 
 ramp-capacity-8 = 
 ramp-capacity-9 = 
+ramp-capacity-0-foreground = ${colors.red}
+ramp-capacity-1-foreground = ${colors.red}
 
 ; Only applies if <animation-charging> is used
 animation-charging-0 = 
@@ -100,6 +102,7 @@ interval = 10.0
 format-connected = 直<label-connected>
 label-connected = %essid%
 label-disconnected = 睊
+label-disconnected-foreground = ${colors.red}
 
 [module/powermenu]
 type = custom/menu
