@@ -33,6 +33,7 @@ set tabstop=2
 set noshowmode
 set background=dark
 set number relativenumber
+set clipboard=unnamedplus
 colorscheme hybrid
 
 au BufNewFile,BufRead *.dart setf dart
