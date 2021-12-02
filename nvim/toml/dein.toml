@@ -34,6 +34,9 @@ hook_post_update = '''
 # '''
 [[plugins]]
 repo = 'Shougo/ddc.vim'
+hook_add = '''
+source ~/.config/nvim/plugins/ddc.rc.vim
+'''
 
 [[plugins]]
 repo = 'vim-denops/denops.vim'
