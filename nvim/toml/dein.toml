@@ -25,13 +25,19 @@ hook_post_update = '''
 '''
 
 # 補完
+# [[plugins]]
+# repo = 'neoclide/coc.nvim'
+# merged = 0
+# rev = 'release'
+# hook_add = '''
+# source ~/.config/nvim/plugins/coc.rc.vim
+# '''
 [[plugins]]
-repo = 'neoclide/coc.nvim'
-merged = 0
-rev = 'release'
-hook_add = '''
-source ~/.config/nvim/plugins/coc.rc.vim
-'''
+repo = 'Shougo/ddc.vim'
+
+[[plugins]]
+repo = 'vim-denops/denops.vim'
+
 
 # Git
 [[plugins]] 
