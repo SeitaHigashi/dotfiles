@@ -1,3 +1,5 @@
+let mapleader = "\<Space>"
+
 if &compatible
   set nocompatible               " Be iMproved
 endif
@@ -40,7 +42,7 @@ au BufNewFile,BufRead *.dart setf dart
 
 tnoremap <ESC> <C-\><C-n>
 
-nnoremap <silent> fT <cmd>TranslateW<CR>
-nnoremap <silent> ft <cmd>Ttoggle 'resize=15'<CR>
+nnoremap <silent> <Leader>T <cmd>TranslateW<CR>
+nnoremap <silent> <Leader>t <cmd>Ttoggle 'resize=15'<CR>
 tnoremap fk <UP>
 tnoremap fj <DOWN>

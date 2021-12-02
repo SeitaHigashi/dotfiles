@@ -1,7 +1,7 @@
 " Denite config 
-nnoremap <silent>fj :<C-u>Denite -start_filter file/rec<CR>
-nnoremap <silent>fk :<C-u>Denite grep<CR>
-nnoremap <silent>fd :<C-u>Denite buffer<CR>
+nnoremap <silent><Leader>j :<C-u>Denite -start_filter file/rec<CR>
+nnoremap <silent><Leader>k :<C-u>Denite grep<CR>
+nnoremap <silent><Leader>d :<C-u>Denite buffer<CR>
 
 " Define mappings
 autocmd FileType denite call s:denite_my_settings()

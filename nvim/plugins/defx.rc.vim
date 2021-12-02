@@ -1,5 +1,5 @@
 " Defx config
-nnoremap <silent>ff :<C-u>Defx -listed -columns=mark:indent:git:icons:filename:type<CR>
+nnoremap <silent><Leader>f :<C-u>Defx -listed -columns=mark:indent:git:icons:filename:type<CR>
 
 autocmd FileType defx call s:defx_my_settings()
 function! s:defx_my_settings() abort
