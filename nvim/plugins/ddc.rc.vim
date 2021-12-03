@@ -28,6 +28,7 @@ call ddc#custom#patch_global('sourceParams', {
 
 " Customize settings on a filetype
 call ddc#custom#patch_filetype(['c', 'cpp'], 'sources', ['around', 'nvim-lsp'])
+call ddc#custom#patch_filetype(['javascript', 'typescript'], 'sources', ['around', 'nvim-lsp'])
 " call ddc#custom#patch_filetype(['c', 'cpp'], 'sourceOptions', {
 "       \ 'clangd': {'mark': 'C'},
 "       \ })

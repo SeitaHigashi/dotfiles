@@ -58,6 +58,7 @@ repo = 'neovim/nvim-lspconfig'
 hook_source = '''
   lua << EOF
 require'lspconfig'.clangd.setup{}
+require'lspconfig'.tsserver.setup{}
 EOF
 '''
 
