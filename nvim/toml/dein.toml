@@ -33,25 +33,16 @@ hook_post_update = '''
 # source ~/.config/nvim/plugins/coc.rc.vim
 # '''
 [[plugins]]
+repo = 'vim-denops/denops.vim'
+
+[[plugins]]
 repo = 'Shougo/ddc.vim'
 hook_add = '''
 source ~/.config/nvim/plugins/ddc.rc.vim
 '''
 
 [[plugins]]
-repo = 'Shougo/ddc-around'
-
-[[plugins]]
 repo = 'Shougo/ddc-nvim-lsp'
-
-[[plugins]]
-repo = 'Shougo/ddc-matcher_head'
-
-[[plugins]]
-repo = 'Shougo/ddc-sorter_rank'
-
-[[plugins]]
-repo = 'vim-denops/denops.vim'
 
 [[plugins]]
 repo = 'neovim/nvim-lspconfig'
@@ -62,6 +53,11 @@ require'lspconfig'.tsserver.setup{}
 EOF
 '''
 
+[[plugins]]
+repo = 'Shougo/ddc-matcher_head'
+
+[[plugins]]
+repo = 'Shougo/ddc-sorter_rank'
 
 # Git
 [[plugins]] 

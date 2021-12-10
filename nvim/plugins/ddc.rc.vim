@@ -12,10 +12,12 @@ call ddc#custom#patch_global('sourceOptions', {
       \   'sorters': ['sorter_rank']},
       \ })
 
+call ddc#custom#patch_global('sources', ['nvim-lsp'])
 call ddc#custom#patch_global('sourceOptions', {
+      \ '_': { 'matchers': ['matcher_head'] },
       \ 'nvim-lsp': {
-      \   'mark': 'LSP',
-      \   'forceCompletionPattern': '\.\w*|:\w*|->\w*'},
+      \   'mark': 'lsp',
+      \   'forceCompletionPattern': '\.\w*|:\w*|->\w*' },
       \ })
 
 " Change source options
@@ -25,13 +27,6 @@ call ddc#custom#patch_global('sourceOptions', {
 call ddc#custom#patch_global('sourceParams', {
       \ 'around': {'maxSize': 500},
       \ })
-
-" Customize settings on a filetype
-call ddc#custom#patch_filetype(['c', 'cpp'], 'sources', ['around', 'nvim-lsp'])
-call ddc#custom#patch_filetype(['javascript', 'typescript'], 'sources', ['around', 'nvim-lsp'])
-" call ddc#custom#patch_filetype(['c', 'cpp'], 'sourceOptions', {
-"       \ 'clangd': {'mark': 'C'},
-"       \ })
 
 call ddc#custom#patch_filetype('markdown', 'sourceParams', {
       \ 'around': {'maxSize': 100},
