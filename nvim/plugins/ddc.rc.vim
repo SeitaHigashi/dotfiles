@@ -1,23 +1,23 @@
 " Customize global settings
 " Use around source.
 " https://github.com/Shougo/ddc-around
-call ddc#custom#patch_global('sources', ['around'])
+"  call ddc#custom#patch_global('sources', ['around'])
 
 " Use matcher_head and sorter_rank.
 " https://github.com/Shougo/ddc-matcher_head
 " https://github.com/Shougo/ddc-sorter_rank
-call ddc#custom#patch_global('sourceOptions', {
-      \ '_': {
-      \   'matchers': ['matcher_head'],
-      \   'sorters': ['sorter_rank']},
-      \ })
+" call ddc#custom#patch_global('sourceOptions', {
+"       \ '_': {
+"       \   'matchers': ['matcher_head'],
+"       \   'sorters': ['sorter_rank']},
+"       \ })
 
 call ddc#custom#patch_global('sources', ['nvim-lsp'])
 call ddc#custom#patch_global('sourceOptions', {
       \ '_': { 'matchers': ['matcher_head'] },
       \ 'nvim-lsp': {
-      \   'mark': 'LS',
-      \   'forceCompletionPattern': '\.\w*|:\w*|->\w*' },
+      \   'mark': 'lsp',
+      \   'forceCompletionPattern': '\w+' },
       \ })
 
 " Change source options

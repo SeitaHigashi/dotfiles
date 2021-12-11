@@ -30,6 +30,7 @@ repo = 'vim-denops/denops.vim'
 
 [[plugins]]
 repo = 'Shougo/ddc.vim'
+depends = ['ddc-matcher_head', 'ddc-sorter_rank'] 
 hook_add = '''
 source ~/.config/nvim/plugins/ddc.rc.vim
 '''
@@ -39,6 +40,9 @@ repo = 'Shougo/ddc-nvim-lsp'
 
 [[plugins]]
 repo = 'neovim/nvim-lspconfig'
+hook_add = '''
+source ~/.config/nvim/plugins/nvim-lspconfig.rc.lua
+'''
 
 [[plugins]]
 repo = 'williamboman/nvim-lsp-installer'
@@ -52,6 +56,21 @@ lsp_installer.on_server_ready(function(server)
     vim.cmd [[ do User LspAttachBuffers ]]
     end)
 EOF
+'''
+
+[[plugins]]
+repo = 'Shougo/ddc-around'
+
+[[plugins]]
+repo = 'Shougo/ddc-matcher_head'
+
+[[plugins]]
+repo = 'Shougo/ddc-sorter_rank'
+
+[[plugins]]
+repo = 'matsui54/denops-popup-preview.vim'
+hook_add = '''
+call popup_preview#enable()
 '''
 
 # Git
