@@ -1,5 +1,6 @@
 " Customize global settings
 call ddc#custom#patch_global('sources', [
+      \ 'vsnip',
       \ 'nvim-lsp', 
       \ 'around'
       \ ])
@@ -9,16 +10,17 @@ call ddc#custom#patch_global('sourceOptions', {
         \ 'sorters': ['sorter_rank'] 
       \ },
       \ 'nvim-lsp': {
-        \   'mark': 'lsp',
+        \   'mark': 'LS',
         \   'dup': v:true,
         \   'forceCompletionPattern': '\w+' 
       \ },
       \ 'around': {'mark': 'A'},
+      \ 'vsnip': {'mark': 'S', 'dup': v:true },
     \ })
 
 " Mappings
 inoremap <silent><expr> <TAB>
-      \ pumvisible() ? ddc#map#manual_complete() : '<TAB>'
+      \ pumvisible() ? '<C-f>' : '<TAB>'
 " <TAB>: completion.
 "  inoremap <silent><expr> <TAB>
 "  \ pumvisible() ? '<C-n>' :
@@ -26,7 +28,7 @@ inoremap <silent><expr> <TAB>
 "  \ '<TAB>' : ddc#map#manual_complete()
 
 " <S-TAB>: completion back.
-inoremap <expr><S-TAB>  pumvisible() ? '<C-p>' : '<C-h>'
+inoremap <expr><S-TAB>  pumvisible() ? <C-p>' : '<C-h>'
 
 " Use ddc.
 call ddc#enable()
