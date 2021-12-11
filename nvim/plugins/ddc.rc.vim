@@ -16,24 +16,23 @@ call ddc#custom#patch_global('sources', ['nvim-lsp'])
 call ddc#custom#patch_global('sourceOptions', {
       \ '_': { 'matchers': ['matcher_head'] },
       \ 'nvim-lsp': {
-      \   'mark': 'lsp',
+      \   'mark': 'LS',
       \   'forceCompletionPattern': '\.\w*|:\w*|->\w*' },
       \ })
 
 " Change source options
-call ddc#custom#patch_global('sourceOptions', {
-      \ 'around': {'mark': 'A'},
-      \ })
-call ddc#custom#patch_global('sourceParams', {
-      \ 'around': {'maxSize': 500},
-      \ })
-
-call ddc#custom#patch_filetype('markdown', 'sourceParams', {
-      \ 'around': {'maxSize': 100},
-      \ })
+" call ddc#custom#patch_global('sourceOptions', {
+"       \ 'around': {'mark': 'A'},
+"       \ })
+" call ddc#custom#patch_global('sourceParams', {
+"       \ 'around': {'maxSize': 500},
+"       \ })
+" 
+" call ddc#custom#patch_filetype('markdown', 'sourceParams', {
+"       \ 'around': {'maxSize': 100},
+"       \ })
 
 " Mappings
-
 " <TAB>: completion.
 inoremap <silent><expr> <TAB>
 \ pumvisible() ? '<C-n>' :
