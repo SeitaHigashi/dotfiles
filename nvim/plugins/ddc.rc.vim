@@ -2,7 +2,7 @@
 call ddc#custom#patch_global('sources', [
       \ 'vsnip',
       \ 'nvim-lsp', 
-      \ 'around'
+      \ 'around',
       \ ])
 call ddc#custom#patch_global('sourceOptions', {
       \ '_': { 

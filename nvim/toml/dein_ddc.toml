@@ -10,13 +10,13 @@ repo = 'Shougo/ddc-nvim-lsp'
 
 [[plugins]]
 repo = 'neovim/nvim-lspconfig'
-hook_add = '''
+on_source = '''
 source ~/.config/nvim/plugins/nvim-lspconfig.rc.lua
 '''
 
 [[plugins]]
 repo = 'williamboman/nvim-lsp-installer'
-hook_source = '''
+on_source = '''
 lua << EOF
 local lsp_installer = require("nvim-lsp-installer")
 lsp_installer.on_server_ready(function(server)
