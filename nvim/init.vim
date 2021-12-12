@@ -12,6 +12,7 @@ call dein#begin('~/.local/share/nvim')
 
 " Plugins
 call dein#load_toml('~/.config/nvim/toml/dein.toml', {'lazy': 0})
+call dein#load_toml('~/.config/nvim/toml/dein_ddc.toml', {'lazy': 1})
 call dein#load_toml('~/.config/nvim/toml/dein_lazy.toml', {'lazy': 1})
 
 call dein#end()
