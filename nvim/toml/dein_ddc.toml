@@ -46,7 +46,7 @@ hook_add = '''
 # Snippet
 [[plugins]]
 repo = 'hrsh7th/vim-vsnip'
-depends = ['vim-vpnip-integ'] 
+depends = ['vim-vsnip-integ'] 
 hook_add = '''
 " Expand
 imap <expr> <C-j>   vsnip#expandable()  ? '<Plug>(vsnip-expand)'         : '<C-j>'
