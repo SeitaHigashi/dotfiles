@@ -38,3 +38,9 @@ function! s:show_documentation()
     execute '!' . &keywordprg . " " . expand('<cword>')
   endif
 endfunction
+
+" Highlight
+autocmd CursorHold * silent call CocActionAsync('highlight')
+
+" Rename
+nmap <leader>rn <Plug>(coc-rename)
