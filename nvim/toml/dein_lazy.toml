@@ -1,15 +1,7 @@
-# Utilitys
-[[plugins]]
-repo = 'Shougo/denite.nvim'
-# on_cmd = ['Denite']
-hook_add = '''
-source ~/.config/nvim/plugins/denite.rc.vim
-'''
-
 # Filer
 [[plugins]]
 repo = 'Shougo/defx.nvim'
-# on_cmd = ['Defx']
+on_cmd = ['Defx']
 depends = ['defx-git', 'defx-icons'] 
 hook_add = '''
 source ~/.config/nvim/plugins/defx.rc.vim
