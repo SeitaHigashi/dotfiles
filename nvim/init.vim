@@ -40,9 +40,4 @@ colorscheme hybrid
 
 au BufNewFile,BufRead *.dart setf dart
 
-tnoremap <ESC> <C-\><C-n>
-
-nnoremap <silent> <Leader>T <cmd>TranslateW<CR>
-nnoremap <silent> <Leader>t <cmd>Ttoggle 'resize=15'<CR>
-tnoremap fk <UP>
-tnoremap fj <DOWN>
+source ~/.config/nvim/keybinds.vim
