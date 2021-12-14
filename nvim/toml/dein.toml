@@ -57,7 +57,6 @@ source ~/.config/nvim/plugins/lightline.rc.vim
 
 [[plugins]]
 repo = 'cocopon/lightline-hybrid.vim'
-on_source = ['lightline.vim']
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
