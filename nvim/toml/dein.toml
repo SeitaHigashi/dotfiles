@@ -2,13 +2,6 @@
 [[plugins]]
 repo = 'Shougo/dein.vim'
 
-# Utilitys
-[[plugins]]
-repo = 'Shougo/denite.nvim'
-hook_add = '''
-source ~/.config/nvim/plugins/denite.rc.vim
-'''
-
 [[plugins]]
 repo = 'Shougo/vimproc.vim'
 hook_post_update = '''
