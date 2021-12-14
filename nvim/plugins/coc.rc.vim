@@ -1,5 +1,10 @@
 " CoC config
 
+let g:coc_global_extensions = [
+      \'coc-snippets',
+      \'coc-lists',
+      \]
+
 "VSCode like keymapping
 inoremap <silent><expr> <TAB>
       \ pumvisible() ? coc#_select_confirm() :
