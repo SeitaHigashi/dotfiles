@@ -43,6 +43,14 @@ function! s:denite_filter_my_settings() abort
         \ denite#do_map('do_action', 'split')
   inoremap <silent><buffer><expr> Q
         \ denite#do_map('quit')
+  inoremap <silent><buffer> J <ESC>
+	      \:call denite#move_to_parent()<CR>
+	      \:call cursor(line('.')+1,0)<CR>
+	      \:call denite#move_to_filter()<CR>A
+  inoremap <silent><buffer> K <ESC>
+	      \:call denite#move_to_parent()<CR>
+	      \:call cursor(line('.')-1,0)<CR>
+	      \:call denite#move_to_filter()<CR>A
 endfunction
 
 " Change denite default options
