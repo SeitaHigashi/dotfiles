@@ -24,15 +24,6 @@ hook_post_update = '''
   let g:dein#plugin.build = cmd
 '''
 
-# 補完
-[[plugins]]
-repo = 'neoclide/coc.nvim'
-merged = 0
-rev = 'release'
-hook_add = '''
-source ~/.config/nvim/plugins/coc.rc.vim
-'''
-
 # Git
 [[plugins]] 
 repo = 'tpope/vim-fugitive'
@@ -50,9 +41,11 @@ source ~/.config/nvim/plugins/defx.rc.vim
 
 [[plugins]]
 repo = 'kristijanhusak/defx-icons'
+on_source = ['defx.nvim']
 
 [[plugins]]
 repo = 'kristijanhusak/defx-git'
+on_source = ['defx.nvim']
 
 # UI
 [[plugins]]
@@ -64,6 +57,7 @@ source ~/.config/nvim/plugins/lightline.rc.vim
 
 [[plugins]]
 repo = 'cocopon/lightline-hybrid.vim'
+on_source = ['lightline.vim']
 
 [[plugins]]
 repo = 'ryanoasis/vim-devicons'
