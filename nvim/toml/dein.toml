@@ -40,20 +40,6 @@ repo = 'tpope/vim-fugitive'
 [[plugins]]
 repo = 'airblade/vim-gitgutter'
 
-# Filer
-[[plugins]]
-repo = 'Shougo/defx.nvim'
-depends = ['defx-git', 'defx-icons'] 
-hook_add = '''
-source ~/.config/nvim/plugins/defx.rc.vim
-'''
-
-[[plugins]]
-repo = 'kristijanhusak/defx-icons'
-
-[[plugins]]
-repo = 'kristijanhusak/defx-git'
-
 # UI
 [[plugins]]
 repo = 'itchyny/lightline.vim'

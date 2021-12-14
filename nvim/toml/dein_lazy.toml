@@ -1,3 +1,20 @@
+# Filer
+[[plugins]]
+repo = 'Shougo/defx.nvim'
+on_cmd = ['Defx']
+depends = ['defx-git', 'defx-icons'] 
+hook_add = '''
+source ~/.config/nvim/plugins/defx.rc.vim
+'''
+
+[[plugins]]
+repo = 'kristijanhusak/defx-icons'
+on_source = ['defx.nvim']
+
+[[plugins]]
+repo = 'kristijanhusak/defx-git'
+on_source = ['defx.nvim']
+
 # UI
 [[plugins]]
 repo = 'wsdjeg/dein-ui.vim'
