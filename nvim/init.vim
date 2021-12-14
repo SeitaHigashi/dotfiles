@@ -36,6 +36,8 @@ set noshowmode
 set background=dark
 set number relativenumber
 set clipboard=unnamedplus
+set hidden
+set confirm
 colorscheme hybrid
 
 au BufNewFile,BufRead *.dart setf dart
