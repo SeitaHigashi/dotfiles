@@ -30,6 +30,8 @@ function! s:denite_my_settings() abort
         \ denite#do_map('do_action', 'vsplit')
   nnoremap <silent><buffer><expr> H
         \ denite#do_map('do_action', 'split')
+  nnoremap <silent><buffer><expr> L
+        \ denite#do_map('do_action', 'open')
 endfunction
 
 autocmd FileType denite-filter call s:denite_filter_my_settings()
