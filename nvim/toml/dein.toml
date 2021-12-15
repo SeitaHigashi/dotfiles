@@ -86,3 +86,10 @@ let g:translator_default_engines = ['google']
 
 [[plugins]]
 repo = 'tpope/vim-surround'
+
+[[plugins]]
+repo = 'unblevable/quick-scope'
+hook_add = '''
+let g:qs_highlight_on_keys = ['f', 'F']
+'''
+
