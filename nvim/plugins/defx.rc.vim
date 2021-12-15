@@ -57,6 +57,8 @@ function! s:defx_my_settings() abort
         \ defx#do_action('quit')
   nnoremap <silent><buffer><expr> Q
         \ defx#do_action('quit')
+  nnoremap <silent><buffer><expr> <ESC>
+        \ defx#do_action('quit')
   nnoremap <silent><buffer><expr> <Space>
         \ defx#do_action('toggle_select') . 'j'
   nnoremap <silent><buffer><expr> *

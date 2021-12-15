@@ -18,6 +18,8 @@ function! s:denite_my_settings() abort
         \ denite#do_map('quit')
   nnoremap <silent><buffer><expr> Q
         \ denite#do_map('quit')
+  nnoremap <silent><buffer><expr> <ESC>
+        \ denite#do_map('quit')
   nnoremap <silent><buffer><expr> :
         \ denite#do_map('quit') . ':'
   nnoremap <silent><buffer><expr> i
@@ -44,6 +46,8 @@ function! s:denite_filter_my_settings() abort
   inoremap <silent><buffer><expr> H
         \ denite#do_map('do_action', 'split')
   inoremap <silent><buffer><expr> Q
+        \ denite#do_map('quit')
+  inoremap <silent><buffer><expr> <ESC>
         \ denite#do_map('quit')
   inoremap <silent><buffer> J <ESC>
 	      \:call denite#move_to_parent()<CR>
