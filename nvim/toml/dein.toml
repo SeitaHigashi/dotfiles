@@ -19,9 +19,6 @@ source ~/.config/nvim/plugins/coc.rc.vim
 '''
 
 # Git
-[[plugins]] 
-repo = 'tpope/vim-fugitive'
-
 [[plugins]]
 repo = 'airblade/vim-gitgutter'
 
