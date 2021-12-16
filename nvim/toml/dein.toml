@@ -44,7 +44,7 @@ repo = 'kristijanhusak/defx-git'
 repo = 'itchyny/lightline.vim'
 depends = ['lightline-hybrid.vim', 'tmuxline.vim']
 hook_add = '''
-source ~/.config/nvim/plugins/lightline.rc.vim
+source ~/.config/nvim/plugins/lightline.rc.lua
 '''
 
 [[plugins]]
@@ -59,7 +59,7 @@ repo = 'w0ng/vim-hybrid'
 [[plugins]]
 repo = 'edkolev/tmuxline.vim'
 hook_add = '''
-source ~/.config/nvim/plugins/tmuxline.rc.vim
+source ~/.config/nvim/plugins/tmuxline.rc.lua
 '''
 
 [[plugins]]
