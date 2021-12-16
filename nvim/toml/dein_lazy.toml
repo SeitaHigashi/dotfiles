@@ -21,3 +21,17 @@ let g:neoterm_default_mod = "botright"
 [[plugins]]
 repo = 'shime/vim-livedown'
 on_ft = ['markdown']
+
+# Auto pairs
+[[plugins]]
+repo = 'jiangmiao/auto-pairs'
+on_event = 'InsertEnter'
+
+# Auto save
+[[plugins]]
+repo = 'vim-scripts/vim-auto-save'
+on_event = 'InsertEnter'
+hook_add = '''
+let g:auto_save = 1
+let g:auto_save_in_insert_mode = 0
+'''
