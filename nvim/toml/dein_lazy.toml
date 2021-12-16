@@ -35,3 +35,12 @@ hook_add = '''
 let g:auto_save = 1
 let g:auto_save_in_insert_mode = 0
 '''
+
+[[plugins]]
+repo = 'voldikss/vim-translator'
+on_event = 'CmdlineEnter'
+hook_add = '''
+let g:translator_target_lang = 'ja'
+let g:translator_default_engines = ['google']
+'''
+
