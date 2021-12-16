@@ -6,11 +6,9 @@ on_cmd = ['DeinUpdate']
 # Auto pairs
 [[plugins]]
 repo = 'jiangmiao/auto-pairs'
-on_i = 1
 
 [[plugins]]
 repo = 'vim-scripts/vim-auto-save'
-on_i = 1
 hook_add = '''
 let g:auto_save = 1
 let g:auto_save_in_insert_mode = 0
