@@ -6,18 +6,18 @@ on_event = 'CmdlineEnter'
 # Git
 [[plugins]] 
 repo = 'tpope/vim-fugitive'
-on_event = 'CmdlineEnter'
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
 depends = ['vim-rhubarb']
 
 
 [[plugins]]
 repo = 'tpope/vim-rhubarb'
-on_event = 'CmdlineEnter'
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
 on_source = ['vim-fugitive']
 
 [[plugins]]
 repo = 'kassio/neoterm'
-on_event = ['CmdUndefined']
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
 hook_add = '''
 let g:neoterm_autoinsert = 0
 let g:neoterm_autojump = 1
@@ -45,7 +45,7 @@ let g:auto_save_in_insert_mode = 0
 
 [[plugins]]
 repo = 'voldikss/vim-translator'
-on_event = 'CmdlineEnter'
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
 hook_add = '''
 let g:translator_target_lang = 'ja'
 let g:translator_default_engines = ['google']
