@@ -32,6 +32,7 @@ source ~/.config/nvim/plugins/defx.rc.vim
 
 [[plugins]]
 repo = 'kristijanhusak/defx-icons'
+depends = [ 'vim-devicons' ]
 
 [[plugins]]
 repo = 'kristijanhusak/defx-git'
