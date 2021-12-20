@@ -7,7 +7,7 @@ function! s:defx_my_settings() abort
   nnoremap <silent><buffer><expr> <CR>
         \ defx#is_directory() ?
         \ defx#do_action('open') :
-        \ defx#do_action('multi', [['open', 'choose'], 'quit']) 
+        \ defx#do_action('multi', ['quit', 'open']) 
   nnoremap <silent><buffer><expr> c
         \ defx#do_action('copy')
   nnoremap <silent><buffer><expr> m
@@ -17,7 +17,7 @@ function! s:defx_my_settings() abort
   nnoremap <silent><buffer><expr> l
         \ defx#is_directory() ?
         \ defx#do_action('open') :
-        \ defx#do_action('multi', [['open', 'choose'], 'quit'])
+        \ defx#do_action('multi', ['quit', 'open']) 
   nnoremap <silent><buffer><expr> E
         \ defx#do_action('multi', [['open', 'vsplit'], 'quit'])
   nnoremap <silent><buffer><expr> H
@@ -56,6 +56,8 @@ function! s:defx_my_settings() abort
   nnoremap <silent><buffer><expr> q
         \ defx#do_action('quit')
   nnoremap <silent><buffer><expr> Q
+        \ defx#do_action('quit')
+  nnoremap <silent><buffer><expr> <ESC>
         \ defx#do_action('quit')
   nnoremap <silent><buffer><expr> <Space>
         \ defx#do_action('toggle_select') . 'j'

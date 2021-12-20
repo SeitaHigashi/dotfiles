@@ -1,28 +1,23 @@
 # UI
 [[plugins]]
 repo = 'wsdjeg/dein-ui.vim'
-on_cmd = ['DeinUpdate']
+on_event = 'CmdlineEnter'
 
-# Auto pairs
-[[plugins]]
-repo = 'jiangmiao/auto-pairs'
-on_i = 1
+# Git
+[[plugins]] 
+repo = 'tpope/vim-fugitive'
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
+depends = ['vim-rhubarb']
 
-[[plugins]]
-repo = 'vim-scripts/vim-auto-save'
-on_i = 1
-hook_add = '''
-let g:auto_save = 1
-let g:auto_save_in_insert_mode = 0
-'''
 
 [[plugins]]
 repo = 'tpope/vim-rhubarb'
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
 on_source = ['vim-fugitive']
 
 [[plugins]]
 repo = 'kassio/neoterm'
-on_cmd = ['Tnew', 'Ttoggle']
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
 hook_add = '''
 let g:neoterm_autoinsert = 0
 let g:neoterm_autojump = 1
@@ -33,3 +28,26 @@ let g:neoterm_default_mod = "botright"
 [[plugins]]
 repo = 'shime/vim-livedown'
 on_ft = ['markdown']
+
+# Auto pairs
+[[plugins]]
+repo = 'jiangmiao/auto-pairs'
+on_event = 'InsertEnter'
+
+# Auto save
+[[plugins]]
+repo = 'vim-scripts/vim-auto-save'
+on_event = 'InsertEnter'
+hook_add = '''
+let g:auto_save = 1
+let g:auto_save_in_insert_mode = 0
+'''
+
+[[plugins]]
+repo = 'voldikss/vim-translator'
+on_event = [ 'CmdlineEnter', 'CmdUndefined' ]
+hook_add = '''
+let g:translator_target_lang = 'ja'
+let g:translator_default_engines = ['google']
+'''
+

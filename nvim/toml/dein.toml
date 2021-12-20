@@ -9,59 +9,35 @@ hook_add = '''
 source ~/.config/nvim/plugins/denite.rc.vim
 '''
 
-[[plugins]]
-repo = 'Shougo/vimproc.vim'
-hook_post_update = '''
-  if dein#util#_is_windows()
-    let cmd = 'tools\\update-dll-mingw'
-  elseif dein#util#_is_cygwin()
-    let cmd = 'make -f make_cygwin.mak'
-  elseif executable('gmake')
-    let cmd = 'gmake'
-  else
-    let cmd = 'make'
-  endif
-  let g:dein#plugin.build = cmd
-'''
-
 # 補完
 [[plugins]]
 repo = 'vim-denops/denops.vim'
 
 # Git
-[[plugins]] 
-repo = 'tpope/vim-fugitive'
-
 [[plugins]]
 repo = 'airblade/vim-gitgutter'
 
 # Filer
 [[plugins]]
 repo = 'Shougo/defx.nvim'
-depends = ['defx-git', 'defx-icons', 'vim-choosewin'] 
+depends = ['defx-git', 'defx-icons'] 
 hook_add = '''
 source ~/.config/nvim/plugins/defx.rc.vim
 '''
 
 [[plugins]]
 repo = 'kristijanhusak/defx-icons'
+depends = [ 'vim-devicons' ]
 
 [[plugins]]
 repo = 'kristijanhusak/defx-git'
-
-[[plugins]]
-repo = 't9md/vim-choosewin'
-hook_add = '''
-let g:choosewin_overlay_enabled = 1
-let g:choosewin_overlay_clear_multibyte = 1
-'''
 
 # UI
 [[plugins]]
 repo = 'itchyny/lightline.vim'
 depends = ['lightline-hybrid.vim', 'tmuxline.vim']
 hook_add = '''
-source ~/.config/nvim/plugins/lightline.rc.vim
+source ~/.config/nvim/plugins/lightline.rc.lua
 '''
 
 [[plugins]]
@@ -76,15 +52,20 @@ repo = 'w0ng/vim-hybrid'
 [[plugins]]
 repo = 'edkolev/tmuxline.vim'
 hook_add = '''
-source ~/.config/nvim/plugins/tmuxline.rc.vim
-'''
-
-[[plugins]]
-repo = 'voldikss/vim-translator'
-hook_add = '''
-let g:translator_target_lang = 'ja'
-let g:translator_default_engines = ['google']
+source ~/.config/nvim/plugins/tmuxline.rc.lua
 '''
 
 [[plugins]]
 repo = 'tpope/vim-surround'
+
+[[plugins]]
+repo = 'unblevable/quick-scope'
+hook_add = '''
+let g:qs_highlight_on_keys = ['f', 'F']
+augroup qs_colors
+  autocmd!
+  autocmd ColorScheme * highlight QuickScopePrimary guifg='#afff5f' gui=underline ctermfg=155 cterm=underline
+  autocmd ColorScheme * highlight QuickScopeSecondary guifg='#5fffff' gui=underline ctermfg=81 cterm=underline
+augroup END
+'''
+
