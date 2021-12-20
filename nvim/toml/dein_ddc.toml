@@ -1,12 +1,13 @@
 [[plugins]]
 repo = 'Shougo/ddc.vim'
-depends = ['ddc-matcher_head', 'ddc-sorter_rank'] 
+on_event = 'InsertEnter'
 hook_add = '''
 source ~/.config/nvim/plugins/ddc.rc.vim
 '''
 
 [[plugins]]
 repo = 'Shougo/ddc-nvim-lsp'
+on_source = 'ddc.vim'
 
 [[plugins]]
 repo = 'neovim/nvim-lspconfig'
@@ -30,22 +31,27 @@ EOF
 
 [[plugins]]
 repo = 'Shougo/ddc-around'
+on_source = 'ddc.vim'
 
 [[plugins]]
 repo = 'Shougo/ddc-matcher_head'
+on_source = 'ddc.vim'
 
 [[plugins]]
 repo = 'Shougo/ddc-sorter_rank'
+on_source = 'ddc.vim'
 
 [[plugins]]
 repo = 'matsui54/denops-popup-preview.vim'
+on_source = 'ddc.vim'
 hook_add = '''
-" call popup_preview#enable()
+call popup_preview#enable()
 '''
 
 # Snippet
 [[plugins]]
 repo = 'hrsh7th/vim-vsnip'
+on_source = 'ddc.vim'
 depends = ['vim-vsnip-integ'] 
 hook_add = '''
 " Expand
@@ -65,6 +71,8 @@ smap <expr> <S-Tab> vsnip#jumpable(-1)  ? '<Plug>(vsnip-jump-prev)'      : '<S-T
 
 [[plugins]]
 repo = 'hrsh7th/vim-vsnip-integ'
+on_source = 'vim-vsnip'
 
 [[plugins]]
 repo = 'rafamadriz/friendly-snippets'
+on_source = 'vim-vsnip'

@@ -32,4 +32,3 @@ inoremap <silent><expr> <TAB>
 inoremap <expr><S-TAB>  pumvisible() ? <C-p>' : '<C-h>'
 " Use ddc.
 call ddc#enable()
-
