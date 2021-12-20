@@ -13,6 +13,26 @@ source ~/.config/nvim/plugins/denite.rc.vim
 [[plugins]]
 repo = 'vim-denops/denops.vim'
 
+[[plugins]]
+repo = 'neovim/nvim-lspconfig'
+hook_add = '''
+source ~/.config/nvim/plugins/nvim-lspconfig.rc.lua
+'''
+
+[[plugins]]
+repo = 'williamboman/nvim-lsp-installer'
+hook_add = '''
+lua << EOF
+local lsp_installer = require("nvim-lsp-installer")
+lsp_installer.on_server_ready(function(server)
+    local opts = {}
+    opts.on_attach = on_attach
+    server:setup(opts)
+    vim.cmd [[ do User LspAttachBuffers ]]
+    end)
+EOF
+'''
+
 # Git
 [[plugins]]
 repo = 'airblade/vim-gitgutter'
