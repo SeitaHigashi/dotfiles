@@ -4,15 +4,16 @@ call ddc#custom#patch_global('sources', [
       \ 'nvim-lsp', 
       \ 'around',
       \ ])
+
 call ddc#custom#patch_global('sourceOptions', {
       \ '_': { 
-        \ 'matchers': ['matcher_head'],
-        \ 'sorters': ['sorter_rank'] 
+      \   'matchers': ['matcher_head'],
+      \   'sorters': ['sorter_rank'],
       \ },
       \ 'nvim-lsp': {
-        \   'mark': 'LS',
-        \   'dup': v:true,
-        \   'forceCompletionPattern': '\w+' 
+      \   'mark': 'LS',
+      \   'dup': v:true,
+      \   'forceCompletionPattern': '\w+' ,
       \ },
       \ 'around': {'mark': 'A'},
       \ 'vsnip': {'mark': 'S', 'dup': v:true },
@@ -29,7 +30,6 @@ inoremap <silent><expr> <TAB>
 
 " <S-TAB>: completion back.
 inoremap <expr><S-TAB>  pumvisible() ? <C-p>' : '<C-h>'
-
 " Use ddc.
 call ddc#enable()
 
