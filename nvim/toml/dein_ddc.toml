@@ -10,7 +10,7 @@ repo = 'Shougo/ddc-nvim-lsp'
 
 [[plugins]]
 repo = 'neovim/nvim-lspconfig'
-on_source = '''
+hook_add = '''
 source ~/.config/nvim/plugins/nvim-lspconfig.rc.lua
 '''
 
