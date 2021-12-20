@@ -1,5 +1,6 @@
 " Customize global settings
 call ddc#custom#patch_global('sources', [
+      \ 'skkeleton',
       \ 'vsnip',
       \ 'nvim-lsp', 
       \ 'around',
@@ -14,6 +15,12 @@ call ddc#custom#patch_global('sourceOptions', {
       \   'mark': 'LS',
       \   'dup': v:true,
       \   'forceCompletionPattern': '\w+' ,
+      \ },
+      \ 'skkeleton': {
+      \   'mark': 'SKK',
+      \   'matchers': ['skkeleton'],
+      \   'sorters': [],
+      \   'minAutoCompleteLength': 1,
       \ },
       \ 'around': {'mark': 'A'},
       \ 'vsnip': {'mark': 'S', 'dup': v:true },

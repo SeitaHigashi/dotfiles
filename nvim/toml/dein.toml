@@ -14,6 +14,18 @@ source ~/.config/nvim/plugins/denite.rc.vim
 repo = 'vim-denops/denops.vim'
 
 [[plugins]]
+repo = 'vim-skk/denops-skkeleton.vim'
+hook_source = '''
+imap <C-j> <Plug>(skkeleton-toggle)
+cmap <C-j> <Plug>(skkeleton-toggle)
+
+call skkeleton#config({
+\'eggLikeNewline': v:true,
+\'globalJisyo': '~/.local/share/nvim/skk/SKK-JISYO.L',
+\})
+'''
+
+[[plugins]]
 repo = 'neovim/nvim-lspconfig'
 hook_add = '''
 source ~/.config/nvim/plugins/nvim-lspconfig.rc.lua
