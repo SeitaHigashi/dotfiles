@@ -2,19 +2,22 @@ vim.api.nvim_set_keymap('n', '<Leader>j', [[<Cmd>lua require('telescope.builtin'
 vim.api.nvim_set_keymap('n', '<Leader>k', [[<Cmd>lua require('telescope.builtin').live_grep()<CR>]], { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<Leader>d', [[<Cmd>lua require('telescope.builtin').buffers()<CR>]], { noremap = true, silent = true })
 
-local actions = require('telescope.actions')
 local telescope = require('telescope')
+local actions = require('telescope.actions')
+local fb_actions = telescope.extensions.file_browser.actions
 telescope.setup{
   defaults = {
+    layout_config = {
+    },
     mappings = {
       i = {
         ["J"] = actions.move_selection_next,
         ["K"] = actions.move_selection_previous,
+        ["L"] = actions.select_default,
         ["Q"] = actions.close,
         ["<esc>"] = actions.close,
-        ["L"] = actions.file_edit,
-        ["E"] = actions.file_vsplit,
-        ["H"] = actions.file_split,
+        ["V"] = actions.file_vsplit,
+        ["S"] = actions.file_split,
       },
       n = {
         ["q"] = actions.close,
@@ -32,3 +35,4 @@ telescope.setup{
 }
 
 telescope.load_extension('coc')
+telescope.load_extension('file_browser')
