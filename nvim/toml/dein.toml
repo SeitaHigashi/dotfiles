@@ -4,10 +4,11 @@ repo = 'Shougo/dein.vim'
 
 # Utilitys
 [[plugins]]
-repo = 'Shougo/denite.nvim'
-hook_add = '''
-source ~/.config/nvim/plugins/denite.rc.vim
-'''
+repo = 'nvim-lua/plenary.nvim'
+
+[[plugins]]
+repo = 'nvim-telescope/telescope.nvim'
+depends = ['plenary.nvim']
 
 # 補完
 [[plugins]]
