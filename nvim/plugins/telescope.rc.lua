@@ -4,7 +4,6 @@ vim.api.nvim_set_keymap('n', '<Leader>d', [[<Cmd>lua require('telescope.builtin'
 
 local telescope = require('telescope')
 local actions = require('telescope.actions')
-local fb_actions = telescope.extensions.file_browser.actions
 telescope.setup{
   defaults = {
     layout_config = {
@@ -35,4 +34,3 @@ telescope.setup{
 }
 
 telescope.load_extension('coc')
-telescope.load_extension('file_browser')

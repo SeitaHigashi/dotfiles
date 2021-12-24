@@ -8,17 +8,13 @@ repo = 'nvim-lua/plenary.nvim'
 
 [[plugins]]
 repo = 'nvim-telescope/telescope.nvim'
-depends = ['plenary.nvim', 'telescope-file-browser.nvim']
-merged = 0
+depends = ['plenary.nvim']
 hook_add = '''
 source ~/.config/nvim/plugins/telescope.rc.lua
 '''
 
 [[plugins]]
 repo = 'fannheyward/telescope-coc.nvim'
-
-[[plugins]]
-repo = 'nvim-telescope/telescope-file-browser.nvim'
 
 # 補完
 [[plugins]]
