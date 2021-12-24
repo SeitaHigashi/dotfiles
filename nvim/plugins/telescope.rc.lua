@@ -6,8 +6,6 @@ local telescope = require('telescope')
 local actions = require('telescope.actions')
 telescope.setup{
   defaults = {
-    layout_config = {
-    },
     mappings = {
       i = {
         ["J"] = actions.move_selection_next,
