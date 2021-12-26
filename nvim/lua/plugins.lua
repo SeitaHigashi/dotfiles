@@ -18,11 +18,16 @@ require('packer').startup(function()
   })
 
   -- Git
-  use('airblade/vim-gitgutter')
+  use({
+    'lewis6991/gitsigns.nvim',
+    requires = { 'nvim-lua/plenary.nvim' },
+    config = function() require('config.gitsigns') end
+  })
+  --use('airblade/vim-gitgutter')
 
   use('tpope/vim-fugitive')
 
-  use('tpope/vim-rhubarb')
+  --use('tpope/vim-rhubarb')
 
 
   -- StatusLine
