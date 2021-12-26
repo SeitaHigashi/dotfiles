@@ -1,4 +1,4 @@
-vim.g.mapleader = "<Space>"
+vim.g.mapleader = ' '
 
 vim.cmd('packadd packer.nvim')
 require('plugins')
