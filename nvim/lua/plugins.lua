@@ -8,20 +8,21 @@ require('packer').startup(function()
       { 'nvim-lua/plenary.nvim' },
       { 'fannheyward/telescope-coc.nvim' },
     },
-    config = function() require('config.telescope') end
+    config = function() require('config.telescope') end,
   })
 
   -- Complete
   use({
     'neoclide/coc.nvim',
-    branch = 'release'
+    branch = 'release',
+    config = function() require('config.coc') end,
   })
 
   -- Git
   use({
     'lewis6991/gitsigns.nvim',
     requires = { 'nvim-lua/plenary.nvim' },
-    config = function() require('config.gitsigns') end
+    config = function() require('config.gitsigns') end,
   })
   --use('airblade/vim-gitgutter')
 
@@ -33,7 +34,7 @@ require('packer').startup(function()
   -- StatusLine
   use({
     'itchyny/lightline.vim',
-    config = function() require('config.lightline') end
+    config = function() require('config.lightline') end,
   })
 
   use('cocopon/lightline-hybrid.vim')
@@ -50,7 +51,7 @@ require('packer').startup(function()
     config = function()
       vim.g.auto_save = 1
       vim.g.auto_save_in_insert_mode = 0
-    end
+    end,
   })
 
   use({
@@ -58,7 +59,7 @@ require('packer').startup(function()
     config = function()
       vim.g.translator_target_lang = 'ja'
       vim.g.translator_default_engines = {'google'}
-    end
+    end,
   })
 
   use({
@@ -72,6 +73,6 @@ require('packer').startup(function()
       autocmd ColorScheme * highlight QuickScopeSecondary guifg='#5fffff' gui=underline ctermfg=81 cterm=underline
       augroup END
       ]])
-    end
+    end,
   })
 end)
