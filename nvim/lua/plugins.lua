@@ -7,6 +7,7 @@ require('packer').startup(function()
     requires = {
       { 'nvim-lua/plenary.nvim' },
       { 'fannheyward/telescope-coc.nvim' },
+      { 'nvim-telescope/telescope-file-browser.nvim' },
     },
     config = function() require('config.telescope') end,
   })
