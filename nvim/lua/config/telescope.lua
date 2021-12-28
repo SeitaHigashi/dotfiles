@@ -43,4 +43,5 @@ telescope.setup{
 -- Load telescope extension
 telescope.load_extension('coc')
 telescope.load_extension('file_browser')
+telescope.load_extension('packer')
 

@@ -8,6 +8,8 @@ require('packer').startup(function()
       { 'nvim-lua/plenary.nvim' },
       { 'fannheyward/telescope-coc.nvim' },
       { 'nvim-telescope/telescope-file-browser.nvim' },
+      { 'nvim-telescope/telescope-packer.nvim' },
+      { 'kyazdani42/nvim-web-devicons' },
     },
     config = function() require('config.telescope') end,
   })
