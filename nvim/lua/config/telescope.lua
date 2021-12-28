@@ -6,7 +6,7 @@ vim.api.nvim_set_keymap('n', '<Leader>a', [[<Cmd>lua require('telescope').extens
 
 local telescope = require('telescope')
 local actions = require('telescope.actions')
-local fb_actions = telescope.extensions.file_browser.actions
+local fb_actions = require('telescope._extensions.file_browser.actions')
 
 -- Telescope Setup
 telescope.setup{
@@ -33,7 +33,12 @@ telescope.setup{
   extensions = {
     file_browser = {
       mappings = {
-        ["i"] = {
+        i = {
+          ["H"] = fb_actions.goto_parent_dir,
+          ["N"] = fb_actions.create_file,
+          ["R"] = fb_actions.rename_file,
+          ["D"] = fb_actions.remove_file,
+          ["~"] = fb_actions.goto_cwd,
         },
       },
     },
