@@ -23,12 +23,20 @@ telescope.setup{
         ["S"] = actions.file_split,
       },
       n = {
+        ["l"] = actions.select_default,
         ["q"] = actions.close,
         ["Q"] = actions.close,
+        ["v"] = actions.file_vsplit,
+        ["V"] = actions.file_vsplit,
+        ["s"] = actions.file_split,
+        ["S"] = actions.file_split,
       }
     }
   },
   pickers = {
+    buffers = {
+      initial_mode = "normal"
+    },
   },
   extensions = {
     file_browser = {
