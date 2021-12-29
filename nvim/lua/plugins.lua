@@ -21,6 +21,13 @@ require('packer').startup(function()
     config = function() require('config.coc') end,
   }
 
+
+  --TagBar
+  use {
+    'liuchengxu/vista.vim',
+    config = function() require('config.vista') end,
+  }
+
   -- Git
   use {
     'lewis6991/gitsigns.nvim',
