@@ -25,6 +25,7 @@ require('packer').startup(function()
   --TagBar
   use {
     'liuchengxu/vista.vim',
+    event = {'CmdlineEnter', 'CmdUndefined'},
     config = function() require('config.vista') end,
   }
 
