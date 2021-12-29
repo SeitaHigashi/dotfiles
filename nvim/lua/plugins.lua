@@ -28,6 +28,13 @@ require('packer').startup(function()
     config = function() require('config.vista') end,
   }
 
+  -- Treesitter
+  use {
+    'nvim-treesitter/nvim-treesitter',
+    run = ':TSUpdate',
+    config = function() require('config.treesitter') end,
+  }
+
   -- Git
   use {
     'lewis6991/gitsigns.nvim',
