@@ -11,8 +11,18 @@ vim.g.lightline = {
       { 'fileformat', 'fileencoding', 'filetype', 'charvaluehex' },
     },
   },
+  inactive = {
+    left = {
+      { 'gitbranch', 'filename', 'coc' }
+    },
+    right = {
+      {'lineinfo'},
+      { 'percent' },
+      { 'fileformat', 'fileencoding', 'filetype'},
+    }
+  },
   component_function = {
     gitbranch = 'FugitiveHead',
-    coc = 'coc#status'
+    coc = 'coc#status',
   },
 }
