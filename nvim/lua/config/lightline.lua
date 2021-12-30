@@ -3,7 +3,7 @@ vim.g.lightline = {
   active = {
     left = {
       { 'mode', 'paste' },
-      { 'gitbranch', 'readonly', 'filename', 'modified' },
+      { 'gitbranch', 'readonly', 'filename', 'modified', 'coc' },
     },
     right = {
       { 'lineinfo' },
@@ -13,5 +13,6 @@ vim.g.lightline = {
   },
   component_function = {
     gitbranch = 'FugitiveHead',
+    coc = 'coc#status'
   },
 }

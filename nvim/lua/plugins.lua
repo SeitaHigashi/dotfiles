@@ -52,6 +52,10 @@ require('packer').startup(function()
   -- StatusLine
   use {
     'itchyny/lightline.vim',
+    requires = {
+      { 'neoclide/coc.nvim' },
+      { 'tpope/vim-fugitive' },
+    },
     config = function() require('config.lightline') end,
   }
 
