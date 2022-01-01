@@ -51,13 +51,11 @@ require('packer').startup(function()
 
   -- StatusLine
   use {
-    'itchyny/lightline.vim',
+    'nvim-lualine/lualine.nvim',
     requires = {
-      { 'neoclide/coc.nvim' },
-      { 'tpope/vim-fugitive' },
-      {'cocopon/lightline-hybrid.vim'},
+      { 'SeitaHigashi/lualine-hybrid.nvim' },
     },
-    config = function() require('config.lightline') end,
+    config = function() require('config.lualine') end,
   }
 
   -- ColorScheme
