@@ -110,5 +110,10 @@ require('packer').startup(function()
     end
   }
 
+  use {
+    'dstein64/vim-startuptime',
+    event = {'CmdlineEnter', 'CmdUndefined'},
+  }
+
 end)
 
