@@ -55,11 +55,10 @@ require('packer').startup(function()
     requires = {
       { 'neoclide/coc.nvim' },
       { 'tpope/vim-fugitive' },
+      {'cocopon/lightline-hybrid.vim'},
     },
     config = function() require('config.lightline') end,
   }
-
-  use {'cocopon/lightline-hybrid.vim'}
 
   -- ColorScheme
   use {'w0ng/vim-hybrid'}
