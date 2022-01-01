@@ -25,4 +25,12 @@ vim.g.lightline = {
     gitbranch = 'FugitiveHead',
     coc = 'coc#status',
   },
+  separator = {
+    left = '',
+    right = ''
+  },
+  subseparator = {
+    left = '',
+    right = '',
+  },
 }
