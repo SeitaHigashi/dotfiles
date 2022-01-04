@@ -15,12 +15,36 @@ require('packer').startup(function()
   }
 
   -- Complete
+--  use {
+--    'neoclide/coc.nvim',
+--    branch = 'release',
+--    config = function() require('config.coc') end,
+--  }
+
   use {
-    'neoclide/coc.nvim',
-    branch = 'release',
-    config = function() require('config.coc') end,
+    'hrsh7th/nvim-cmp',
+    requires = {
+      { 'neovim/nvim-lspconfig' },
+      { 'hrsh7th/cmp-nvim-lsp' },
+      { 'hrsh7th/cmp-buffer' },
+      { 'hrsh7th/cmp-path' },
+      { 'hrsh7th/cmp-cmdline' },
+    },
+    config = function() require('config.nvim-cmp') end,
   }
 
+  use {
+    'neovim/nvim-lspconfig',
+    config = function() require('config.nvim-lspconfig') end,
+  }
+
+  use {
+    'williamboman/nvim-lsp-installer',
+    requires = {
+      { 'neovim/nvim-lspconfig' },
+    },
+    config = function() require('config.nvim-lsp-installer') end,
+  }
 
   --TagBar
   use {
