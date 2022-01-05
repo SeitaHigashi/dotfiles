@@ -6,7 +6,6 @@ require('packer').startup(function()
     'nvim-telescope/telescope.nvim',
     requires = {
       { 'nvim-lua/plenary.nvim' },
-      { 'fannheyward/telescope-coc.nvim' },
       { 'nvim-telescope/telescope-file-browser.nvim' },
       { 'nvim-telescope/telescope-packer.nvim' },
       { 'kyazdani42/nvim-web-devicons' },
@@ -38,6 +37,18 @@ require('packer').startup(function()
       { 'neovim/nvim-lspconfig' },
     },
     config = function() require('config.nvim-lsp-installer') end,
+  }
+
+  --Snippets
+  use {
+    'hrsh7th/vim-vsnip',
+  }
+
+  use {
+    'hrsh7th/vim-vsnip-integ',
+    requires = {
+      { 'hrsh7th/vim-vsnip' },
+    },
   }
 
   --TagBar
