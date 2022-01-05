@@ -15,12 +15,6 @@ require('packer').startup(function()
   }
 
   -- Complete
---  use {
---    'neoclide/coc.nvim',
---    branch = 'release',
---    config = function() require('config.coc') end,
---  }
-
   use {
     'hrsh7th/nvim-cmp',
     requires = {
