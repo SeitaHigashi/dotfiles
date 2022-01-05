@@ -22,6 +22,7 @@ require('packer').startup(function()
       { 'hrsh7th/cmp-buffer' },
       { 'hrsh7th/cmp-path' },
       { 'hrsh7th/cmp-cmdline' },
+      { 'onsails/lspkind-nvim' },
     },
     config = function() require('config.nvim-cmp') end,
   }

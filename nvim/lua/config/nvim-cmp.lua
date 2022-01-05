@@ -1,4 +1,5 @@
   local cmp = require('cmp')
+  local lspkind = require('lspkind')
 
   local has_words_before = function()
     local line, col = unpack(vim.api.nvim_win_get_cursor(0))
@@ -56,7 +57,16 @@
     }, {
       { name = 'path' },
       { name = 'buffer' },
-    })
+    }),
+    formatting = {
+      format = lspkind.cmp_format({
+        with_text = false, -- do not show text alongside icons
+        maxwidth = 50, -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
+        before = function (entry, vim_item)
+          return vim_item
+        end
+      })
+    }
   })
 
   -- Use buffer source for `/` (if you enabled `native_menu`, this won't work anymore).
