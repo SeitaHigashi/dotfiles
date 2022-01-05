@@ -2,6 +2,7 @@ vim.g.mapleader = ' '
 
 vim.cmd('packadd packer.nvim')
 require('plugins')
+require('lsp-configs')
 
 vim.o.title = true
 vim.o.expandtab = true
