@@ -13,6 +13,15 @@ require('packer').startup(function()
     config = function() require('config.telescope') end,
   }
 
+  --LSP
+  use {
+    'folke/trouble.nvim',
+    requires = {
+      { 'kyazdani42/nvim-web-devicons' },
+    },
+    config = function() require('config.trouble') end,
+  }
+
   -- Complete
   use {
     'hrsh7th/nvim-cmp',
