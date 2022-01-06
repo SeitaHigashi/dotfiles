@@ -19,6 +19,7 @@ require('packer').startup(function()
     requires = {
       { 'kyazdani42/nvim-web-devicons' },
     },
+    event = {'CmdlineEnter', 'CmdUndefined'},
     config = function() require('config.trouble') end,
   }
 
@@ -52,6 +53,7 @@ require('packer').startup(function()
   --Snippets
   use {
     'hrsh7th/vim-vsnip',
+    event = { 'InsertEnter' },
   }
 
   use {
@@ -59,6 +61,7 @@ require('packer').startup(function()
     requires = {
       { 'hrsh7th/vim-vsnip' },
     },
+    event = { 'InsertEnter' },
   }
 
   --TagBar
@@ -72,6 +75,7 @@ require('packer').startup(function()
   use {
     'nvim-treesitter/nvim-treesitter',
     run = ':TSUpdate',
+    event = { 'BufEnter' },
     config = function() require('config.treesitter') end,
   }
 
@@ -79,6 +83,7 @@ require('packer').startup(function()
   use {
     'lewis6991/gitsigns.nvim',
     requires = { 'nvim-lua/plenary.nvim' },
+    event = { 'BufEnter' },
     config = function() require('config.gitsigns') end,
   }
   --use('airblade/vim-gitgutter')
