@@ -67,6 +67,10 @@ require('packer').startup(function()
     event = { 'InsertEnter' },
   }
 
+  use {
+    'rafamadriz/friendly-snippets',
+  }
+
   --TagBar
   use {
     'liuchengxu/vista.vim',
