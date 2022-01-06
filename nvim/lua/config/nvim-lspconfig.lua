@@ -27,6 +27,8 @@ local on_attach = function(client, bufnr)
   buf_set_keymap('n', '<Leader>q', '<cmd>lua vim.diagnostic.setloclist()<CR>', opts)
   buf_set_keymap('n', '<Leader>=', '<cmd>lua vim.lsp.buf.formatting()<CR>', opts)
 
+  require('lsp_signature').on_attach()
+
 end
 
 return {

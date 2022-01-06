@@ -49,6 +49,10 @@ require('packer').startup(function()
     config = function() require('config.nvim-lsp-installer') end,
   }
 
+  use {
+    'ray-x/lsp_signature.nvim',
+  }
+
   --Snippets
   use {
     'hrsh7th/vim-vsnip',
