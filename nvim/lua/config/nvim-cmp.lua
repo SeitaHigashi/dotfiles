@@ -34,6 +34,9 @@ cmp.setup({
           fallback()
         else
           cmp.confirm()
+          if vim.fn["vsnip#available"](1) == 1 then
+            feedkey("<Plug>(vsnip-expand-or-jump)", "")
+          end
         end
       elseif vim.fn["vsnip#available"](1) == 1 then
         feedkey("<Plug>(vsnip-expand-or-jump)", "")
