@@ -1,5 +1,9 @@
 local cmp = require('cmp')
+
 local lspkind = require('lspkind')
+lspkind.init {
+  with_text = true,
+}
 
 local has_words_before = function()
   local line, col = unpack(vim.api.nvim_win_get_cursor(0))
@@ -29,18 +33,18 @@ cmp.setup({
     }),
     ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
     ["<Tab>"] = cmp.mapping(function(fallback)
-      if cmp.visible() then
+      if vim.fn["vsnip#available"](1) == 1 then
+        feedkey("<Plug>(vsnip-expand-or-jump)", "")
+      elseif cmp.visible() then
         local entry = cmp.get_selected_entry()
         if not entry then
           fallback()
         else
           cmp.confirm()
-          if vim.fn["vsnip#available"](1) == 1 then
-            feedkey("<Plug>(vsnip-expand-or-jump)", "")
-          end
+ --         if vim.fn["vsnip#available"](1) == 1 then
+ --           feedkey("<Plug>(vsnip-expand-or-jump)", "")
+ --         end
         end
-      elseif vim.fn["vsnip#available"](1) == 1 then
-        feedkey("<Plug>(vsnip-expand-or-jump)", "")
       elseif has_words_before() then
         cmp.complete()
       else
@@ -58,19 +62,25 @@ cmp.setup({
   sources = cmp.config.sources({
     { name = 'nvim_lsp' },
     { name = 'nvim_lua' },
+    { name = 'treesitter' },
     { name = 'vsnip' },
   }, {
     { name = 'path' },
     { name = 'buffer' },
   }),
   formatting = {
-    format = lspkind.cmp_format({
-      with_text = false, -- do not show text alongside icons
-      maxwidth = 50, -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
-      before = function (entry, vim_item)
-        return vim_item
-      end
-    })
+    format = function (entry, vim_item)
+      vim_item.kind = string.format("%s %s", lspkind.presets.default[vim_item.kind], vim_item.kind)
+      vim_item.menu = ({
+        nvim_lsp = "",
+        nvim_lua = "",
+        vsnip = "",
+        path = "",
+        buffer = "﬘",
+      })[entry.source.name]
+
+      return vim_item
+    end,
   },
   documentation = {
     border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
