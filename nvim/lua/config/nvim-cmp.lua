@@ -59,11 +59,13 @@ cmp.setup({
       end
     end, { "i", "s" }),
   },
+  sorting = {
+  },
   sources = cmp.config.sources({
     { name = 'nvim_lsp' },
     { name = 'nvim_lua' },
-    { name = 'treesitter' },
     { name = 'vsnip' },
+    { name = 'treesitter' },
   }, {
     { name = 'path' },
     { name = 'buffer' },
@@ -77,6 +79,7 @@ cmp.setup({
         vsnip = "",
         path = "",
         buffer = "﬘",
+        treesitter = ""
       })[entry.source.name]
 
       return vim_item
@@ -108,9 +111,4 @@ cmp.setup.cmdline(':', {
 })
 
 -- Setup lspconfig.
-local capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
--- Replace <YOUR_LSP_SERVER> with each lsp server you've enabled.
---require('lspconfig')['<YOUR_LSP_SERVER>'].setup {
---require('lspconfig')['sumneko_lua'].setup {
---  capabilities = capabilities
---}
+require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
