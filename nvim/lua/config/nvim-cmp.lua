@@ -1,4 +1,5 @@
 local cmp = require('cmp')
+local luasnip = require('luasnip')
 
 local lspkind = require('lspkind')
 lspkind.init {
@@ -10,16 +11,11 @@ local has_words_before = function()
   return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
 end
 
-
-local feedkey = function(key, mode)
-  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, true, true), mode, true)
-end
-
 cmp.setup({
   snippet = {
     -- REQUIRED - you must specify a snippet engine
     expand = function(args)
-      vim.fn["vsnip#anonymous"](args.body) -- For `vsnip` users.
+      require('luasnip').lsp_expand(args.body)
     end,
   },
   mapping = {
@@ -33,17 +29,14 @@ cmp.setup({
     }),
     ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
     ["<Tab>"] = cmp.mapping(function(fallback)
-      if vim.fn["vsnip#available"](1) == 1 then
-        feedkey("<Plug>(vsnip-expand-or-jump)", "")
+      if luasnip.expand_or_jumpable() then
+        luasnip.expand_or_jump()
       elseif cmp.visible() then
         local entry = cmp.get_selected_entry()
         if not entry then
           fallback()
         else
           cmp.confirm()
- --         if vim.fn["vsnip#available"](1) == 1 then
- --           feedkey("<Plug>(vsnip-expand-or-jump)", "")
- --         end
         end
       elseif has_words_before() then
         cmp.complete()
@@ -51,11 +44,11 @@ cmp.setup({
         fallback()
       end
     end, { "i", "s" }),
-    ["<S-Tab>"] = cmp.mapping(function()
+    ["<S-Tab>"] = cmp.mapping(function(fallback)
       if cmp.visible() then
         fallback()
-      elseif vim.fn["vsnip#jumpable"](-1) == 1 then
-        feedkey("<Plug>(vsnip-jump-prev)", "")
+      elseif luasnip.jumpable(-1) then
+        luasnip.jump(-1)
       end
     end, { "i", "s" }),
   },
@@ -64,7 +57,7 @@ cmp.setup({
   sources = cmp.config.sources({
     { name = 'nvim_lsp' },
     { name = 'nvim_lua' },
-    { name = 'vsnip' },
+    { name = 'luasnip' },
     { name = 'treesitter' },
   }, {
     { name = 'path' },
@@ -76,7 +69,7 @@ cmp.setup({
       vim_item.menu = ({
         nvim_lsp = "",
         nvim_lua = "",
-        vsnip = "",
+        luasnip = "",
         path = "",
         buffer = "﬘",
         treesitter = ""

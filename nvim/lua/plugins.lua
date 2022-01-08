@@ -35,6 +35,8 @@ require('packer').startup(function()
       { 'hrsh7th/cmp-cmdline' },
       { 'onsails/lspkind-nvim' },
       { 'ray-x/cmp-treesitter' },
+      { 'saadparwaiz1/cmp_luasnip' },
+      { 'L3MON4D3/LuaSnip' },
     },
     config = function() require('config.nvim-cmp') end,
   }
@@ -57,16 +59,7 @@ require('packer').startup(function()
 
   --Snippets
   use {
-    'hrsh7th/vim-vsnip',
-    event = { 'InsertEnter' },
-  }
-
-  use {
-    'hrsh7th/vim-vsnip-integ',
-    requires = {
-      { 'hrsh7th/vim-vsnip' },
-    },
-    event = { 'InsertEnter' },
+    'L3MON4D3/LuaSnip',
   }
 
   use {
