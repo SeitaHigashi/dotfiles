@@ -12,6 +12,9 @@ local has_words_before = function()
 end
 
 cmp.setup({
+  completion = {
+    completeopt = "menu,menuone,noselect",
+  },
   snippet = {
     -- REQUIRED - you must specify a snippet engine
     expand = function(args)
