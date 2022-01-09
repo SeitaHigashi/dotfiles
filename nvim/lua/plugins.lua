@@ -37,6 +37,7 @@ require('packer').startup(function()
       { 'ray-x/cmp-treesitter' },
       { 'saadparwaiz1/cmp_luasnip' },
       { 'L3MON4D3/LuaSnip' },
+      { 'windwp/nvim-autopairs'},
     },
     config = function() require('config.nvim-cmp') end,
   }
@@ -109,7 +110,11 @@ require('packer').startup(function()
 
   use {'tpope/vim-surround'}
 
-  use {'jiangmiao/auto-pairs', event = 'InsertEnter'}
+--  use {'jiangmiao/auto-pairs', event = 'InsertEnter'}
+  use {
+    'windwp/nvim-autopairs',
+    config = function() require('nvim-autopairs').setup {} end,
+  }
 
   use {
     'vim-scripts/vim-auto-save',

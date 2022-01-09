@@ -1,7 +1,7 @@
 local cmp = require('cmp')
 local luasnip = require('luasnip')
-
 local lspkind = require('lspkind')
+
 lspkind.init {
   with_text = true,
 }
@@ -108,3 +108,7 @@ cmp.setup.cmdline(':', {
 
 -- Setup lspconfig.
 require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
+
+-- Auto pairs
+local cmp_autopairs = require('nvim-autopairs.completion.cmp')
+cmp.event:on( 'confirm_done', cmp_autopairs.on_confirm_done({  map_char = { tex = '' } }))
