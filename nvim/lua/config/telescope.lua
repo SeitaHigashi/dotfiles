@@ -45,9 +45,9 @@ telescope.setup{
       mappings = {
         i = {
           ["H"] = fb_actions.goto_parent_dir,
-          ["N"] = fb_actions.create_file,
-          ["R"] = fb_actions.rename_file,
-          ["D"] = fb_actions.remove_file,
+          ["N"] = fb_actions.create,
+          ["R"] = fb_actions.rename,
+          ["D"] = fb_actions.remove,
           ["~"] = fb_actions.goto_cwd,
         },
       },
