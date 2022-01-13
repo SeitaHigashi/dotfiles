@@ -26,18 +26,22 @@ require('packer').startup(function()
   -- Complete
   use {
     'hrsh7th/nvim-cmp',
+    event = "InsertEnter",
+    after = {
+      'LuaSnip',
+    },
     requires = {
       { 'neovim/nvim-lspconfig' },
       { 'hrsh7th/cmp-nvim-lsp' },
-      { 'hrsh7th/cmp-nvim-lua' },
-      { 'hrsh7th/cmp-buffer' },
-      { 'hrsh7th/cmp-path' },
-      { 'hrsh7th/cmp-cmdline' },
       { 'onsails/lspkind-nvim' },
-      { 'ray-x/cmp-treesitter' },
-      { 'saadparwaiz1/cmp_luasnip' },
       { 'L3MON4D3/LuaSnip' },
-      { 'windwp/nvim-autopairs'},
+      { 'hrsh7th/cmp-nvim-lua', after = 'nvim-cmp' },
+      { 'hrsh7th/cmp-buffer', after = 'nvim-cmp' },
+      { 'hrsh7th/cmp-path', after = 'nvim-cmp' },
+      { 'hrsh7th/cmp-cmdline', after = 'nvim-cmp' },
+      { 'ray-x/cmp-treesitter', after = 'nvim-cmp' },
+      { 'saadparwaiz1/cmp_luasnip', after = 'nvim-cmp' },
+      { 'windwp/nvim-autopairs', after= 'nvim-cmp' },
     },
     config = function() require('config.nvim-cmp') end,
   }
@@ -56,15 +60,18 @@ require('packer').startup(function()
 
   use {
     'ray-x/lsp_signature.nvim',
+    event = "InsertEnter",
   }
 
   --Snippets
   use {
     'L3MON4D3/LuaSnip',
+    event = "InsertEnter",
   }
 
   use {
     'rafamadriz/friendly-snippets',
+    after = 'LuaSnip',
   }
 
   --TagBar
@@ -108,7 +115,10 @@ require('packer').startup(function()
   -- ColorScheme
   use {'w0ng/vim-hybrid'}
 
-  use {'tpope/vim-surround'}
+  use {
+    'tpope/vim-surround',
+    event = { 'BufEnter' },
+  }
 
 --  use {'jiangmiao/auto-pairs', event = 'InsertEnter'}
   use {
