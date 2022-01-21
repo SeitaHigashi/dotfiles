@@ -34,7 +34,6 @@ require('packer').startup(function()
       { 'neovim/nvim-lspconfig' },
       { 'hrsh7th/cmp-nvim-lsp' },
       { 'onsails/lspkind-nvim' },
-      { 'L3MON4D3/LuaSnip' },
       { 'hrsh7th/cmp-nvim-lua', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-buffer', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-path', after = 'nvim-cmp' },
