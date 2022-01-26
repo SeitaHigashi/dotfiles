@@ -35,9 +35,11 @@ telescope.setup{
     }
   },
   pickers = {
-    buffers = {
-      initial_mode = "normal"
-    },
+    buffers = { initial_mode = "normal" },
+    lsp_definitions = { initial_mode = "normal" },
+    lsp_references = { initial_mode = "normal" },
+    lsp_implementations = { initial_mode = "normal" },
+    lsp_code_actions = { initial_mode = "normal" },
   },
   extensions = {
     file_browser = {
