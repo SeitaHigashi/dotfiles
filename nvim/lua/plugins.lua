@@ -26,7 +26,6 @@ require('packer').startup(function()
   -- Complete
   use {
     'hrsh7th/nvim-cmp',
-    event = "InsertEnter",
     after = {
       'LuaSnip',
     },
