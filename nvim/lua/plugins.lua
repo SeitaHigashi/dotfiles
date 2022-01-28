@@ -1,14 +1,18 @@
 require('packer').startup(function()
   use {'wbthomason/packer.nvim'}
 
+  use {
+    'nvim-lua/plenary.nvim',
+    module = 'plenary',
+  }
+
   -- Fuzzy Finder
   use {
     'nvim-telescope/telescope.nvim',
+    keys = '<Leader>',
     requires = {
-      { 'nvim-lua/plenary.nvim' },
-      { 'nvim-telescope/telescope-file-browser.nvim' },
-      { 'nvim-telescope/telescope-packer.nvim' },
-      { 'kyazdani42/nvim-web-devicons' },
+      { 'nvim-telescope/telescope-file-browser.nvim', module = 'telescope._extensions.file_browser' },
+      { 'nvim-telescope/telescope-packer.nvim', module = 'telescope._extensions.packer' },
     },
     config = function() require('config.telescope') end,
   }
@@ -16,9 +20,6 @@ require('packer').startup(function()
   --LSP
   use {
     'folke/trouble.nvim',
-    requires = {
-      { 'kyazdani42/nvim-web-devicons' },
-    },
     event = {'CmdlineEnter', 'CmdUndefined'},
     config = function() require('config.trouble') end,
   }
@@ -26,33 +27,28 @@ require('packer').startup(function()
   -- Complete
   use {
     'hrsh7th/nvim-cmp',
-    after = {
-      'LuaSnip',
-    },
+    event = 'InsertEnter',
     requires = {
-      { 'neovim/nvim-lspconfig' },
-      { 'hrsh7th/cmp-nvim-lsp' },
-      { 'onsails/lspkind-nvim' },
-      { 'hrsh7th/cmp-nvim-lua', after = 'nvim-cmp' },
+      { 'hrsh7th/cmp-nvim-lsp', module = 'cmp_nvim_lsp' },
+      { 'onsails/lspkind-nvim', module = 'lspkind' },
+      { 'hrsh7th/cmp-nvim-lua', ft = 'lua' },
       { 'hrsh7th/cmp-buffer', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-path', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-cmdline', after = 'nvim-cmp' },
       { 'ray-x/cmp-treesitter', after = 'nvim-cmp' },
       { 'saadparwaiz1/cmp_luasnip', after = 'nvim-cmp' },
-      { 'windwp/nvim-autopairs', after= 'nvim-cmp' },
     },
     config = function() require('config.nvim-cmp') end,
   }
 
   use {
     'neovim/nvim-lspconfig',
+    module = 'lspconfig',
   }
 
   use {
     'williamboman/nvim-lsp-installer',
-    requires = {
-      { 'neovim/nvim-lspconfig' },
-    },
+    event = 'BufEnter',
     config = function() require('config.nvim-lsp-installer') end,
   }
 
@@ -64,7 +60,7 @@ require('packer').startup(function()
   --Snippets
   use {
     'L3MON4D3/LuaSnip',
-    event = "InsertEnter",
+    module = 'luasnip',
   }
 
   use {
@@ -90,16 +86,11 @@ require('packer').startup(function()
   -- Git
   use {
     'lewis6991/gitsigns.nvim',
-    requires = { 'nvim-lua/plenary.nvim' },
     event = { 'BufEnter' },
     config = function() require('config.gitsigns') end,
   }
-  --use('airblade/vim-gitgutter')
 
   use {'tpope/vim-fugitive', event = {'CmdlineEnter', 'CmdUndefined'}}
-
-  --use('tpope/vim-rhubarb')
-
 
   -- StatusLine
   use {
@@ -118,9 +109,10 @@ require('packer').startup(function()
     event = { 'BufEnter' },
   }
 
---  use {'jiangmiao/auto-pairs', event = 'InsertEnter'}
   use {
     'windwp/nvim-autopairs',
+    event = 'InsertEnter',
+    module = 'nvim-autopairs',
     config = function() require('nvim-autopairs').setup {} end,
   }
 
@@ -132,6 +124,8 @@ require('packer').startup(function()
       vim.g.auto_save_in_insert_mode = 0
     end,
   }
+
+  use { 'kyazdani42/nvim-web-devicons', module = 'nvim-web-devicons' }
 
   use {
     'voldikss/vim-translator',
@@ -169,7 +163,7 @@ require('packer').startup(function()
 
   use {
     'dstein64/vim-startuptime',
-    event = {'CmdlineEnter', 'CmdUndefined'},
+    cmd = 'StartupTime',
   }
 
 end)
