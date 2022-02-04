@@ -24,6 +24,11 @@ require('packer').startup(function()
     config = function() require('config.trouble') end,
   }
 
+  use {
+    'j-hui/fidget.nvim',
+    config = function() require('fidget').setup{} end,
+  }
+
   -- Complete
   use {
     'hrsh7th/nvim-cmp',
