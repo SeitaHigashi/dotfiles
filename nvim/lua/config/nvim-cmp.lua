@@ -3,7 +3,7 @@ local luasnip = require('luasnip')
 local lspkind = require('lspkind')
 
 lspkind.init {
-  with_text = true,
+  mode = "symbol_text",
 }
 
 local has_words_before = function()
