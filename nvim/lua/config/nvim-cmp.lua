@@ -3,7 +3,11 @@ local luasnip = require('luasnip')
 local lspkind = require('lspkind')
 
 lspkind.init {
+<<<<<<< HEAD
   mode = 'symbom_text',
+=======
+  mode = "symbol_text",
+>>>>>>> 2eb039e450fb972dd8576fc20a3e2f9d205370e6
 }
 
 local has_words_before = function()
