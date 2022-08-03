@@ -21,7 +21,7 @@ local on_attach = function(client, bufnr)
   buf_set_keymap('n', '<Leader>wl', [[<cmd>lua print(vim.inspect(vim.lsp.buf.list_workspace_folders()))<CR>]], opts)
   buf_set_keymap('n', '<Leader>D', [[<cmd>lua vim.lsp.buf.type_definition()<CR>]], opts)
   buf_set_keymap('n', '<Leader>rn', [[<cmd>lua vim.lsp.buf.rename()<CR>]], opts)
-  buf_set_keymap('n', '<Leader>ca', [[<cmd>lua require('telescope.builtin').lsp_code_actions()<CR>]], opts)
+  buf_set_keymap('n', '<Leader>ca', [[<cmd>lua vim.lsp.buf.code_action()<CR>]], opts)
   buf_set_keymap('n', '<Leader>e', [[<cmd>lua vim.diagnostic.open_float()<CR>]], opts)
   buf_set_keymap('n', '[d', [[<cmd>lua vim.diagnostic.goto_prev()<CR>]], opts)
   buf_set_keymap('n', ']d', [[<cmd>lua vim.diagnostic.goto_next()<CR>]], opts)
@@ -53,7 +53,6 @@ vim.diagnostic.config({
   sererity_sort = false,
 })
 vim.o.updatetime = 250
-vim.cmd [[autocmd CursorHold,CursorHoldI * lua vim.diagnostic.open_float(nil, {focus=false, scope="cursor", border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" }})]]
 
 vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(
 vim.lsp.handlers.hover, {

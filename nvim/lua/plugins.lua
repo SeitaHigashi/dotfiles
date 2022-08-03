@@ -13,6 +13,7 @@ require('packer').startup(function()
     requires = {
       { 'nvim-telescope/telescope-file-browser.nvim', module = 'telescope._extensions.file_browser' },
       { 'nvim-telescope/telescope-packer.nvim', module = 'telescope._extensions.packer' },
+      { 'nvim-telescope/telescope-ui-select.nvim', module = 'telescope._extensions.ui-select'},
     },
     config = function() require('config.telescope') end,
   }
@@ -61,6 +62,14 @@ require('packer').startup(function()
     'ray-x/lsp_signature.nvim',
     event = "InsertEnter",
   }
+
+  use({
+    "https://git.sr.ht/~whynothugo/lsp_lines.nvim",
+    as = 'lsp_lines.nvim',
+    config = function()
+      require("lsp_lines").setup()
+    end,
+  })
 
   --Snippets
   use {
