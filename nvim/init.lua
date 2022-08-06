@@ -4,6 +4,10 @@ vim.cmd('packadd packer.nvim')
 require('plugins')
 require('lsp-configs')
 
+if vim.version().minor >= 8 then
+  vim.o.cmdheight = 0
+end
+
 vim.o.title = true
 vim.o.expandtab = true
 vim.o.autoindent = true
@@ -17,6 +21,7 @@ vim.o.number = true
 vim.o.relativenumber = true
 vim.o.hidden = true
 vim.o.confirm = true
+
 vim.cmd('colorscheme hybrid')
 
 vim.cmd 'au BufNewFile,BufRead *.dart setf dart'
