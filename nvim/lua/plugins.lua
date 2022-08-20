@@ -52,21 +52,13 @@ require('packer').startup(function()
     module = 'lspconfig',
   }
 
---  use {
---    'williamboman/nvim-lsp-installer',
---    event = 'BufEnter',
---    config = function() require('config.nvim-lsp-installer') end,
---  }
-
   use {
     'williamboman/mason.nvim',
-    --event = 'BufEnter',
     config = function() require('mason').setup() end,
   }
 
   use {
     'williamboman/mason-lspconfig.nvim',
-    --event = 'BufEnter',
     config = function() require('config.mason-lspconfig') end,
   }
 
