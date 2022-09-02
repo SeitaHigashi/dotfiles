@@ -67,13 +67,19 @@ require('packer').startup(function()
     event = "InsertEnter",
   }
 
-  use({
-    "https://git.sr.ht/~whynothugo/lsp_lines.nvim",
-    as = 'lsp_lines.nvim',
-    config = function()
-      require("lsp_lines").setup()
-    end,
-  })
+--  use({
+--    "https://git.sr.ht/~whynothugo/lsp_lines.nvim",
+--    as = 'lsp_lines.nvim',
+--    config = function()
+--      require("lsp_lines").setup()
+--    end,
+--  })
+
+  use {
+    "glepnir/lspsaga.nvim",
+    branch = "main",
+    config = function() require('config.lspsaga') end
+  }
 
   --Snippets
   use {

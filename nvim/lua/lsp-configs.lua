@@ -21,7 +21,8 @@ local on_attach = function(client, bufnr)
   end, bufopts)
   vim.keymap.set('n', '<Leader>D', vim.lsp.buf.type_definition, bufopts)
   vim.keymap.set('n', '<Leader>rn', vim.lsp.buf.rename, bufopts)
-  vim.keymap.set('n', '<Leader>ca', vim.lsp.buf.code_action, bufopts)
+  vim.keymap.set('n', '<Leader>ca', require('lspsaga.codeaction').code_action, bufopts)
+  vim.keymap.set('n', '<Leader>cd', require('lspsaga.diagnostic').show_cursor_diagnostics, bufopts)
   vim.keymap.set('n', '<Leader>e', vim.diagnostic.open_float, bufopts)
   vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, bufopts)
   vim.keymap.set('n', ']d', vim.diagnostic.goto_next, bufopts)
@@ -52,6 +53,7 @@ vim.diagnostic.config({
   update_in_insert = false,
   sererity_sort = false,
 })
+
 vim.o.updatetime = 250
 
 vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(
