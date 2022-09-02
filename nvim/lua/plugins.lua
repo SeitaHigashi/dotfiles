@@ -10,6 +10,7 @@ require('packer').startup(function()
   use {
     'nvim-telescope/telescope.nvim',
     keys = '<Leader>',
+    module_pattern = 'telescope',
     requires = {
       { 'nvim-telescope/telescope-file-browser.nvim', module = 'telescope._extensions.file_browser' },
       { 'nvim-telescope/telescope-packer.nvim', module = 'telescope._extensions.packer' },
@@ -34,10 +35,10 @@ require('packer').startup(function()
   use {
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
+    module = 'cmp',
     requires = {
       { 'hrsh7th/cmp-nvim-lsp', module = 'cmp_nvim_lsp' },
       { 'onsails/lspkind-nvim', module = 'lspkind' },
-      { 'hrsh7th/cmp-nvim-lua', ft = 'lua' },
       { 'hrsh7th/cmp-buffer', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-path', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-cmdline', after = 'nvim-cmp' },
@@ -65,20 +66,23 @@ require('packer').startup(function()
   use {
     'ray-x/lsp_signature.nvim',
     event = "InsertEnter",
+    module = 'lsp_signature',
   }
-
---  use({
---    "https://git.sr.ht/~whynothugo/lsp_lines.nvim",
---    as = 'lsp_lines.nvim',
---    config = function()
---      require("lsp_lines").setup()
---    end,
---  })
 
   use {
     "glepnir/lspsaga.nvim",
+    module_pattern = 'lspsaga',
     branch = "main",
     config = function() require('config.lspsaga') end
+  }
+
+  -- LSP FileType
+  use {
+    'hrsh7th/cmp-nvim-lua',
+    ft = 'lua',
+    requires = {
+      { 'hrsh7th/nvim-cmp' },
+    },
   }
 
   --Snippets
