@@ -39,6 +39,8 @@ telescope.setup{
         ["V"] = actions.file_vsplit,
         ["s"] = actions.file_split,
         ["S"] = actions.file_split,
+        ["p"] = actions.select_default + custom_actions.readonly,
+        ["P"] = actions.select_default + custom_actions.readonly,
       }
     }
   },
