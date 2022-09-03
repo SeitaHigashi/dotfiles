@@ -41,7 +41,6 @@ require('packer').startup(function()
       { 'onsails/lspkind-nvim', module = 'lspkind' },
       { 'hrsh7th/cmp-buffer', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-path', after = 'nvim-cmp' },
-      { 'hrsh7th/cmp-cmdline', after = 'nvim-cmp' },
       { 'ray-x/cmp-treesitter', after = 'nvim-cmp' },
       { 'saadparwaiz1/cmp_luasnip', after = 'nvim-cmp' },
     },
@@ -74,6 +73,15 @@ require('packer').startup(function()
     module_pattern = 'lspsaga',
     branch = "main",
     config = function() require('config.lspsaga') end
+  }
+
+  --CMD Line
+  use {
+    'hrsh7th/cmp-cmdline',
+    event = "CmdlineEnter",
+    requires = {
+      { 'hrsh7th/nvim-cmp' },
+    },
   }
 
   -- LSP FileType
