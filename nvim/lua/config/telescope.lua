@@ -6,6 +6,13 @@ vim.keymap.set('n', '<Leader>f', require('telescope').extensions.file_browser.fi
 local telescope = require('telescope')
 local actions = require('telescope.actions')
 local fb_actions = require('telescope._extensions.file_browser.actions')
+local transform_mod = require('telescope.actions.mt').transform_mod
+
+local custom_actions = transform_mod({
+  readonly = function()
+    vim.o.readonly = true
+  end,
+})
 
 -- Telescope Setup
 telescope.setup{
@@ -20,6 +27,7 @@ telescope.setup{
         ["<esc>"] = actions.close,
         ["V"] = actions.file_vsplit,
         ["S"] = actions.file_split,
+        ["P"] = actions.select_default + custom_actions.readonly,
       },
       n = {
         ["J"] = actions.move_selection_next,
