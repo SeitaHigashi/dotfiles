@@ -1,3 +1,11 @@
+local readonly = function ()
+  if vim.o.readonly then
+    return "RO"
+  else
+    return ""
+  end
+end
+
 require'lualine'.setup {
   options = {
     icons_enabled = true,
@@ -9,7 +17,7 @@ require'lualine'.setup {
   },
   sections = {
     lualine_a = {'mode'},
-    lualine_b = {'branch'},
+    lualine_b = {readonly, 'branch'},
     lualine_c = {'filename', 'diff'},
     lualine_x = {'diagnostics', 'encoding', 'fileformat', 'filetype'},
     lualine_y = {'progress'},
