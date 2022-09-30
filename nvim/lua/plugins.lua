@@ -173,6 +173,13 @@ require('packer').startup(function()
   }
 
   use {
+    'gen740/SmoothCursor.nvim',
+    config = function()
+      require('smoothcursor').setup()
+    end
+  }
+
+  use {
     'unblevable/quick-scope',
     config = function()
       vim.g.qs_highlight_on_keys = {'f', 'F'}
