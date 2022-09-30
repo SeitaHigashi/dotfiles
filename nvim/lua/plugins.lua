@@ -104,13 +104,6 @@ require('packer').startup(function()
     after = 'LuaSnip',
   }
 
-  --TagBar
-  use {
-    'liuchengxu/vista.vim',
-    event = {'CmdlineEnter', 'CmdUndefined'},
-    config = function() require('config.vista') end,
-  }
-
   -- Treesitter
   use {
     'nvim-treesitter/nvim-treesitter',
