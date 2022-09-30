@@ -33,6 +33,7 @@ telescope.setup{
         ["J"] = actions.move_selection_next,
         ["K"] = actions.move_selection_previous,
         ["l"] = actions.select_default,
+        ["L"] = actions.select_default,
         ["q"] = actions.close,
         ["Q"] = actions.close,
         ["v"] = actions.file_vsplit,
