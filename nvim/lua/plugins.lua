@@ -26,11 +26,6 @@ require('packer').startup(function()
     config = function() require('config.trouble') end,
   }
 
-  use {
-    'j-hui/fidget.nvim',
-    config = function() require('fidget').setup{} end,
-  }
-
   -- Complete
   use {
     'hrsh7th/nvim-cmp',
@@ -128,6 +123,24 @@ require('packer').startup(function()
       { 'SeitaHigashi/lualine-hybrid.nvim' },
     },
     config = function() require('config.lualine') end,
+  }
+
+  use {
+    'folke/noice.nvim',
+    config = function() require('config.noice') end,
+    event = { 'VimEnter' },
+    --config = function() require('noice').setup() end,
+    requires = {
+      --{ 'MunifTanjim/nui.nvim', module_pattern = 'nui' },
+      { 'MunifTanjim/nui.nvim' },
+      --{ 'rcarriga/nvim-notify', module_pattern = 'notify' },
+      { 'rcarriga/nvim-notify' },
+    },
+  }
+
+  use {
+    'rcarriga/nvim-notify',
+    config = function() require('config.nvim-notify') end,
   }
 
   -- ColorScheme
