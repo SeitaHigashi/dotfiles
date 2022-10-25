@@ -70,6 +70,11 @@ require('packer').startup(function()
     config = function() require('config.lspsaga') end
   }
 
+  use {
+    'jose-elias-alvarez/null-ls.nvim',
+    config = function () require('config.null-ls') end,
+  }
+
   --CMD Line
   use {
     'hrsh7th/cmp-cmdline',
