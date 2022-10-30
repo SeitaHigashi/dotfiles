@@ -31,7 +31,7 @@ local on_attach = function(client, bufnr)
   --vim.keymap.set('n', ']d', vim.diagnostic.goto_next, bufopts)
   vim.keymap.set('n', ']d', require('lspsaga.diagnostic').goto_next, bufopts)
   vim.keymap.set('n', '<Leader>q', vim.diagnostic.setloclist, bufopts)
-  vim.keymap.set('n', '<Leader>=', vim.lsp.buf.formatting, bufopts)
+  vim.keymap.set('n', '<Leader>=', vim.lsp.buf.format, bufopts)
   vim.keymap.set('n', '<Leader>l', function() require('lspsaga.finder'):lsp_finder() end, bufopts)
 
   require('lsp_signature').on_attach()
