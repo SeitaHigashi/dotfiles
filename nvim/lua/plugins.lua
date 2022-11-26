@@ -36,7 +36,7 @@ require('packer').startup(function()
       { 'onsails/lspkind-nvim', module = 'lspkind' },
       { 'hrsh7th/cmp-buffer', after = 'nvim-cmp' },
       { 'hrsh7th/cmp-path', after = 'nvim-cmp' },
-      { 'ray-x/cmp-treesitter', after = 'nvim-cmp' },
+      { 'ray-x/cmp-treesitter', disable = true, after = 'nvim-cmp' },
       { 'saadparwaiz1/cmp_luasnip', after = 'nvim-cmp' },
     },
     config = function() require('config.nvim-cmp') end,
@@ -107,6 +107,7 @@ require('packer').startup(function()
   -- Treesitter
   use {
     'nvim-treesitter/nvim-treesitter',
+    disable = true,
     run = ':TSUpdate',
     event = { 'BufEnter' },
     config = function() require('config.treesitter') end,
