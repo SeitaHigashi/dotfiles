@@ -3,7 +3,7 @@ require('packer').startup(function()
 
   use {
     'nvim-lua/plenary.nvim',
-    module = 'plenary',
+    module_pattern = 'plenary',
   }
 
   -- Fuzzy Finder
@@ -30,7 +30,7 @@ require('packer').startup(function()
   use {
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
-    module = 'cmp',
+    module_pattern = 'cmp',
     requires = {
       { 'hrsh7th/cmp-nvim-lsp', module = 'cmp_nvim_lsp' },
       { 'onsails/lspkind-nvim', module = 'lspkind' },
@@ -44,7 +44,7 @@ require('packer').startup(function()
 
   use {
     'neovim/nvim-lspconfig',
-    module = 'lspconfig',
+    module_pattern = 'lspconfig',
   }
 
   use {
@@ -72,6 +72,7 @@ require('packer').startup(function()
 
   use {
     'jose-elias-alvarez/null-ls.nvim',
+    event = 'BufEnter',
     config = function () require('config.null-ls') end,
   }
 
@@ -135,17 +136,15 @@ require('packer').startup(function()
     'folke/noice.nvim',
     config = function() require('config.noice') end,
     event = { 'VimEnter' },
-    --config = function() require('noice').setup() end,
     requires = {
-      --{ 'MunifTanjim/nui.nvim', module_pattern = 'nui' },
-      { 'MunifTanjim/nui.nvim' },
-      --{ 'rcarriga/nvim-notify', module_pattern = 'notify' },
-      { 'rcarriga/nvim-notify' },
+      { 'MunifTanjim/nui.nvim', module_pattern = 'nui' },
+      { 'rcarriga/nvim-notify', module_pattern = 'notify' },
     },
   }
 
   use {
     'rcarriga/nvim-notify',
+    event = { 'VimEnter' },
     config = function() require('config.nvim-notify') end,
   }
 
