@@ -1,1 +1,1 @@
-GuiFont HackGenNerd Console:h13
+GuiFont HackGenNerd\ Console:h13
