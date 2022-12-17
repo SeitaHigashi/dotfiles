@@ -6,7 +6,7 @@ return function ()
       opts = { buf_options = { filetype = "vim" } }, -- enable syntax highlighting in the cmdline
       format = {
         cmdline = { pattern = "^:", icon = "" },
-        replace = { pattern = "^:%%s/", icon = "💱 /", ft = "regex" },
+        replace = { pattern = "^:%%s/", icon = "/", ft = "regex" },
         search_down = { kind = "search", pattern = "^/", icon = " ", ft = "regex" },
         search_up = { kind = "search", pattern = "^%?", icon = " ", ft = "regex" },
         filter = { pattern = "^:%s*!", icon = "$", ft = "sh" },
