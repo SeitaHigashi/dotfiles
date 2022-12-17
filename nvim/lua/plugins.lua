@@ -15,6 +15,7 @@ require('packer').startup(function()
       { 'nvim-telescope/telescope-file-browser.nvim', module = 'telescope._extensions.file_browser' },
       { 'nvim-telescope/telescope-packer.nvim', module = 'telescope._extensions.packer' },
       { 'nvim-telescope/telescope-ui-select.nvim', module = 'telescope._extensions.ui-select'},
+      { 'xiyaowong/telescope-emoji.nvim', module = 'telescope._extensions.emoji'},
     },
     config = require('config.telescope'),
   }
