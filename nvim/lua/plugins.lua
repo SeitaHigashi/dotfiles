@@ -16,14 +16,14 @@ require('packer').startup(function()
       { 'nvim-telescope/telescope-packer.nvim', module = 'telescope._extensions.packer' },
       { 'nvim-telescope/telescope-ui-select.nvim', module = 'telescope._extensions.ui-select'},
     },
-    config = function() require('config.telescope') end,
+    config = require('config.telescope'),
   }
 
   --LSP
   use {
     'folke/trouble.nvim',
     event = {'CmdlineEnter', 'CmdUndefined'},
-    config = function() require('config.trouble') end,
+    config = require('config.trouble'),
   }
 
   -- Complete
@@ -39,7 +39,7 @@ require('packer').startup(function()
       { 'ray-x/cmp-treesitter', disable = true, after = 'nvim-cmp' },
       { 'saadparwaiz1/cmp_luasnip', after = 'nvim-cmp' },
     },
-    config = function() require('config.nvim-cmp') end,
+    config = require('config.nvim-cmp'),
   }
 
   use {
@@ -54,7 +54,7 @@ require('packer').startup(function()
 
   use {
     'williamboman/mason-lspconfig.nvim',
-    config = function() require('config.mason-lspconfig') end,
+    config = require('config.mason-lspconfig'),
   }
 
   use {
@@ -67,13 +67,13 @@ require('packer').startup(function()
     "glepnir/lspsaga.nvim",
     module_pattern = 'lspsaga',
     branch = "main",
-    config = function() require('config.lspsaga') end
+    config = require('config.lspsaga'),
   }
 
   use {
     'jose-elias-alvarez/null-ls.nvim',
     event = 'BufEnter',
-    config = function () require('config.null-ls') end,
+    config = require('config.null-ls'),
   }
 
   --CMD Line
@@ -111,14 +111,14 @@ require('packer').startup(function()
     disable = true,
     run = ':TSUpdate',
     event = { 'BufEnter' },
-    config = function() require('config.treesitter') end,
+    config = require('config.treesitter'),
   }
 
   -- Git
   use {
     'lewis6991/gitsigns.nvim',
     event = { 'BufEnter' },
-    config = function() require('config.gitsigns') end,
+    config = require('config.gitsigns'),
   }
 
   use {'tpope/vim-fugitive', event = {'CmdlineEnter', 'CmdUndefined'}}
@@ -129,12 +129,12 @@ require('packer').startup(function()
     requires = {
       { 'SeitaHigashi/lualine-hybrid.nvim' },
     },
-    config = function() require('config.lualine') end,
+    config = require('config.lualine'),
   }
 
   use {
     'folke/noice.nvim',
-    config = function() require('config.noice') end,
+    config = require('config.noice'),
     event = { 'VimEnter' },
     requires = {
       { 'MunifTanjim/nui.nvim', module_pattern = 'nui' },
@@ -145,7 +145,7 @@ require('packer').startup(function()
   use {
     'rcarriga/nvim-notify',
     event = { 'VimEnter' },
-    config = function() require('config.nvim-notify') end,
+    config = require('config.nvim-notify'),
   }
 
   -- ColorScheme
