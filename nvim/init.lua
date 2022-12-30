@@ -8,6 +8,7 @@ if vim.version().minor >= 8 then
   vim.o.cmdheight = 0
 end
 
+vim.o.laststatus = 3
 vim.o.title = true
 vim.o.expandtab = true
 vim.o.autoindent = true
