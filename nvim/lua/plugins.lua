@@ -2,6 +2,11 @@ require('packer').startup(function()
   use {'wbthomason/packer.nvim'}
 
   use {
+    'lewis6991/impatient.nvim',
+    config = function () require('impatient').enable_profile() end
+  }
+
+  use {
     'nvim-lua/plenary.nvim',
     module_pattern = 'plenary',
   }
