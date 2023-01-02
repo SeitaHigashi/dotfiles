@@ -1,175 +1,164 @@
-require('packer').startup(function()
-  use {'wbthomason/packer.nvim'}
-
-  use {
-    'lewis6991/impatient.nvim',
-    config = function () require('impatient').enable_profile() end
-  }
-
-  use {
-    'nvim-lua/plenary.nvim',
-    module_pattern = 'plenary',
-  }
+require('lazy').setup({
+  {'wbthomason/packer.nvim'},
 
   -- Fuzzy Finder
-  use {
+  {
     'nvim-telescope/telescope.nvim',
     keys = '<Leader>',
-    module_pattern = 'telescope',
-    requires = {
-      { 'nvim-telescope/telescope-file-browser.nvim', module = 'telescope._extensions.file_browser' },
-      { 'nvim-telescope/telescope-packer.nvim', module = 'telescope._extensions.packer' },
-      { 'nvim-telescope/telescope-ui-select.nvim', module = 'telescope._extensions.ui-select'},
-      { 'xiyaowong/telescope-emoji.nvim', module = 'telescope._extensions.emoji'},
+    dependencies = {
+      { 'nvim-lua/plenary.nvim' },
+      { 'nvim-telescope/telescope-file-browser.nvim' },
+      --{ 'nvim-telescope/telescope-packer.nvim' },
+      { 'nvim-telescope/telescope-ui-select.nvim' },
+      { 'xiyaowong/telescope-emoji.nvim' },
     },
     config = require('config.telescope'),
-  }
+  },
 
   --LSP
-  use {
+  {
     'folke/trouble.nvim',
     event = {'CmdlineEnter', 'CmdUndefined'},
     config = require('config.trouble'),
-  }
+  },
 
   -- Complete
-  use {
+  {
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
-    module_pattern = 'cmp',
-    requires = {
-      { 'hrsh7th/cmp-nvim-lsp', module = 'cmp_nvim_lsp' },
-      { 'onsails/lspkind-nvim', module = 'lspkind' },
-      { 'hrsh7th/cmp-buffer', after = 'nvim-cmp' },
-      { 'hrsh7th/cmp-path', after = 'nvim-cmp' },
-      { 'ray-x/cmp-treesitter', disable = true, after = 'nvim-cmp' },
-      { 'saadparwaiz1/cmp_luasnip', after = 'nvim-cmp' },
+    dependencies = {
+      { 'hrsh7th/cmp-nvim-lsp' },
+      { 'onsails/lspkind-nvim' },
+      { 'hrsh7th/cmp-buffer' },
+      { 'hrsh7th/cmp-path' },
+      { 'ray-x/cmp-treesitter', enabled = false },
+      { 'saadparwaiz1/cmp_luasnip' },
     },
     config = require('config.nvim-cmp'),
-  }
+  },
 
-  use {
+  {
     'neovim/nvim-lspconfig',
-    module_pattern = 'lspconfig',
-  }
+    lazy = true,
+  },
 
-  use {
+  {
     'williamboman/mason.nvim',
     config = function() require('mason').setup() end,
-  }
+  },
 
-  use {
+  {
     'williamboman/mason-lspconfig.nvim',
     config = require('config.mason-lspconfig'),
-  }
+  },
 
-  use {
+  {
     'ray-x/lsp_signature.nvim',
     event = "InsertEnter",
-    module = 'lsp_signature',
-  }
+    lazy = true,
+  },
 
-  use {
+  {
     "glepnir/lspsaga.nvim",
-    module_pattern = 'lspsaga',
     branch = "main",
+    lazy = true,
     config = require('config.lspsaga'),
-  }
+  },
 
-  use {
+  {
     'jose-elias-alvarez/null-ls.nvim',
     event = 'BufEnter',
     config = require('config.null-ls'),
-  }
+  },
 
   --CMD Line
-  use {
+  {
     'hrsh7th/cmp-cmdline',
     event = "CmdlineEnter",
-    requires = {
+    dependencies = {
       { 'hrsh7th/nvim-cmp' },
     },
-  }
+  },
 
   -- LSP FileType
-  use {
+  {
     'hrsh7th/cmp-nvim-lua',
     ft = 'lua',
-    requires = {
+    dependencies = {
       { 'hrsh7th/nvim-cmp' },
     },
-  }
+  },
 
   --Snippets
-  use {
+  {
     'L3MON4D3/LuaSnip',
-    module = 'luasnip',
-  }
-
-  use {
-    'rafamadriz/friendly-snippets',
-    after = 'LuaSnip',
-  }
+    lazy = true,
+    dependencies = {
+      { 'rafamadriz/friendly-snippets' },
+    }
+  },
 
   -- Treesitter
-  use {
+  {
     'nvim-treesitter/nvim-treesitter',
-    disable = true,
-    run = ':TSUpdate',
+    enabled = false,
+    --run = ':TSUpdate',
     event = { 'BufEnter' },
     config = require('config.treesitter'),
-  }
+  },
 
   -- Git
-  use {
+  {
     'lewis6991/gitsigns.nvim',
+    dependencies = {
+      { 'nvim-lua/plenary.nvim' },
+    },
     event = { 'BufEnter' },
     config = require('config.gitsigns'),
-  }
+  },
 
-  use {'tpope/vim-fugitive', event = {'CmdlineEnter', 'CmdUndefined'}}
+  {'tpope/vim-fugitive', event = {'CmdlineEnter', 'CmdUndefined'}},
 
   -- StatusLine
-  use {
+  {
     'nvim-lualine/lualine.nvim',
-    requires = {
+    dependencies = {
       { 'SeitaHigashi/lualine-hybrid.nvim' },
     },
     config = require('config.lualine'),
-  }
+  },
 
-  use {
+  {
     'folke/noice.nvim',
     config = require('config.noice'),
     event = { 'VimEnter' },
-    requires = {
-      { 'MunifTanjim/nui.nvim', module_pattern = 'nui' },
-      { 'rcarriga/nvim-notify', module_pattern = 'notify' },
+    dependencies = {
+      { 'MunifTanjim/nui.nvim' },
+      { 'rcarriga/nvim-notify' },
     },
-  }
+  },
 
-  use {
+  {
     'rcarriga/nvim-notify',
     event = { 'VimEnter' },
     config = require('config.nvim-notify'),
-  }
+  },
 
   -- ColorScheme
-  use {'w0ng/vim-hybrid'}
+  {'w0ng/vim-hybrid'},
 
-  use {
+  {
     'tpope/vim-surround',
     event = { 'BufEnter' },
-  }
+  },
 
-  use {
+  {
     'windwp/nvim-autopairs',
     event = 'InsertEnter',
-    module = 'nvim-autopairs',
     config = function() require('nvim-autopairs').setup {} end,
-  }
+  },
 
-  use {
+  {
     'vim-scripts/vim-auto-save',
     event = 'InsertEnter',
     config = function()
@@ -177,28 +166,32 @@ require('packer').startup(function()
       vim.g.auto_save_in_insert_mode = 0
       vim.g.auto_save_silent = 1
     end,
-  }
+  },
 
-  use { 'kyazdani42/nvim-web-devicons', module = 'nvim-web-devicons' }
+  { 
+    'kyazdani42/nvim-web-devicons',
+    lazy = true,
+  },
 
-  use {
+  {
     'voldikss/vim-translator',
     event = {'CmdlineEnter', 'CmdUndefined'},
     config = function()
       vim.g.translator_target_lang = 'ja'
       vim.g.translator_default_engines = {'google'}
     end,
-  }
+  },
 
-  use {
+  {
     'gen740/SmoothCursor.nvim',
     config = function()
       require('smoothcursor').setup()
     end
-  }
+  },
 
-  use {
+  {
     'unblevable/quick-scope',
+    enabled = false,
     config = function()
       vim.g.qs_highlight_on_keys = {'f', 'F'}
       vim.cmd([[
@@ -209,9 +202,9 @@ require('packer').startup(function()
       augroup END
       ]])
     end,
-  }
+  },
 
-  use {
+  {
     'kassio/neoterm',
     event = {'CmdlineEnter', 'CmdUndefined'},
     config = function()
@@ -220,12 +213,12 @@ require('packer').startup(function()
       vim.g.neoterm_autoscroll = 1
       vim.g.neoterm_default_mod = "botright"
     end
-  }
+  },
 
-  use {
+  {
     'dstein64/vim-startuptime',
     cmd = 'StartupTime',
-  }
+  },
 
-end)
+})
 

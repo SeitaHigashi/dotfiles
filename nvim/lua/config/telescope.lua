@@ -73,7 +73,7 @@ return function ()
 
   -- Load telescope extension
   telescope.load_extension('file_browser')
-  telescope.load_extension('packer')
+  --telescope.load_extension('packer')
   telescope.load_extension('ui-select')
   telescope.load_extension("emoji")
 
