@@ -1,5 +1,4 @@
 require('lazy').setup({
-  {'wbthomason/packer.nvim'},
 
   -- Fuzzy Finder
   {
@@ -168,7 +167,7 @@ require('lazy').setup({
     end,
   },
 
-  { 
+  {
     'kyazdani42/nvim-web-devicons',
     lazy = true,
   },
