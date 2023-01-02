@@ -7,7 +7,6 @@ require('lazy').setup({
     dependencies = {
       { 'nvim-lua/plenary.nvim' },
       { 'nvim-telescope/telescope-file-browser.nvim' },
-      --{ 'nvim-telescope/telescope-packer.nvim' },
       { 'nvim-telescope/telescope-ui-select.nvim' },
       { 'xiyaowong/telescope-emoji.nvim' },
     },
@@ -43,7 +42,7 @@ require('lazy').setup({
 
   {
     'williamboman/mason.nvim',
-    config = function() require('mason').setup() end,
+    config = {},
   },
 
   {
@@ -154,7 +153,7 @@ require('lazy').setup({
   {
     'windwp/nvim-autopairs',
     event = 'InsertEnter',
-    config = function() require('nvim-autopairs').setup {} end,
+    config = {},
   },
 
   {
@@ -183,9 +182,7 @@ require('lazy').setup({
 
   {
     'gen740/SmoothCursor.nvim',
-    config = function()
-      require('smoothcursor').setup()
-    end
+    config = {},
   },
 
   {
