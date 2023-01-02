@@ -101,7 +101,7 @@ require('lazy').setup({
   {
     'nvim-treesitter/nvim-treesitter',
     enabled = false,
-    --run = ':TSUpdate',
+    build = ':TSUpdate',
     event = { 'BufEnter' },
     config = require('config.treesitter'),
   },
@@ -190,8 +190,7 @@ require('lazy').setup({
 
   {
     'unblevable/quick-scope',
-    enabled = false,
-    config = function()
+    init = function()
       vim.g.qs_highlight_on_keys = {'f', 'F'}
       vim.cmd([[
       augroup qs_colors
