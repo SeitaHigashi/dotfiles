@@ -158,7 +158,7 @@ require('lazy').setup({
 
   {
     'vim-scripts/vim-auto-save',
-    event = 'InsertEnter',
+    event = 'BufEnter',
     config = function()
       vim.g.auto_save = 1
       vim.g.auto_save_in_insert_mode = 0
@@ -215,5 +215,10 @@ require('lazy').setup({
     cmd = 'StartupTime',
   },
 
+},
+{
+  ui = {
+    border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
+  }
 })
 
