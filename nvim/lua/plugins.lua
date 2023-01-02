@@ -189,13 +189,11 @@ require('lazy').setup({
     'unblevable/quick-scope',
     init = function()
       vim.g.qs_highlight_on_keys = {'f', 'F'}
-      vim.cmd([[
-      augroup qs_colors
-      autocmd!
-      autocmd ColorScheme * highlight QuickScopePrimary guifg='#afff5f' gui=underline ctermfg=155 cterm=underline
-      autocmd ColorScheme * highlight QuickScopeSecondary guifg='#5fffff' gui=underline ctermfg=81 cterm=underline
-      augroup END
-      ]])
+      local group = vim.api.nvim_create_augroup('qs_colors', { clear = true })
+      vim.api.nvim_create_autocmd('ColorScheme', { pattern = '*', group = group, callback = function ()
+        vim.api.nvim_set_hl(0, 'QuickScopePrimary', { fg = '#afff5f', underline = true, ctermfg = 155, cterm = { underline = true} })
+        vim.api.nvim_set_hl(0, 'QuickScopeSecondary', { fg = '#5fffff', underline = true, ctermfg = 81, cterm = { underline = true} })
+      end })
     end,
   },
 
