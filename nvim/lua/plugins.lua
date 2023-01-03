@@ -1,4 +1,9 @@
 return {
+  {
+    'https://github.com/folke/lazy.nvim',
+    lazy = true,
+    tag = 'stable',
+  },
   -- Fuzzy Finder
   {
     'nvim-telescope/telescope.nvim',
