@@ -14,6 +14,24 @@ return function ()
     return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
   end
 
+  local formatting_func = function(entry, vim_item)
+    vim_item.kind = string.format("%s %s", lspkind.presets.default[vim_item.kind], vim_item.kind)
+    vim_item.menu = ({
+      nvim_lsp = "",
+      nvim_lua = "",
+      luasnip = "",
+      path = "",
+      buffer = "﬘",
+      treesitter = "",
+      calc = "",
+      rg = "",
+      emoji = "ﲃ",
+      nerdfont = "ﯔ",
+    })[entry.source.name]
+
+    return vim_item
+  end
+
   local keymaps = {
     ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs(-4), { 'i', 'c' }),
     ['<C-f>'] = cmp.mapping(cmp.mapping.scroll_docs(4), { 'i', 'c' }),
@@ -66,25 +84,17 @@ return function ()
       { name = 'nvim_lsp' },
       { name = 'nvim_lua' },
       { name = 'luasnip' },
+      { name = 'calc' },
     }, {
       { name = 'path' },
       { name = 'buffer' },
+      { name = 'rg' },
       { name = 'treesitter' },
+      { name = 'nerdfont', insert = true },
+      { name = 'emoji', insert = true },
     }),
     formatting = {
-      format = function(entry, vim_item)
-        vim_item.kind = string.format("%s %s", lspkind.presets.default[vim_item.kind], vim_item.kind)
-        vim_item.menu = ({
-          nvim_lsp = "",
-          nvim_lua = "",
-          luasnip = "",
-          path = "",
-          buffer = "﬘",
-          treesitter = ""
-        })[entry.source.name]
-
-        return vim_item
-      end,
+      format = formatting_func,
     },
     window = {
       completion = cmp.config.window.bordered(),
@@ -101,6 +111,9 @@ return function ()
       { name = 'buffer' }
     },
     mapping = cmp.mapping.preset.cmdline(keymaps),
+    formatting = {
+      format = formatting_func,
+    },
   })
 
   -- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
@@ -108,10 +121,13 @@ return function ()
     sources = cmp.config.sources({
       { name = 'path' }
     }, {
-      { name = 'cmdline' },
+      { name = 'cmdline', ignore_cmds = {} },
       { name = 'nvim_lua' },
     }),
     mapping = cmp.mapping.preset.cmdline(keymaps),
+    formatting = {
+      format = formatting_func,
+    },
   })
 
   -- Setup lspconfig.
@@ -121,5 +137,5 @@ return function ()
   -- Auto pairs
   local cmp_autopairs = require('nvim-autopairs.completion.cmp')
   cmp.event:on('confirm_done', cmp_autopairs.on_confirm_done({ map_char = { tex = '' } }))
-  
+
 end
