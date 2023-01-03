@@ -20,7 +20,7 @@ return {
   --LSP
   {
     'folke/trouble.nvim',
-    event = {'CmdlineEnter', 'CmdUndefined'},
+    event = { 'CmdlineEnter', 'CmdUndefined' },
     config = require('config.trouble'),
   },
 
@@ -45,19 +45,19 @@ return {
       { 'neovim/nvim-lspconfig' },
       { 'williamboman/mason.nvim', config = {} },
     },
-    event = { 'BufEnter' },
+    event = 'BufEnter',
     config = require('config.mason-lspconfig'),
   },
 
   {
     'ray-x/lsp_signature.nvim',
-    event = "InsertEnter",
+    event = 'InsertEnter',
     lazy = true,
   },
 
   {
-    "glepnir/lspsaga.nvim",
-    branch = "main",
+    'glepnir/lspsaga.nvim',
+    branch = 'main',
     lazy = true,
     config = require('config.lspsaga'),
   },
@@ -72,7 +72,7 @@ return {
   --CMD Line
   {
     'hrsh7th/cmp-cmdline',
-    event = "CmdlineEnter",
+    event = 'CmdlineEnter',
     dependencies = {
       { 'hrsh7th/nvim-cmp' },
     },
@@ -101,7 +101,7 @@ return {
     'nvim-treesitter/nvim-treesitter',
     enabled = false,
     build = ':TSUpdate',
-    event = { 'BufEnter' },
+    event = 'BufEnter',
     config = require('config.treesitter'),
   },
 
@@ -111,7 +111,7 @@ return {
     dependencies = {
       { 'nvim-lua/plenary.nvim' },
     },
-    event = { 'BufEnter' },
+    event = 'UIEnter',
     config = require('config.gitsigns'),
   },
 
@@ -123,7 +123,7 @@ return {
   -- StatusLine
   {
     'nvim-lualine/lualine.nvim',
-    event = { 'UIEnter' },
+    event = 'UIEnter',
     dependencies = {
       { 'SeitaHigashi/lualine-hybrid.nvim' },
     },
@@ -133,7 +133,7 @@ return {
   {
     'folke/noice.nvim',
     config = require('config.noice'),
-    event = { 'UIEnter' },
+    event = 'UIEnter',
     dependencies = {
       { 'MunifTanjim/nui.nvim' },
       { 'rcarriga/nvim-notify' },
@@ -142,7 +142,7 @@ return {
 
   {
     'rcarriga/nvim-notify',
-    event = { 'UIEnter' },
+    event = 'UIEnter',
     config = require('config.nvim-notify'),
   },
 
@@ -151,7 +151,7 @@ return {
 
   {
     'tpope/vim-surround',
-    event = { 'BufEnter' },
+    event = 'BufEnter',
   },
 
   {
@@ -186,13 +186,13 @@ return {
 
   {
     'gen740/SmoothCursor.nvim',
-    event = { 'UIEnter' },
+    event = 'UIEnter',
     config = {},
   },
 
   {
     'unblevable/quick-scope',
-    event = { 'UIEnter' },
+    event = 'UIEnter',
     init = function()
       vim.g.qs_highlight_on_keys = {'f', 'F'}
       local group = vim.api.nvim_create_augroup('qs_colors', { clear = true })
@@ -210,7 +210,7 @@ return {
       vim.g.neoterm_autoinsert = 0
       vim.g.neoterm_autojump = 1
       vim.g.neoterm_autoscroll = 1
-      vim.g.neoterm_default_mod = "botright"
+      vim.g.neoterm_default_mod = 'botright'
     end
   },
 
