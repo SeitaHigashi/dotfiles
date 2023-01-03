@@ -12,6 +12,7 @@ local lazy_opts = {
 require('lazy').setup(plugins, lazy_opts)
 
 require('lsp-configs')
+require('keybinds')
 
 if vim.version().minor >= 8 then
   vim.o.cmdheight = 0
@@ -37,7 +38,3 @@ vim.cmd('colorscheme hybrid')
 vim.cmd 'au BufNewFile,BufRead *.dart setf dart'
 
 vim.api.nvim_set_hl(0, 'NormalFloat', { sp = Normal})
-
-vim.api.nvim_set_keymap('n', '<Leader>T', [[<cmd>TranslateW<CR>]], { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<Leader>t', [[<cmd>Ttoggle 'resize=15'<CR>]], { noremap = true, silent = true })
-vim.api.nvim_set_keymap('t', '<ESC>', '<C-\\><C-n>', { noremap = true, silent = true })
