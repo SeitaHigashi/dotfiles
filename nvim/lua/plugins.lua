@@ -39,7 +39,6 @@ return {
       { 'saadparwaiz1/cmp_luasnip' },
       { 'lukas-reineke/cmp-rg' },
       { 'chrisgrieser/cmp-nerdfont' },
-      { 'chrisgrieser/cmp-nerdfont' },
     },
     config = require('config.nvim-cmp'),
   },
