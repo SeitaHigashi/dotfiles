@@ -130,9 +130,6 @@ return function ()
     },
   })
 
-  -- Setup lspconfig.
-  --require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
-  require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities())
 
   -- Auto pairs
   local cmp_autopairs = require('nvim-autopairs.completion.cmp')

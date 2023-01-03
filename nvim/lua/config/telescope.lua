@@ -70,12 +70,20 @@ return function ()
           },
         },
       },
+      lazy = {
+        mappings = {
+          open_in_browser = "B",
+          open_in_find_files = "L",
+          open_in_live_grep = "G",
+          open_plugins_picker = "P",
+        },
+      },
     },
   }
 
   -- Load telescope extension
   telescope.load_extension('file_browser')
-  --telescope.load_extension('packer')
+  telescope.load_extension('lazy')
   telescope.load_extension('ui-select')
   telescope.load_extension("emoji")
 
