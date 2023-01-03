@@ -39,7 +39,7 @@ vim.cmd('colorscheme hybrid')
 
 vim.cmd 'au BufNewFile,BufRead *.dart setf dart'
 
-vim.cmd[[highlight NormalFloat guisp=Normal]]
+vim.api.nvim_set_hl(0, 'NormalFloat', { sp = Normal})
 
 vim.api.nvim_set_keymap('n', '<Leader>T', [[<cmd>TranslateW<CR>]], { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<Leader>t', [[<cmd>Ttoggle 'resize=15'<CR>]], { noremap = true, silent = true })
