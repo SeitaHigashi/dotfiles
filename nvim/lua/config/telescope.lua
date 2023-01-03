@@ -1,4 +1,10 @@
 return function ()
+  vim.keymap.set('n', '<Leader>j', require('telescope.builtin').find_files, { noremap = true, silent = true })
+  vim.keymap.set('n', '<Leader>k', require('telescope.builtin').live_grep, { noremap = true, silent = true })
+  vim.keymap.set('n', '<Leader>d', require('telescope.builtin').buffers, { noremap = true, silent = true })
+  vim.keymap.set('n', '<Leader>h', require('telescope.builtin').keymaps, { noremap = true, silent = true })
+  vim.keymap.set('n', '<Leader>f', require('telescope').extensions.file_browser.file_browser, { noremap = true, silent = true })
+
   local telescope = require('telescope')
   local actions = require('telescope.actions')
   local fb_actions = require('telescope._extensions.file_browser.actions')

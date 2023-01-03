@@ -7,7 +7,7 @@ return {
   -- Fuzzy Finder
   {
     'nvim-telescope/telescope.nvim',
-    lazy = true,
+    keys = '<Leader>',
     dependencies = {
       { 'nvim-lua/plenary.nvim' },
       { 'nvim-telescope/telescope-file-browser.nvim' },
