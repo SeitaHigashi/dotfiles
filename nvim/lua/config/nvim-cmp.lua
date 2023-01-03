@@ -67,9 +67,9 @@ return function ()
       { name = 'nvim_lua' },
       { name = 'luasnip' },
     }, {
-      { name = 'treesitter' },
       { name = 'path' },
       { name = 'buffer' },
+      { name = 'treesitter' },
     }),
     formatting = {
       format = function(entry, vim_item)

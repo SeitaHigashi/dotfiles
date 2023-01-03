@@ -33,7 +33,7 @@ return {
       { 'onsails/lspkind-nvim' },
       { 'hrsh7th/cmp-buffer' },
       { 'hrsh7th/cmp-path' },
-      { 'ray-x/cmp-treesitter', enabled = false },
+      { 'ray-x/cmp-treesitter' },
       { 'saadparwaiz1/cmp_luasnip' },
     },
     config = require('config.nvim-cmp'),
@@ -99,9 +99,9 @@ return {
   -- Treesitter
   {
     'nvim-treesitter/nvim-treesitter',
-    enabled = false,
     build = ':TSUpdate',
-    event = 'BufEnter',
+    event = 'UIEnter',
+    tag = 'v0.8.1',
     config = require('config.treesitter'),
   },
 

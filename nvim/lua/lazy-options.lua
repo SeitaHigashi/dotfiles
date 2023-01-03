@@ -14,7 +14,6 @@ return {
         'tohtml',
         'tutor',
         'zipPlugin',
-        'nvim-treesitter-textobjects',
       }
     }
   }
