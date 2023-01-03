@@ -36,17 +36,12 @@ require('lazy').setup({
   },
 
   {
-    'neovim/nvim-lspconfig',
-    lazy = true,
-  },
-
-  {
-    'williamboman/mason.nvim',
-    config = {},
-  },
-
-  {
     'williamboman/mason-lspconfig.nvim',
+    dependencies = {
+      { 'neovim/nvim-lspconfig' },
+      { 'williamboman/mason.nvim', config = {} },
+    },
+    event = { 'BufEnter' },
     config = require('config.mason-lspconfig'),
   },
 
@@ -65,6 +60,7 @@ require('lazy').setup({
 
   {
     'jose-elias-alvarez/null-ls.nvim',
+    enabled = false,
     event = 'BufEnter',
     config = require('config.null-ls'),
   },
@@ -115,11 +111,15 @@ require('lazy').setup({
     config = require('config.gitsigns'),
   },
 
-  {'tpope/vim-fugitive', event = {'CmdlineEnter', 'CmdUndefined'}},
+  {
+    'tpope/vim-fugitive',
+    event = {'CmdlineEnter', 'CmdUndefined'}
+  },
 
   -- StatusLine
   {
     'nvim-lualine/lualine.nvim',
+    event = { 'UIEnter' },
     dependencies = {
       { 'SeitaHigashi/lualine-hybrid.nvim' },
     },
@@ -129,7 +129,7 @@ require('lazy').setup({
   {
     'folke/noice.nvim',
     config = require('config.noice'),
-    event = { 'VimEnter' },
+    event = { 'UIEnter' },
     dependencies = {
       { 'MunifTanjim/nui.nvim' },
       { 'rcarriga/nvim-notify' },
@@ -138,7 +138,7 @@ require('lazy').setup({
 
   {
     'rcarriga/nvim-notify',
-    event = { 'VimEnter' },
+    event = { 'UIEnter' },
     config = require('config.nvim-notify'),
   },
 
@@ -182,11 +182,13 @@ require('lazy').setup({
 
   {
     'gen740/SmoothCursor.nvim',
+    event = { 'UIEnter' },
     config = {},
   },
 
   {
     'unblevable/quick-scope',
+    event = { 'UIEnter' },
     init = function()
       vim.g.qs_highlight_on_keys = {'f', 'F'}
       local group = vim.api.nvim_create_augroup('qs_colors', { clear = true })
