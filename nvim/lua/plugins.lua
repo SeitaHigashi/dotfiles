@@ -1,5 +1,4 @@
-require('lazy').setup({
-
+return {
   -- Fuzzy Finder
   {
     'nvim-telescope/telescope.nvim',
@@ -215,10 +214,5 @@ require('lazy').setup({
     cmd = 'StartupTime',
   },
 
-},
-{
-  ui = {
-    border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-  }
-})
+}
 
