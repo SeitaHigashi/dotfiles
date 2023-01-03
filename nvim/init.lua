@@ -3,11 +3,7 @@ vim.g.mapleader = ' '
 require('bootstrap')
 
 local plugins = require('plugins')
-local lazy_opts = {
-  ui = {
-    border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-  }
-}
+local lazy_opts = require('lazy-options')
 
 require('lazy').setup(plugins, lazy_opts)
 
