@@ -214,6 +214,12 @@ return {
     config = require('config.nvim-notify'),
   },
 
+  {
+    'kevinhwang91/nvim-bqf',
+    ft = 'qf',
+    config = require('config.nvim-bqf'),
+  },
+
   -- ColorScheme
   {'w0ng/vim-hybrid'},
 
