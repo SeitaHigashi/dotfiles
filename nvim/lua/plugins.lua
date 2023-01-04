@@ -192,9 +192,6 @@ return {
   {
     'nvim-lualine/lualine.nvim',
     event = 'UIEnter',
-    dependencies = {
-      { 'SeitaHigashi/lualine-hybrid.nvim' },
-    },
     config = require('config.lualine'),
   },
 
@@ -221,7 +218,8 @@ return {
   },
 
   -- ColorScheme
-  {'w0ng/vim-hybrid'},
+
+  { 'EdenEast/nightfox.nvim'},
 
   {
     'tpope/vim-surround',

@@ -28,7 +28,12 @@ vim.o.relativenumber = true
 vim.o.hidden = true
 vim.o.confirm = true
 
-vim.cmd('colorscheme hybrid')
+if vim.fn.has('termguicolors') then
+  vim.o.termguicolors = true
+end
+
+
+vim.cmd('colorscheme nordfox')
 
 vim.cmd 'au BufNewFile,BufRead *.dart setf dart'
 

@@ -21,7 +21,7 @@ return function ()
   require'lualine'.setup {
     options = {
       icons_enabled = true,
-      theme = require('lualine-hybrid'),
+      theme = 'nordfox',
       component_separators = { left = '', right = ''},
       section_separators = { left = '', right = ''},
       disabled_filetypes = {},
