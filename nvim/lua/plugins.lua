@@ -1,3 +1,5 @@
+local utils = require('utils')
+
 return {
   {
     'https://github.com/folke/lazy.nvim',
@@ -254,6 +256,7 @@ return {
 
   {
     'voldikss/vim-translator',
+    enabled = utils.system_check('python'),
     cmd = { 'Translate', 'TranslateH', 'TranslateL', 'TranslateR', 'TranslateW', 'TranslateX' },
     config = function()
       vim.g.translator_target_lang = 'ja'
