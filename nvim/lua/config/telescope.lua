@@ -20,7 +20,7 @@ return function ()
   telescope.setup{
     defaults = {
       layout_strategy = 'horizontal',
-      layout_config = { prompt_position = 'top' },
+      layout_config = { prompt_position = 'top', width = 0.95, height = 0.95 },
       sorting_strategy = 'ascending',
       mappings = {
         i = {
