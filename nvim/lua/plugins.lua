@@ -264,6 +264,12 @@ return {
   },
 
   {
+    'lukas-reineke/indent-blankline.nvim',
+    event = 'UIEnter',
+    config = require('config.indent-blankline'),
+  },
+
+  {
     'unblevable/quick-scope',
     event = 'UIEnter',
     init = function()
