@@ -223,6 +223,11 @@ return {
   },
 
   {
+    'tpope/vim-repeat',
+    event = 'BufEnter',
+  },
+
+  {
     'windwp/nvim-autopairs',
     event = 'InsertEnter',
     config = {},
