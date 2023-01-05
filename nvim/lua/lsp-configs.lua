@@ -1,6 +1,7 @@
--- LSP Attach
-local on_attach = function(client, bufnr)
+local M = {}
 
+-- LSP Attach
+function M.on_attach(client, bufnr)
   -- Enable completion triggered by <c-x><c-o>
   vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
 
@@ -36,9 +37,6 @@ vim.o.updatetime = 250
 vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(
 vim.lsp.handlers.hover, {
   border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-}
-)
+})
 
-return {
-  on_attach = on_attach
-}
+return M

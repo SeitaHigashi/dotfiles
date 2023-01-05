@@ -1,4 +1,6 @@
-local system_check = function (cmd)
+local M = {}
+
+function M.system_check(cmd)
   if vim.fn.exepath(cmd) == "" then
     return false
   else
@@ -6,6 +8,4 @@ local system_check = function (cmd)
   end
 end
 
-return {
-  system_check = system_check
-}
+return M
