@@ -44,7 +44,7 @@ return {
       { 'neovim/nvim-lspconfig' },
       { 'williamboman/mason.nvim', config = {} },
     },
-    event = 'BufEnter',
+    lazy = false,
     config = require('config.mason-lspconfig'),
   },
 
