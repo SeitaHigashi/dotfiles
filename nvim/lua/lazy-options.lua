@@ -1,5 +1,9 @@
 return {
+  defaults = {
+    lazy = true,
+  },
   ui = {
+    size = { width = 0.85, height = 0.85 },
     border = { '╭', '─', '╮', '│', '╯', '─', '╰', '│' },
   },
   performance = {
@@ -16,5 +20,8 @@ return {
         'zipPlugin',
       }
     }
+  },
+  checker = {
+    enabled = true,
   }
 }

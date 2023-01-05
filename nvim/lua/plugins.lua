@@ -3,7 +3,6 @@ local utils = require('utils')
 return {
   {
     'https://github.com/folke/lazy.nvim',
-    lazy = true,
     tag = 'stable',
   },
   -- Fuzzy Finder
@@ -52,13 +51,11 @@ return {
   {
     'ray-x/lsp_signature.nvim',
     event = 'InsertEnter',
-    lazy = true,
   },
 
   {
     'glepnir/lspsaga.nvim',
     branch = 'main',
-    lazy = true,
     config = require('config.lspsaga'),
   },
 
@@ -160,7 +157,6 @@ return {
   --Snippets
   {
     'L3MON4D3/LuaSnip',
-    lazy = true,
     dependencies = {
       { 'rafamadriz/friendly-snippets' },
     }
@@ -251,7 +247,6 @@ return {
 
   {
     'kyazdani42/nvim-web-devicons',
-    lazy = true,
   },
 
   {
