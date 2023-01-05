@@ -1,4 +1,5 @@
 return {
+  spec = 'plugins',
   defaults = {
     lazy = true,
   },

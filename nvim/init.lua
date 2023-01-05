@@ -2,10 +2,9 @@ vim.g.mapleader = ' '
 
 require('bootstrap')
 
-local plugins = require('plugins')
 local lazy_opts = require('lazy-options')
 
-require('lazy').setup(plugins, lazy_opts)
+require('lazy').setup(lazy_opts)
 
 require('lsp-configs')
 
