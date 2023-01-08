@@ -26,7 +26,7 @@ return {
   {
     'gen740/SmoothCursor.nvim',
     event = 'UIEnter',
-    config = {},
+    config = require('config.smoothcursor'),
   },
 
   {
