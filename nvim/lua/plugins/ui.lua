@@ -55,4 +55,11 @@ return {
     config = require('config.nvim-bqf'),
   },
 
+  -- Improve the search highlight
+  {
+    'SeitaHigashi/auto-hlsearch.nvim',
+    event = 'UIEnter',
+    config = {},
+  },
+
 }
