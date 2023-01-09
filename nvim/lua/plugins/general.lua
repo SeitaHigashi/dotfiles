@@ -1,6 +1,10 @@
 local utils = require('utils')
 
 return {
+  {
+    'folke/lazy.nvim',
+    version = false,
+  },
   -- Treesitter
   {
     'nvim-treesitter/nvim-treesitter',
