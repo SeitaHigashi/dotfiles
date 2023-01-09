@@ -57,7 +57,7 @@ return {
 
   -- Improve the search highlight
   {
-    'SeitaHigashi/auto-hlsearch.nvim',
+    'asiryk/auto-hlsearch.nvim',
     event = 'UIEnter',
     config = {},
   },
