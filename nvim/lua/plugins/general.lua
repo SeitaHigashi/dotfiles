@@ -1,14 +1,10 @@
 local utils = require('utils')
 
 return {
-  {
-    'https://github.com/folke/lazy.nvim',
-    tag = 'stable',
-  },
-
   -- Treesitter
   {
     'nvim-treesitter/nvim-treesitter',
+    enabled = false,
     build = ':TSUpdate',
     event = 'UIEnter',
     tag = 'v0.8.1',
