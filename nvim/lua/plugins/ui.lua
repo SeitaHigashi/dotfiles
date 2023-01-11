@@ -26,7 +26,7 @@ return {
   {
     'gen740/SmoothCursor.nvim',
     event = 'UIEnter',
-    config = require('config.smoothcursor'),
+    opts = { disable_float_win = true },
   },
 
   {
