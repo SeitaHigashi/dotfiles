@@ -59,7 +59,7 @@ return {
   {
     'asiryk/auto-hlsearch.nvim',
     event = 'UIEnter',
-    config = {},
+    opts = {},
   },
 
 }
