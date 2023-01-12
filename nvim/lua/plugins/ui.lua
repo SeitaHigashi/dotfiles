@@ -62,4 +62,9 @@ return {
     opts = {},
   },
 
+  -- Fun
+  {
+    'Eandrju/cellular-automaton.nvim',
+    cmd = 'CellularAutomaton',
+  },
 }
