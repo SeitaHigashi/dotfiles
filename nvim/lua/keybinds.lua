@@ -21,7 +21,6 @@ function M.lsp(bufnr)
   vim.keymap.set('n', '<Leader>pd', '<cmd>Lspsaga peek_definition<CR>', bufopts)
   vim.keymap.set('n', 'gr', require('telescope.builtin').lsp_references, bufopts)
   vim.keymap.set('n', 'gi', require('telescope.builtin').lsp_implementations, bufopts)
-  vim.keymap.set('n', 'K', '<cmd>Lspsaga hover_doc<CR>', bufopts)
   vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, bufopts)
   vim.keymap.set('n', '<Leader>wa', vim.lsp.buf.add_workspace_folder, bufopts)
   vim.keymap.set('n', '<Leader>wr', vim.lsp.buf.remove_workspace_folder, bufopts)
@@ -36,6 +35,13 @@ function M.lsp(bufnr)
   vim.keymap.set('n', '<Leader>=', vim.lsp.buf.format, bufopts)
   vim.keymap.set('n', '<Leader>l', '<cmd>Lspsaga lsp_finder<CR>', bufopts)
   vim.keymap.set('n', '<Leader>o', '<cmd>Lspsaga outline<CR>', bufopts)
+  local installed_parsers = require('nvim-treesitter.info').installed_parsers()
+  vim.keymap.set('n', 'K', vim.lsp.buf.hover, bufopts)
+  for _, parser in pairs(installed_parsers) do
+    if parser == "markdown" then
+      vim.keymap.set('n', 'K', '<cmd>Lspsaga hover_doc<CR>', bufopts)
+    end
+  end
 end
 
 return M
