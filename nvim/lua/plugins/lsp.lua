@@ -28,8 +28,9 @@ return {
   -- improve the LSP related UI.
   {
     'glepnir/lspsaga.nvim',
+    cmd = 'Lspsaga',
     branch = 'main',
-    config = require('config.lspsaga'),
+    opts = require('config.lspsaga'),
   },
 
   {
