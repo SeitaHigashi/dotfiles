@@ -4,6 +4,7 @@ function M.general()
   vim.api.nvim_set_keymap('n', '<Leader>T', [[<cmd>TranslateW<CR>]], { noremap = true, silent = true })
   vim.api.nvim_set_keymap('n', '<Leader>t', [[<cmd>Ttoggle 'resize=15'<CR>]], { noremap = true, silent = true })
   vim.api.nvim_set_keymap('t', '<ESC>', '<C-\\><C-n>', { noremap = true, silent = true })
+  vim.cmd[[cnoremap <expr><silent> <Space> getcmdtype() .. getcmdline() ==# ':h' ? '<C-u>Telescope help_tags<CR>' : ' ']]
 end
 
 function M.telescope()
