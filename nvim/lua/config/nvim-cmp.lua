@@ -17,16 +17,16 @@ return function ()
   local formatting_func = function(entry, vim_item)
     vim_item.kind = string.format("%s %s", lspkind.presets.default[vim_item.kind], vim_item.kind)
     vim_item.menu = ({
-      nvim_lsp = "",
-      nvim_lua = "",
-      luasnip = "",
-      path = "",
-      buffer = "﬘",
-      treesitter = "",
-      calc = "",
-      rg = "",
-      emoji = "ﲃ",
-      nerdfont = "ﯔ",
+      nvim_lsp = " LSP",
+      nvim_lua = " Lua",
+      luasnip = " Snip",
+      path = " Path",
+      buffer = "﬘ Buffer",
+      treesitter = " TS",
+      calc = " Calc",
+      rg = " RG",
+      emoji = "ﲃ Emoji",
+      nerdfont = "ﯔ Nerdfont",
     })[entry.source.name]
 
     return vim_item
