@@ -88,7 +88,12 @@ return function ()
     }, {
       { name = 'path' },
       { name = 'buffer' },
-      { name = 'rg' },
+      {
+        name = 'rg',
+        option = {
+          additional_arguments = "--max-depth 5 --hidden --follow --threads 1",
+        },
+      },
       { name = 'treesitter' },
       { name = 'nerdfont', insert = true },
       { name = 'emoji', insert = true },

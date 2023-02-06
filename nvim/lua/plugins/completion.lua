@@ -64,11 +64,6 @@ return {
     dependencies = {
       { 'hrsh7th/nvim-cmp' },
     },
-    opts = {
-      option = {
-        additional_arguments = "--max-depth 5 --hidden --follow --threads 1",
-      },
-    },
   },
 
   {
