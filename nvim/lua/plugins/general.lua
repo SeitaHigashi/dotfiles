@@ -91,5 +91,11 @@ return {
     cmd = 'StartupTime',
   },
 
+  {
+    'andweeb/presence.nvim',
+    enabled = vim.env.HOBBY,
+    lazy = false,
+    opts = {},
+  }
 }
 
