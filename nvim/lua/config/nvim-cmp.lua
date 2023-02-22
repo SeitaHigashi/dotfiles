@@ -91,7 +91,7 @@ return function ()
       {
         name = 'rg',
         option = {
-          additional_arguments = "--max-depth 5 --hidden --follow --threads 1",
+          additional_arguments = "--max-depth 2 --follow --threads 1",
         },
       },
       { name = 'treesitter' },
