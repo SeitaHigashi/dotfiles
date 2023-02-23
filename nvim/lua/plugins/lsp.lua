@@ -13,9 +13,17 @@ return {
   -- Even if you are using a non-lsp tool, this tool can make it look like lsp.
   {
     'jose-elias-alvarez/null-ls.nvim',
-    enabled = false,
     event = 'BufEnter',
     config = require('config.null-ls'),
+  },
+
+  {
+    'jay-babu/mason-null-ls.nvim',
+    event = 'BufEnter',
+    dependencies = {
+      'jose-elias-alvarez/null-ls.nvim',
+    },
+    opts = { automatic_setup = true },
   },
 
   -- display the information from lsp.
