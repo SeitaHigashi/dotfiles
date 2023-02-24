@@ -36,7 +36,6 @@ return {
         callback = function()
           local theme = require('lualine.themes.nordfox')
           local current_mode = vim.fn.mode()
-          print(current_mode)
           if current_mode == 'n' then
             vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.normal.a.bg })
             vim.fn.sign_define('smoothcursor', { text = '' })
