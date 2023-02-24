@@ -35,8 +35,9 @@ return {
 
   -- Related operator
   {
-    'tpope/vim-surround',
+    'kylechui/nvim-surround',
     event = 'BufEnter',
+    opts = {},
   },
 
   {
