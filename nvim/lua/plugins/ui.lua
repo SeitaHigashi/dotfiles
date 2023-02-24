@@ -25,8 +25,38 @@ return {
 
   {
     'gen740/SmoothCursor.nvim',
+    dependencies = {
+      'nvim-lualine/lualine.nvim',
+    },
     event = 'UIEnter',
-    opts = { disable_float_win = true },
+    opts = function()
+      local autocmd = vim.api.nvim_create_autocmd
+
+      autocmd({ 'ModeChanged' }, {
+        callback = function()
+          local theme = require('lualine.themes.nordfox')
+          local current_mode = vim.fn.mode()
+          print(current_mode)
+          if current_mode == 'n' then
+            vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.normal.a.bg })
+            vim.fn.sign_define('smoothcursor', { text = '' })
+          elseif current_mode == 'v' then
+            vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.visual.a.bg })
+            vim.fn.sign_define('smoothcursor', { text = '' })
+          elseif current_mode == 'V' then
+            vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.visual.a.bg })
+            vim.fn.sign_define('smoothcursor', { text = '' })
+          elseif current_mode == '' then
+            vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.insert.a.bg })
+            vim.fn.sign_define('smoothcursor', { text = '' })
+          elseif current_mode == 'i' then
+            vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.insert.a.bg })
+            vim.fn.sign_define('smoothcursor', { text = '' })
+          end
+        end,
+      })
+      return { disable_float_win = true }
+    end
   },
 
   {
