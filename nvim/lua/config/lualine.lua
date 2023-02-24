@@ -1,5 +1,5 @@
-return function ()
-  local readonly = function ()
+return function()
+  local readonly = function()
     if vim.o.readonly then
       return "RO"
     else
@@ -18,12 +18,12 @@ return function ()
     return ''
   end
 
-  require'lualine'.setup {
+  require 'lualine'.setup {
     options = {
       icons_enabled = true,
       theme = 'nordfox',
-      component_separators = { left = '', right = ''},
-      section_separators = { left = '', right = ''},
+      component_separators = { left = '', right = '' },
+      section_separators = { left = '', right = '' },
       disabled_filetypes = {},
       always_divide_middle = true,
       globalstatus = true,
@@ -46,6 +46,6 @@ return function ()
     --  lualine_z = { clock }
     --},
     tabline = {},
-    extensions = {'fugitive', 'quickfix'}
+    extensions = { 'fugitive', 'quickfix' }
   }
 end

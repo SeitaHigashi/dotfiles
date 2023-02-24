@@ -8,7 +8,6 @@ function M.on_attach(client, bufnr)
   require('keybinds')['lsp'](bufnr)
 
   require('lsp_signature').on_attach()
-
 end
 
 -- Diagnostic
@@ -35,7 +34,7 @@ vim.diagnostic.config({
 vim.o.updatetime = 250
 
 vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(
-vim.lsp.handlers.hover, {
+  vim.lsp.handlers.hover, {
   border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
 })
 

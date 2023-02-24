@@ -8,7 +8,7 @@ return {
   -- Treesitter
   {
     'nvim-treesitter/nvim-treesitter',
-    enabled = not ( vim.fn.has('win32') == 1 and vim.fn.has('win64') == 1),
+    enabled = not (vim.fn.has('win32') == 1 and vim.fn.has('win64') == 1),
     build = ':TSUpdate',
     event = 'UIEnter',
     tag = 'v0.8.1',
@@ -27,11 +27,11 @@ return {
 
   {
     'tpope/vim-fugitive',
-    event = {'CmdlineEnter', 'CmdUndefined'}
+    event = { 'CmdlineEnter', 'CmdUndefined' }
   },
 
   -- ColorScheme
-  { 'EdenEast/nightfox.nvim'},
+  { 'EdenEast/nightfox.nvim' },
 
   -- Related operator
   {
@@ -71,13 +71,13 @@ return {
     cmd = { 'Translate', 'TranslateH', 'TranslateL', 'TranslateR', 'TranslateW', 'TranslateX' },
     config = function()
       vim.g.translator_target_lang = 'ja'
-      vim.g.translator_default_engines = {'google'}
+      vim.g.translator_default_engines = { 'google' }
     end,
   },
 
   {
     'kassio/neoterm',
-    event = {'CmdlineEnter', 'CmdUndefined'},
+    event = { 'CmdlineEnter', 'CmdUndefined' },
     config = function()
       vim.g.neoterm_autoinsert = 0
       vim.g.neoterm_autojump = 1
@@ -98,4 +98,3 @@ return {
     opts = {},
   }
 }
-

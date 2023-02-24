@@ -1,4 +1,4 @@
-return function ()
+return function()
   require('keybinds')["telescope"]()
 
   local telescope = require('telescope')
@@ -13,7 +13,7 @@ return function ()
   })
 
   -- Telescope Setup
-  telescope.setup{
+  telescope.setup {
     defaults = {
       layout_strategy = 'horizontal',
       layout_config = { prompt_position = 'top', width = 0.95, height = 0.95 },
@@ -82,5 +82,4 @@ return function ()
   telescope.load_extension('lazy')
   telescope.load_extension('ui-select')
   telescope.load_extension("emoji")
-
 end

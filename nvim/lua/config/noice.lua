@@ -1,4 +1,4 @@
-return function ()
+return function()
   require("noice").setup({
     cmdline = {
       enabled = true, -- enables the Noice cmdline UI
@@ -28,7 +28,7 @@ return function ()
     history = {
       view = "split",
       opts = { enter = true, format = "details" },
-      filter = { event = { "msg_show", "notify" }, ["not"] = { kind = { "search_count", "echo" } } },
+      filter = { event = { "msg_show", "notify" },["not"] = { kind = { "search_count", "echo" } } },
     },
     notify = {
       enabled = true,

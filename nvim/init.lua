@@ -36,6 +36,6 @@ vim.cmd('colorscheme nordfox')
 
 vim.cmd 'au BufNewFile,BufRead *.dart setf dart'
 
-vim.api.nvim_set_hl(0, 'NormalFloat', { sp = Normal})
+vim.api.nvim_set_hl(0, 'NormalFloat', { sp = Normal })
 
 require('keybinds')["general"]()

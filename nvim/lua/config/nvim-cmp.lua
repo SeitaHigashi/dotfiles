@@ -1,4 +1,4 @@
-return function ()
+return function()
   local cmp = require('cmp')
   local luasnip = require('luasnip')
   local lspkind = require('lspkind')
@@ -17,23 +17,23 @@ return function ()
   local formatting_func = function(entry, vim_item)
     vim_item.kind = string.format("%s %s", lspkind.presets.default[vim_item.kind], vim_item.kind)
     vim_item.menu = ({
-      nvim_lsp = " LSP",
-      nvim_lua = " Lua",
-      luasnip = " Snip",
-      path = " Path",
-      buffer = "﬘ Buffer",
-      treesitter = " TS",
-      calc = " Calc",
-      rg = " RG",
-      emoji = "ﲃ Emoji",
-      nerdfont = "ﯔ Nerdfont",
-    })[entry.source.name]
+          nvim_lsp = " LSP",
+          nvim_lua = " Lua",
+          luasnip = " Snip",
+          path = " Path",
+          buffer = "﬘ Buffer",
+          treesitter = " TS",
+          calc = " Calc",
+          rg = " RG",
+          emoji = "ﲃ Emoji",
+          nerdfont = "ﯔ Nerdfont",
+        })[entry.source.name]
 
     return vim_item
   end
 
   local keymaps = {
-    ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs(-4), { 'i', 'c' }),
+    ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs( -4), { 'i', 'c' }),
     ['<C-f>'] = cmp.mapping(cmp.mapping.scroll_docs(4), { 'i', 'c' }),
     ['<C-Space>'] = cmp.mapping(cmp.mapping.complete(), { 'i', 'c' }),
     ['<C-y>'] = cmp.config.disable, -- Specify `cmp.config.disable` if you want to remove the default `<C-y>` mapping.
@@ -61,8 +61,8 @@ return function ()
     ["<S-Tab>"] = cmp.mapping(function(fallback)
       if cmp.visible() then
         fallback()
-      elseif luasnip.jumpable(-1) then
-        luasnip.jump(-1)
+      elseif luasnip.jumpable( -1) then
+        luasnip.jump( -1)
       end
     end, { "i", "s" }),
   }
@@ -91,12 +91,15 @@ return function ()
       {
         name = 'rg',
         option = {
-          additional_arguments = "--max-depth 2 --follow --threads 1",
+          additional_arguments = "--max-depth 4 --follow --threads 1",
+          cwd = function()
+            return vim.fn.expand("%:p:h:h")
+          end
         },
       },
       { name = 'treesitter' },
-      { name = 'nerdfont', insert = true },
-      { name = 'emoji', insert = true },
+      { name = 'nerdfont',  insert = true },
+      { name = 'emoji',     insert = true },
     }),
     formatting = {
       format = formatting_func,
@@ -139,5 +142,4 @@ return function ()
   -- Auto pairs
   local cmp_autopairs = require('nvim-autopairs.completion.cmp')
   cmp.event:on('confirm_done', cmp_autopairs.on_confirm_done({ map_char = { tex = '' } }))
-
 end

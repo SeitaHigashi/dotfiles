@@ -43,7 +43,7 @@ return {
     dependencies = {
       { 'hrsh7th/nvim-cmp' },
     },
-    config = function ()
+    config = function()
       require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities())
     end
   },
@@ -59,7 +59,8 @@ return {
 
   -- others
   {
-    'lukas-reineke/cmp-rg',
+    --'lukas-reineke/cmp-rg',
+    'SeitaHigashi/cmp-rg',
     event = 'InsertEnter',
     dependencies = {
       { 'hrsh7th/nvim-cmp' },

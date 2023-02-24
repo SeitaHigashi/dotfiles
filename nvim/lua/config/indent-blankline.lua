@@ -1,4 +1,4 @@
-return function ()
+return function()
   vim.opt.list = true
   vim.opt.listchars:append "eol:↴"
   vim.api.nvim_set_hl(0, 'IndentBlanklineContextChar', { fg = '#808080', ctermfg = 244 })
