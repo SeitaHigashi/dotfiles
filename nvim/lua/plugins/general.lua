@@ -15,6 +15,14 @@ return {
     config = require('config.treesitter'),
   },
 
+  {
+    'nvim-treesitter/nvim-treesitter-textobjects',
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+    },
+    event = 'UIEnter',
+  },
+
   -- Git
   {
     'lewis6991/gitsigns.nvim',
