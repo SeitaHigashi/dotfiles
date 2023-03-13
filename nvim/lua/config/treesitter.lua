@@ -4,10 +4,17 @@ return function()
     require('nvim-treesitter.install').compilers = { "zig" }
   end
 
+  vim.opt.foldmethod = "expr"
+  vim.opt.foldexpr = "nvim_treesitter#foldexpr()"
+  vim.opt.foldenable = false
+
   require 'nvim-treesitter.configs'.setup {
     highlight = {
       enable = true,
       additional_vim_regex_highlighting = false,
     },
+    indent = {
+      enable = true,
+    }
   }
 end
