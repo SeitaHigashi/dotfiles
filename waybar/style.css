@@ -1,0 +1,78 @@
+/*
+ * waybar -l debug
+ */
+
+* {
+  font-family: HackGenNerd;
+}
+
+label, box#tray {
+  margin: 2px;
+  padding: 0 8px;
+  border-radius: 16px;
+  font-size: 16px;
+  transition: none;
+}
+
+window#waybar {
+  background: transparent;
+}
+
+window#waybar.hidden {
+  opacity: 0.2;
+}
+
+#workspaces {
+  border-radius: 16px;
+  background: #282a36;
+  transition: none;
+}
+
+#workspaces button {
+  transition: none;
+  border-radius: 16px;
+  color: #f8f8f2;
+  background: transparent;
+}
+
+#workspaces button.focused {
+  color: #9aedfe;
+}
+
+#workspaces button:hover {
+  transition: none;
+  box-shadow: inherit;
+  text-shadow: inherit;
+  color: #ff79c6;
+}
+
+#network {
+  color: #4d4d4d;
+  background: #bd93f9;
+}
+
+#pulseaudio {
+  color: #4d4d4d;
+  background: #9aedfe;
+}
+
+#temperature {
+  color: #4d4d4d;
+  background: #5af78e;
+}
+
+#cpu {
+  color: #4d4d4d;
+  background: #f1fa8c;
+}
+
+#memory {
+  color: #4d4d4d;
+  background: #ff6e67;
+}
+
+#clock, #tray {
+  color: #f8f8f2;
+  background: #282a36;
+}
+

@@ -1,13 +1,17 @@
 {
-  "modules-left": [],
+  "layer": "top",
+  "modules-left": ["tray"],
   "modules-center": ["wlr/workspaces"],
   // "modules-right": ["mpd", "idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "backlight", "keyboard-state", "sway/language", "battery", "clock", "tray"],
-   "modules-right": ["idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "backlight", "keyboard-state", "sway/language", "battery", "clock", "tray"],
+   "modules-right": [ "pulseaudio", "network", "cpu", "memory", "backlight", "battery", "clock"],
     
   "wlr/workspaces": {
     "format": "{icon}",
     "on-scroll-up": "hyprctl dispatch workspace e+1",
     "on-scroll-down": "hyprctl dispatch workspace e-1",
     "on-click": "activate"
-  }
+  },
+  "tray": {
+    "spacing": 10
+  },
 }
