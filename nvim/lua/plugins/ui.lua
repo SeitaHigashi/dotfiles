@@ -102,4 +102,10 @@ return {
     'Eandrju/cellular-automaton.nvim',
     cmd = 'CellularAutomaton',
   },
+
+  {
+    'xiyaowong/transparent.nvim',
+    cmd = {'TransparentEnable', 'TransparentDisable', 'TransparentToggle'},
+    opts = {},
+  }
 }
