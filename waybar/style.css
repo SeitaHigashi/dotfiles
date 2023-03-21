@@ -1,17 +1,27 @@
 /*
  * waybar -l debug
+ * env GTK_DEBUG=interactive waybar
  */
 
 * {
   font-family: HackGenNerd;
+  font-size: 16px;
+  margin: 0px;
+  padding: 0px;
 }
 
 label, box#tray {
-  margin: 2px;
-  padding: 0 8px;
+  margin: 1px 2px;
+  padding: 0px 8px;
   border-radius: 16px;
-  font-size: 16px;
   transition: none;
+  color: #f8f8f2;
+  background: #282a36;
+}
+
+tooltip {
+  background: transparent;
+  border: none;
 }
 
 window#waybar {
@@ -31,12 +41,21 @@ window#waybar.hidden {
 #workspaces button {
   transition: none;
   border-radius: 16px;
+  padding: 0px 4px;
   color: #f8f8f2;
   background: transparent;
 }
 
 #workspaces button.focused {
   color: #9aedfe;
+}
+
+#workspaces button.active {
+  background: #383a46;
+}
+
+#workspaces label {
+  background: transparent;
 }
 
 #workspaces button:hover {
@@ -64,15 +83,14 @@ window#waybar.hidden {
 #cpu {
   color: #4d4d4d;
   background: #f1fa8c;
+  border-radius: 16px 0px 0px 16px;
+  margin: 1px 0px 1px 2px;
 }
 
 #memory {
   color: #4d4d4d;
   background: #ff6e67;
-}
-
-#clock, #tray {
-  color: #f8f8f2;
-  background: #282a36;
+  border-radius: 0px 16px 16px 0px;
+  margin: 1px 2px 1px 0px;
 }
 
