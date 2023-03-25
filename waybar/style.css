@@ -16,11 +16,11 @@ label, box#tray {
   border-radius: 16px;
   transition: none;
   color: #f8f8f2;
-  background: #282a36;
+  background: #505050;
 }
 
 tooltip {
-  background: transparent;
+  background: #505050;
   border: none;
 }
 
@@ -51,7 +51,7 @@ window#waybar.hidden {
 }
 
 #workspaces button.active {
-  background: #383a46;
+  background: #505050;
 }
 
 #workspaces label {
