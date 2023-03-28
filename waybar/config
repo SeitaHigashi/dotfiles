@@ -1,9 +1,9 @@
 {
   "layer": "top",
-  "modules-left": ["tray"],
-  "modules-center": ["wlr/workspaces"],
-  // "modules-right": ["mpd", "idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "backlight", "keyboard-state", "sway/language", "battery", "clock", "tray"],
-   "modules-right": [ "pulseaudio", "network", "cpu", "memory", "backlight", "battery", "clock"],
+//  "modules-left": ["clock", "custom/playerctl", "wlr/workspaces"],
+  "modules-left": ["clock", "wlr/workspaces"],
+  "modules-right": ["tray", "network", "pulseaudio", "cpu", "memory", "backlight", "battery"],
+  "modules-center": ["hyprland/window"],
     
   "wlr/workspaces": {
     "format": "{icon}",
@@ -11,7 +11,31 @@
     "on-scroll-down": "hyprctl dispatch workspace e-1",
     "on-click": "activate"
   },
+
   "tray": {
     "spacing": 10
+  },
+
+  "cpu": {
+    "on-click": "hyprctl dispatch togglespecialworkspace bpytop"
+  },
+
+  "memory": {
+    "on-click": "hyprctl dispatch togglespecialworkspace bpytop"
+  },
+
+  "network": {
+    "format-wifi": "{essid}",
+    "on-click": "hyprctl dispatch exec [float] iwgtk"
+  },
+
+  "hyprland/window": {
+    "separate-outputs": true
+  },
+
+  "custom/playerctl": {
+    "exec": "playerctl metadata title",
+    "interval": 1,
+    "max-length": 30
   },
 }

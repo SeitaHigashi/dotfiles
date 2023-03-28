@@ -4,23 +4,26 @@
  */
 
 * {
-  font-family: HackGenNerd;
-  font-size: 16px;
+  font-family: HackGen\ Console\ Nerd;
+  /*
+  font-size: 14px;
+  */
+  font-size: 14px;
   margin: 0px;
   padding: 0px;
 }
 
 label, box#tray {
-  margin: 1px 2px;
-  padding: 0px 8px;
-  border-radius: 16px;
+  margin: 0px 2px;
+  padding: 0px 6px;
+  border-radius: 14px;
   transition: none;
   color: #f8f8f2;
-  background: #505050;
+  background: rgba(80,80,80, 0.85);
 }
 
 tooltip {
-  background: #505050;
+  background: rgba(80,80,80, 0.85);
   border: none;
 }
 
@@ -33,14 +36,14 @@ window#waybar.hidden {
 }
 
 #workspaces {
-  border-radius: 16px;
-  background: #282a36;
+  border-radius: 14px;
+  background: rgba(40, 42, 54, 0.85);
   transition: none;
 }
 
 #workspaces button {
   transition: none;
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 0px 4px;
   color: #f8f8f2;
   background: transparent;
@@ -51,7 +54,7 @@ window#waybar.hidden {
 }
 
 #workspaces button.active {
-  background: #505050;
+  background: rgba(80,80,80, 0.85);
 }
 
 #workspaces label {
@@ -67,30 +70,37 @@ window#waybar.hidden {
 
 #network {
   color: #4d4d4d;
-  background: #bd93f9;
+  background: rgba(189, 147, 249, 0.85);
 }
 
 #pulseaudio {
   color: #4d4d4d;
-  background: #9aedfe;
+  background: rgba(154, 237, 254, 0.85);
 }
 
 #temperature {
   color: #4d4d4d;
-  background: #5af78e;
+  background: rgba(90, 247, 142, 0.85);
 }
 
 #cpu {
   color: #4d4d4d;
-  background: #f1fa8c;
-  border-radius: 16px 0px 0px 16px;
-  margin: 1px 0px 1px 2px;
+  background: rgba(241, 250, 140, 0.85);
+  border-radius: 14px 0px 0px 14px;
+  margin: 0px 0px 0px 2px;
+  padding: 0px 4px 0px 6px;
 }
 
 #memory {
   color: #4d4d4d;
-  background: #ff6e67;
-  border-radius: 0px 16px 16px 0px;
-  margin: 1px 2px 1px 0px;
+  background: rgba(255, 110, 103, 0.85);
+  border-radius: 0px 14px 14px 0px;
+  margin: 0px 2px 0px 0px;
+  padding: 0px 6px 0px 4px;
+}
+
+#custom-playerctl {
+  color: #4d4d4d;
+  background: rgba(120, 220, 112, 0.85);
 }
 
