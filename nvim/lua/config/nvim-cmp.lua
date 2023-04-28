@@ -18,6 +18,7 @@ return function()
     vim_item.kind = string.format("%s %s", lspkind.presets.default[vim_item.kind], vim_item.kind)
     vim_item.menu = ({
           nvim_lsp = " LSP",
+          copilot = " Copilot",
           nvim_lua = " Lua",
           luasnip = " Snip",
           path = " Path",
@@ -41,7 +42,7 @@ return function()
       i = cmp.mapping.abort(),
       c = cmp.mapping.close(),
     }),
-    ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
+    ['<CR>'] = cmp.mapping.confirm({behavior = cmp.ConfirmBehavior.Replace, select = false }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
     ["<Tab>"] = cmp.mapping(function(fallback)
       if luasnip.expand_or_jumpable() then
         luasnip.expand_or_jump()
@@ -50,7 +51,7 @@ return function()
         if not entry then
           fallback()
         else
-          cmp.confirm()
+          cmp.confirm({behavior = cmp.ConfirmBehavior.Replace, select = false })
         end
       elseif has_words_before() then
         cmp.complete()
@@ -82,6 +83,7 @@ return function()
     },
     sources = cmp.config.sources({
       { name = 'nvim_lsp' },
+      { name = 'copilot' },
       { name = 'nvim_lua' },
       { name = 'luasnip' },
       { name = 'calc' },
