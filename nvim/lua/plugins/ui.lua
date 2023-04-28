@@ -9,6 +9,7 @@ return {
   -- CommandLine
   {
     'folke/noice.nvim',
+    -- enabled = false,
     config = require('config.noice'),
     event = 'UIEnter',
     dependencies = {
@@ -19,6 +20,7 @@ return {
 
   {
     'rcarriga/nvim-notify',
+    -- enabled = false,
     event = 'UIEnter',
     config = require('config.nvim-notify'),
   },
