@@ -3,7 +3,7 @@ return {
     'zbirenbaum/copilot.lua',
     cmd = 'Copilot',
     event = 'InsertEnter',
-    config = {
+    opts = {
       suggestion = { enabled = false },
       panel = {
         enabled = false,
@@ -18,6 +18,6 @@ return {
   {
     'zbirenbaum/copilot-cmp',
     event = 'InsertEnter',
-    config = {}
+    opts = {}
   }
 }
