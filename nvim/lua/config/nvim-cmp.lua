@@ -83,7 +83,7 @@ return function()
     },
     sources = cmp.config.sources({
       { name = 'nvim_lsp' },
-      { name = 'copilot' },
+      { name = 'copilot', keyword_length = 0 },
       { name = 'nvim_lua' },
       { name = 'luasnip' },
       { name = 'calc' },
