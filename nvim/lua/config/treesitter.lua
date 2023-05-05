@@ -9,6 +9,16 @@ return function()
   vim.opt.foldenable = false
 
   require 'nvim-treesitter.configs'.setup {
+    ensure_installed = {
+      -- Required for noice.nvim
+      'c',
+      'regex',
+      'lua',
+      'bash',
+      'markdown',
+      -- Required for noice.nvim & LspSaga
+      'markdown_inline',
+    },
     highlight = {
       enable = true,
       additional_vim_regex_highlighting = false,
