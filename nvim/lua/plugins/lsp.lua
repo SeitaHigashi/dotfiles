@@ -26,13 +26,6 @@ return {
     opts = { automatic_setup = true },
   },
 
-  -- display the information from lsp.
-  {
-    'folke/trouble.nvim',
-    cmd = { 'Trouble', 'TroubleToggle', 'TroubleClose', 'TroubleRefresh' },
-    config = require('config.trouble'),
-  },
-
   -- improve the LSP related UI.
   {
     'glepnir/lspsaga.nvim',
