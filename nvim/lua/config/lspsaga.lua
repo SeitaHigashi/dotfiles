@@ -13,7 +13,7 @@ return {
     win_width = 25,
   },
   code_action = {
-    show_server_names = true,
+    show_server_name = true,
     keys = {
       quit = {'<Esc>', 'q'},
       exec = {'<CR>', 'l', 'L'},
