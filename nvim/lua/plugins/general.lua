@@ -11,7 +11,7 @@ return {
     enabled = not (vim.fn.has('win32') == 1 and vim.fn.has('win64') == 1),
     build = ':TSUpdate',
     event = 'UIEnter',
-    tag = 'v0.8.1',
+    --tag = 'v0.8.1',
     config = require('config.treesitter'),
   },
 
