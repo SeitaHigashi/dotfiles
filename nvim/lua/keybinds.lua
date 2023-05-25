@@ -8,6 +8,7 @@ function M.general()
 end
 
 function M.telescope()
+  vim.keymap.set('n', '<Leader>a', require('telescope.builtin').builtin, { noremap = true, silent = true })
   vim.keymap.set('n', '<Leader>j', require('telescope.builtin').find_files, { noremap = true, silent = true })
   vim.keymap.set('n', '<Leader>k', require('telescope.builtin').live_grep, { noremap = true, silent = true })
   vim.keymap.set('n', '<Leader>d', require('telescope.builtin').buffers, { noremap = true, silent = true })
