@@ -44,15 +44,11 @@ return function()
     }),
     ['<CR>'] = cmp.mapping.confirm({behavior = cmp.ConfirmBehavior.Replace, select = false }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
     ["<Tab>"] = cmp.mapping(function(fallback)
-      if luasnip.expand_or_jumpable() then
-        luasnip.expand_or_jump()
-      elseif cmp.visible() then
-        local entry = cmp.get_selected_entry()
-        if not entry then
-          fallback()
-        else
+      local entry = cmp.get_selected_entry()
+      if cmp.visible() and entry  then
           cmp.confirm({behavior = cmp.ConfirmBehavior.Replace, select = false })
-        end
+      elseif luasnip.expand_or_jumpable() then
+        luasnip.expand_or_jump()
       elseif has_words_before() then
         cmp.complete()
       else
@@ -60,10 +56,10 @@ return function()
       end
     end, { "i", "s" }),
     ["<S-Tab>"] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        fallback()
-      elseif luasnip.jumpable( -1) then
+      if luasnip.jumpable( -1) then
         luasnip.jump( -1)
+      elseif cmp.visible() then
+        fallback()
       end
     end, { "i", "s" }),
   }
