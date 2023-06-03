@@ -28,7 +28,7 @@ return {
 
   -- improve the LSP related UI.
   {
-    'glepnir/lspsaga.nvim',
+    'nvimdev/lspsaga.nvim',
     cmd = "Lspsaga",
     event = "LspAttach",
     branch = 'main',
