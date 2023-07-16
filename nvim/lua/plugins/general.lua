@@ -10,7 +10,7 @@ return {
     'nvim-treesitter/nvim-treesitter',
     enabled = not (vim.fn.has('win32') == 1 and vim.fn.has('win64') == 1),
     build = ':TSUpdate',
-    event = 'UIEnter',
+    event = 'VeryLazy',
     --tag = 'v0.8.1',
     config = require('config.treesitter'),
   },
@@ -20,7 +20,7 @@ return {
     dependencies = {
       'nvim-treesitter/nvim-treesitter',
     },
-    event = 'UIEnter',
+    event = 'VeryLazy',
   },
 
   -- Git
@@ -29,13 +29,13 @@ return {
     dependencies = {
       { 'nvim-lua/plenary.nvim' },
     },
-    event = 'UIEnter',
+    event = 'VeryLazy',
     config = require('config.gitsigns'),
   },
 
   {
     'tpope/vim-fugitive',
-    event = { 'CmdlineEnter', 'CmdUndefined' }
+    event = 'VeryLazy',
   },
 
   -- ColorScheme
@@ -62,7 +62,7 @@ return {
   -- Auto save
   {
     'vim-scripts/vim-auto-save',
-    event = 'BufEnter',
+    event = 'VeryLazy',
     config = function()
       vim.g.auto_save = 1
       vim.g.auto_save_in_insert_mode = 0
@@ -103,7 +103,7 @@ return {
   {
     'andweeb/presence.nvim',
     enabled = vim.env.HOBBY,
-    lazy = false,
+    --lazy = false,
     opts = {},
   }
 }

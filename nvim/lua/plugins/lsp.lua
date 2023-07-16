@@ -6,20 +6,21 @@ return {
       { 'neovim/nvim-lspconfig' },
       { 'williamboman/mason.nvim', config = {} },
     },
-    lazy = false,
+    --lazy = false,
+    event = 'VeryLazy',
     config = require('config.mason-lspconfig'),
   },
 
   -- Even if you are using a non-lsp tool, this tool can make it look like lsp.
   {
     'jose-elias-alvarez/null-ls.nvim',
-    event = 'BufEnter',
+    event = 'VeryLazy',
     config = require('config.null-ls'),
   },
 
   {
     'jay-babu/mason-null-ls.nvim',
-    event = 'BufEnter',
+    event = 'VeryLazy',
     dependencies = {
       'jose-elias-alvarez/null-ls.nvim',
     },

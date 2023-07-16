@@ -30,7 +30,7 @@ return {
     dependencies = {
       'nvim-lualine/lualine.nvim',
     },
-    event = 'UIEnter',
+    event = 'VeryLazy',
     opts = function()
       local autocmd = vim.api.nvim_create_autocmd
 
@@ -62,13 +62,13 @@ return {
 
   {
     'lukas-reineke/indent-blankline.nvim',
-    event = 'UIEnter',
+    event = 'VeryLazy',
     config = require('config.indent-blankline'),
   },
 
   {
     'unblevable/quick-scope',
-    event = 'UIEnter',
+    event = 'VeryLazy',
     init = function()
       vim.g.qs_highlight_on_keys = { 'f', 'F' }
       local group = vim.api.nvim_create_augroup('qs_colors', { clear = true })
@@ -95,18 +95,18 @@ return {
   -- Improve the search highlight
   {
     'asiryk/auto-hlsearch.nvim',
-    event = 'UIEnter',
+    event = 'VeryLazy',
     opts = {},
   },
 
   -- Fun
   {
     'Eandrju/cellular-automaton.nvim',
-    cmd = 'CellularAutomaton',
+    event = 'VeryLazy',
   },
 
   {
     'xiyaowong/transparent.nvim',
-    cmd = {'TransparentEnable', 'TransparentDisable', 'TransparentToggle'},
+    event = 'VeryLazy',
   }
 }
