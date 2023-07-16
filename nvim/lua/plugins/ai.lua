@@ -19,5 +19,20 @@ return {
     'zbirenbaum/copilot-cmp',
     event = 'InsertEnter',
     opts = {}
+  },
+
+  {
+    'jackMort/ChatGPT.nvim',
+    -- If OPENAI_API_KEY is not set, this plugin will not load.
+    enabled = function()
+      return vim.env.OPENAI_API_KEY ~= nil
+    end,
+    event = 'VeryLazy',
+    opts = {},
+    dependencies = {
+      'MunifTanjim/nui.nvim',
+      'nvim-lua/plenary.nvim',
+      'nvim-telescope/telescope.nvim',
+    },
   }
 }
