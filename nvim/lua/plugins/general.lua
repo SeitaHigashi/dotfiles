@@ -39,7 +39,12 @@ return {
   },
 
   -- ColorScheme
-  { 'EdenEast/nightfox.nvim' },
+  {
+    'EdenEast/nightfox.nvim',
+    opts = {
+      transparent = vim.g.transparent_enabled,
+    }
+  },
 
   -- Related operator
   {
