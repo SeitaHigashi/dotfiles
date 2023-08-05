@@ -38,6 +38,15 @@ return {
     event = 'VeryLazy',
   },
 
+  {
+    'kdheepak/lazygit.nvim',
+    enabled = utils.system_check('lazygit'),
+    event = 'VeryLazy',
+    dependencies = {
+      'nvim-lua/plenary.nvim'
+    },
+  },
+
   -- ColorScheme
   {
     'EdenEast/nightfox.nvim',
