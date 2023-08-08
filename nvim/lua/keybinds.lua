@@ -7,16 +7,6 @@ function M.general()
   vim.cmd [[cnoremap <expr><silent> <Space> getcmdtype() .. getcmdline() ==# ':h' ? '<C-u>Telescope help_tags<CR>' : ' ']]
 end
 
-function M.telescope()
-  vim.keymap.set('n', '<Leader>a', require('telescope.builtin').builtin, { noremap = true, silent = true })
-  vim.keymap.set('n', '<Leader>j', require('telescope.builtin').find_files, { noremap = true, silent = true })
-  vim.keymap.set('n', '<Leader>k', require('telescope.builtin').live_grep, { noremap = true, silent = true })
-  vim.keymap.set('n', '<Leader>d', require('telescope.builtin').buffers, { noremap = true, silent = true })
-  --vim.keymap.set('n', '<Leader>h', require('telescope.builtin').keymaps, { noremap = true, silent = true })
-  vim.keymap.set('n', '<Leader>f', require('telescope').extensions.file_browser.file_browser,
-    { noremap = true, silent = true })
-end
-
 function M.lsp(bufnr)
   local bufopts = { noremap = true, silent = true, buffer = bufnr }
   vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, bufopts)

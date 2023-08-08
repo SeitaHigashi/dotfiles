@@ -1,6 +1,4 @@
 return function()
-  require('keybinds')["telescope"]()
-
   local telescope = require('telescope')
   local actions = require('telescope.actions')
   local fb_actions = require('telescope._extensions.file_browser.actions')
