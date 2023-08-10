@@ -7,7 +7,7 @@ return {
       vim.o.timeout = true
       vim.o.timeoutlen = 300
     end,
-    opts = require('config.which-key'),
+    opts = require('config.which-key').setup,
   },
 
   -- StatusLine
