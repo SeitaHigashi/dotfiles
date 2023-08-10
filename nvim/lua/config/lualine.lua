@@ -10,9 +10,10 @@ return function()
   local function clock()
     if vim.fn.winwidth(0) > 70 then
       if os.time() % 2 == 0 then
-        return ' ' .. os.date("%H:%M")
+        -- Convert to JST from UTC
+        return ' ' .. os.date("%H:%M", os.time() + 9 * 60 * 60)
       else
-        return ' ' .. os.date("%H %M")
+        return ' ' .. os.date("%H %M", os.time() + 9 * 60 * 60)
       end
     end
     return ''
