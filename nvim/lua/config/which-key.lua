@@ -73,4 +73,49 @@ M.gitsigns = function(bufnr)
   }, { mode = { "o", "x" }, buffer = bufnr })
 end
 
+M.lsp = function (bufnr)
+  local wk = require('which-key')
+  -- Goto
+  wk.register({
+    g = {
+      D = { function () vim.lsp.buf.declaration() end, "Goto declaration" },
+      d = { function () require('telescope.builtin').lsp_definitions() end, "Goto definition" },
+      s = { function () require('telescope.builtin').lsp_dynamic_workspace_symbols() end, "Goto definition" },
+      r = { function () require('telescope.builtin').lsp_references() end, "Goto references" },
+      i = { function () require('telescope.builtin').lsp_implementations() end, "Goto implementations" },
+    },
+    ["<leader>"] = {
+      ["pd"] = { '<cmd>Lspsaga peek_definition<CR>', "Peek definition"},
+      w = {
+        name = "LSP Workspace",
+        a = { function () vim.lsp.buf.add_workspace_folder() end, "Add workspace folder" },
+        r = { function () vim.lsp.buf.remove_workspace_folder() end, "Remove workspace folder" },
+        l = { function () print(vim.inspect(vim.lsp.buf.list_workspace_folders())) end, "List workspace folders" },
+      },
+      D = { function () vim.lsp.buf.type_definition() end, "Goto type definition" },
+      ["rn"] = { '<cmd>Lspsaga rename<CR>', 'Rename'},
+      ["ca"] = { '<cmd>Lspsaga code_action<CR>', 'Code actions'},
+      e = { '<cmd>Lspsaga show_line_diagnostics<CR>', 'Show line diagnostics' },
+      q = { function () vim.diagnostic.setloclist() end, "Set Location List" },
+      l = { '<cmd>Lspsaga finder<CR>', "LSP Finder" },
+      o = { '<cmd>Lspsaga outline<CR>', "LSP Outline" },
+      ["="] = { function () vim.lsp.buf.format() end, "Code Format in buffer"},
+      s = {
+        name = "Show diagnostics",
+        l = { function () require('lspsaga.diagnostic').show_line_diagnostics() end, "Show line diagnostics" },
+        b = { function () require('lspsaga.diagnostic').show_buffer_diagnostics() end, "Show buffer diagnostics" },
+        w = { function () require('lspsaga.diagnostic').show_cursor_diagnostics() end, "Show cursor diagnostics" },
+      }
+    },
+    ["["] = {
+      e = { function () require('lspsaga.diagnostic'):goto_prev() end, 'go to prev diagnostic'},
+      E = { function () require('lspsaga.diagnostic'):goto_prev({ severity = vim.diagnostic.severity.ERROR }) end, 'go to prev error diagnostic'}
+    },
+    ["]"] = {
+      e = { function () require('lspsaga.diagnostic'):goto_next() end, 'go to prev diagnostic'},
+      E = { function () require('lspsaga.diagnostic'):goto_next({ severity = vim.diagnostic.severity.ERROR }) end, 'go to prev error diagnostic'}
+    }
+  }, { buffer = bufnr, silent = true, noremap = true })
+end
+
 return M

@@ -6,6 +6,7 @@ function M.on_attach(client, bufnr)
   vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
 
   require('keybinds')['lsp'](bufnr)
+  require('config.which-key').lsp(bufnr)
 
   require('lsp_signature').on_attach()
 end
