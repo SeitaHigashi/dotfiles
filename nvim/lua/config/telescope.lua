@@ -80,4 +80,5 @@ return function()
   telescope.load_extension('lazy')
   telescope.load_extension('ui-select')
   telescope.load_extension("emoji")
+  telescope.load_extension("dap")
 end

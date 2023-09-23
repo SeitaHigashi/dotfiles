@@ -34,5 +34,12 @@ return {
       end
       return {}
     end
+  },
+  {
+    'nvim-telescope/telescope-dap.nvim',
+    depends = {
+      'mfussenegger/nvim-dap',
+      'nvim-telescope/telescope.nvim',
+    },
   }
 }
