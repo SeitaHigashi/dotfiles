@@ -12,6 +12,9 @@ M.setup = function()
       f = { function() require('telescope').extensions.file_browser.file_browser() end, "File Browser" },
       T = { "<cmd>TranslateW<CR>", "Translate Word to Japanese" },
       t = { "<cmd>Lspsaga term_toggle<CR>", "Toggle terminal window" },
+
+      -- dap
+      b = { "<cmd>DapToggleBreakpoint<CR>", "Toggle Breakpoint" }
     },
   })
 

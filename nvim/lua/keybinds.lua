@@ -2,6 +2,10 @@ local M = {}
 
 function M.general()
   vim.api.nvim_set_keymap('t', '<ESC>', '<C-\\><C-n>', { noremap = true, silent = true })
+  vim.api.nvim_set_keymap('n', '<F5>', ':DapContinue<CR>', { silent = true })
+  vim.api.nvim_set_keymap('n', '<F10>', ':DapStepOver<CR>', { silent = true })
+  vim.api.nvim_set_keymap('n', '<F11>', ':DapStepInto<CR>', { silent = true })
+  vim.api.nvim_set_keymap('n', '<F12>', ':DapStepOut<CR>', { silent = true })
   vim.cmd [[cnoremap <expr><silent> <Space> getcmdtype() .. getcmdline() ==# ':h' ? '<C-u>Telescope help_tags<CR>' : ' ']]
 end
 
