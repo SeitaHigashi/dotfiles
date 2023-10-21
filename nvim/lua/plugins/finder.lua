@@ -8,6 +8,7 @@ return {
       { 'nvim-lua/plenary.nvim' },
       { 'nvim-telescope/telescope-file-browser.nvim' },
       { 'nvim-telescope/telescope-ui-select.nvim' },
+      { 'nvim-telescope/telescope-frecency.nvim' },
       { 'xiyaowong/telescope-emoji.nvim' },
       { 'tsakirist/telescope-lazy.nvim' },
     },

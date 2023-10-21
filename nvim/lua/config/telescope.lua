@@ -81,4 +81,5 @@ return function()
   telescope.load_extension('ui-select')
   telescope.load_extension("emoji")
   telescope.load_extension("dap")
+  telescope.load_extension("frecency")
 end
