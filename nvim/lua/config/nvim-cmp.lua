@@ -19,6 +19,7 @@ return function()
     vim_item.menu = ({
           nvim_lsp = " LSP",
           copilot = " Copilot",
+          cmp_tabnine = " tabnine",
           nvim_lua = " Lua",
           luasnip = " Snip",
           path = " Path",
@@ -80,6 +81,7 @@ return function()
     sources = cmp.config.sources({
       { name = 'nvim_lsp' },
       { name = 'copilot', keyword_length = 0 },
+      { name = 'cmp_tabnine', keyword_length = 0 },
       { name = 'nvim_lua' },
       { name = 'luasnip' },
       { name = 'calc' },
