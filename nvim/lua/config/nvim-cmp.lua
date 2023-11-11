@@ -23,12 +23,12 @@ return function()
           nvim_lua = " Lua",
           luasnip = " Snip",
           path = " Path",
-          buffer = "﬘ Buffer",
+          buffer = " Buffer",
           treesitter = " TS",
-          calc = " Calc",
+          calc = "󰃬 Calc",
           rg = " RG",
-          emoji = "ﲃ Emoji",
-          nerdfont = "ﯔ Nerdfont",
+          emoji = "󰞅 Emoji",
+          nerdfont = " Nerdfont",
         })[entry.source.name]
 
     return vim_item
