@@ -51,19 +51,19 @@ return {
           local current_mode = vim.fn.mode()
           if current_mode == 'n' then
             vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.normal.a.bg })
-            vim.fn.sign_define('smoothcursor', { text = '' })
+            vim.fn.sign_define('smoothcursor', { text = '' })
           elseif current_mode == 'v' then
             vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.visual.a.bg })
-            vim.fn.sign_define('smoothcursor', { text = '' })
+            vim.fn.sign_define('smoothcursor', { text = '󰫙' })
           elseif current_mode == 'V' then
             vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.visual.a.bg })
-            vim.fn.sign_define('smoothcursor', { text = '' })
+            vim.fn.sign_define('smoothcursor', { text = '󰿚' })
           elseif current_mode == '' then
-            vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.insert.a.bg })
-            vim.fn.sign_define('smoothcursor', { text = '' })
+            vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.visual.a.bg })
+            vim.fn.sign_define('smoothcursor', { text = '󰩬' })
           elseif current_mode == 'i' then
             vim.api.nvim_set_hl(0, 'SmoothCursor', { fg = theme.insert.a.bg })
-            vim.fn.sign_define('smoothcursor', { text = '' })
+            vim.fn.sign_define('smoothcursor', { text = '󰗧' })
           end
         end,
       })
