@@ -43,7 +43,7 @@ return {
   {
     "Exafunction/codeium.nvim",
     enabled = function()
-      local mem = vim.fn.system("free -m | awk 'NR==2{printf $4}'")
+      local mem = vim.fn.system("free -m | awk 'NR==2{printf $7}'")
       return tonumber(mem) > 1024 and vim.env.HOME
     end,
     event = 'VeryLazy',
@@ -62,7 +62,7 @@ return {
   {
     'tzachar/cmp-tabnine',
     enabled = function()
-      local mem = vim.fn.system("free -m | awk 'NR==2{printf $4}'")
+      local mem = vim.fn.system("free -m | awk 'NR==2{printf $7}'")
       return tonumber(mem) > 2048 and vim.env.HOME
     end,
     event = 'InsertEnter',
