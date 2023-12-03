@@ -38,8 +38,33 @@ return {
     },
   },
 
+  -- Codeium
+  -- If memory free space is lower than 1GB, disable this plugin.
+  {
+    "Exafunction/codeium.nvim",
+    enabled = function()
+      local mem = vim.fn.system("free -m | awk 'NR==2{printf $4}'")
+      return tonumber(mem) > 1024
+    end,
+    event = 'VeryLazy',
+    dependencies = {
+        "nvim-lua/plenary.nvim",
+        "hrsh7th/nvim-cmp",
+    },
+    config = function()
+        require("codeium").setup({
+        })
+    end
+  },
+
+  -- Tabnine
+  -- If memory free space is lower than 2GB, disable this plugin.
   {
     'tzachar/cmp-tabnine',
+    enabled = function()
+      local mem = vim.fn.system("free -m | awk 'NR==2{printf $4}'")
+      return tonumber(mem) > 1024
+    end,
     event = 'InsertEnter',
     build = "./install.sh",
     config = function()
