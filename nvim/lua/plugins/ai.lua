@@ -44,7 +44,7 @@ return {
     "Exafunction/codeium.nvim",
     enabled = function()
       local mem = vim.fn.system("free -m | awk 'NR==2{printf $7}'")
-      return tonumber(mem) > 1024 and vim.env.HOME
+      return tonumber(mem) > 1024 and vim.env.HOME_ENV
     end,
     event = 'VeryLazy',
     dependencies = {
@@ -63,7 +63,7 @@ return {
     'tzachar/cmp-tabnine',
     enabled = function()
       local mem = vim.fn.system("free -m | awk 'NR==2{printf $7}'")
-      return tonumber(mem) > 2048 and vim.env.HOME
+      return tonumber(mem) > 2048 and vim.env.HOME_ENV
     end,
     event = 'InsertEnter',
     build = "./install.sh",
