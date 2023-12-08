@@ -89,8 +89,10 @@ return function()
       { name = 'nvim_lua' },
       { name = 'luasnip' },
       { name = 'calc' },
-    }, {
+      { name = 'nerdfont',  insert = true },
+      { name = 'emoji',     insert = true },
       { name = 'path' },
+    }, {
       { name = 'buffer' },
       {
         name = 'rg',
@@ -102,8 +104,6 @@ return function()
         },
       },
       { name = 'treesitter' },
-      { name = 'nerdfont',  insert = true },
-      { name = 'emoji',     insert = true },
     }),
     formatting = {
       format = formatting_func,
