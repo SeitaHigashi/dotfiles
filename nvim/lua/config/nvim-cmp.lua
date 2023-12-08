@@ -82,12 +82,12 @@ return function()
     sorting = {
     },
     sources = cmp.config.sources({
+      { name = 'luasnip' },
       { name = 'nvim_lsp' },
       { name = 'copilot', keyword_length = 0 },
       { name = 'cmp_tabnine', keyword_length = 0 },
       { name = 'codeium', keyword_length = 0 },
       { name = 'nvim_lua' },
-      { name = 'luasnip' },
       { name = 'calc' },
       { name = 'nerdfont',  insert = true },
       { name = 'emoji',     insert = true },
