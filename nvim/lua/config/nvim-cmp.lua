@@ -84,16 +84,16 @@ return function()
     sources = cmp.config.sources({
       { name = 'luasnip' },
       { name = 'nvim_lsp' },
-      { name = 'copilot', keyword_length = 0 },
-      { name = 'cmp_tabnine', keyword_length = 0 },
-      { name = 'codeium', keyword_length = 0 },
+      { name = 'copilot', keyword_length = 0},
+      { name = 'cmp_tabnine', keyword_length = 0, max_item_count = 2 },
+      { name = 'codeium', keyword_length = 0, max_item_count = 2},
+      { name = 'path' },
       { name = 'nvim_lua' },
       { name = 'calc' },
-      { name = 'nerdfont',  insert = true },
-      { name = 'emoji',     insert = true },
-      { name = 'path' },
+      { name = 'nerdfont' },
+      { name = 'emoji' },
+      { name = 'buffer' }
     }, {
-      { name = 'buffer' },
       {
         name = 'rg',
         option = {
