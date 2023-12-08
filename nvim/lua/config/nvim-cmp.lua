@@ -22,7 +22,7 @@ return function()
           nvim_lsp = " LSP",
           copilot = " Copilot",
           cmp_tabnine = " tabnine",
-          Codeium = " Codeium",
+          codeium = " Codeium",
           nvim_lua = " Lua",
           luasnip = " Snip",
           path = " Path",
