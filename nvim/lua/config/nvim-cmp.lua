@@ -79,21 +79,27 @@ return function()
       end,
     },
     mapping = cmp.mapping.preset.insert(keymaps),
-    sorting = {
-    },
+    sorting = {},
     sources = cmp.config.sources({
+      -- Snippet is most hightst priority
       { name = 'luasnip' },
+      -- LSP is second priority
       { name = 'nvim_lsp' },
+      -- AI completion is third priority
       { name = 'copilot', keyword_length = 0},
-      { name = 'cmp_tabnine', keyword_length = 0, max_item_count = 2 },
-      { name = 'codeium', keyword_length = 0, max_item_count = 2},
+      { name = 'codeium', keyword_length = 0},
+      { name = 'cmp_tabnine', keyword_length = 0, max_item_count = 1 },
+      -- Other completion is last priority
       { name = 'path' },
       { name = 'nvim_lua' },
       { name = 'calc' },
       { name = 'nerdfont' },
       { name = 'emoji' },
       { name = 'buffer' }
-    }, {
+    },
+    -- If the above sources don't work, use the following
+    {
+      -- Search from related files
       {
         name = 'rg',
         option = {
@@ -103,6 +109,7 @@ return function()
           end
         },
       },
+      -- Search from treesitter
       { name = 'treesitter' },
     }),
     formatting = {
