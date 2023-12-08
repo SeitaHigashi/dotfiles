@@ -21,17 +21,17 @@ return function()
     vim_item.menu = ({
           nvim_lsp = " LSP",
           copilot = " Copilot",
-          cmp_tabnine = " tabnine",
+          cmp_tabnine = " Tabnine",
           codeium = " Codeium",
           nvim_lua = " Lua",
           luasnip = " Snip",
           path = " Path",
           buffer = " Buffer",
           treesitter = " TS",
-          calc = "󰃬 Calc",
+          calc = " Calc",
           rg = " RG",
-          emoji = "󰞅 Emoji",
-          nerdfont = " Nerdfont",
+          emoji = "😄 Emoji",
+          nerdfont = " Nerdfont",
         })[entry.source.name]
 
     return vim_item
