@@ -82,4 +82,5 @@ return function()
   telescope.load_extension("emoji")
   telescope.load_extension("dap")
   telescope.load_extension("frecency")
+  telescope.load_extension("luasnip")
 end

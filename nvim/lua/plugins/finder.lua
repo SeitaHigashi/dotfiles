@@ -11,6 +11,7 @@ return {
       { 'nvim-telescope/telescope-frecency.nvim' },
       { 'xiyaowong/telescope-emoji.nvim' },
       { 'tsakirist/telescope-lazy.nvim' },
+      { 'benfowler/telescope-luasnip.nvim'}
     },
     config = require('config.telescope'),
   },
