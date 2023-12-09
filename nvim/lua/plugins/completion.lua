@@ -1,21 +1,22 @@
+-- Completeion plugin: nvim-cmp
 return {
   {
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
     dependencies = {
       { 'onsails/lspkind-nvim' },
-      { 'saadparwaiz1/cmp_luasnip' },
       { 'windwp/nvim-autopairs' },
     },
     config = require('config.nvim-cmp'),
   },
 
-  --Snippets
+  -- Snippets
   {
     'L3MON4D3/LuaSnip',
     version = "v2.*",
     build = "make install_jsregexp",
     dependencies = {
+      { 'saadparwaiz1/cmp_luasnip' },
       { 'rafamadriz/friendly-snippets' },
     }
   },
@@ -30,6 +31,7 @@ return {
     },
   },
 
+  -- path
   {
     'hrsh7th/cmp-path',
     event = 'CmdlineEnter',
@@ -41,7 +43,7 @@ return {
   -- LSP
   {
     'hrsh7th/cmp-nvim-lsp',
-    event = 'InsertEnter',
+    event = 'LspAttach',
     dependencies = {
       { 'hrsh7th/nvim-cmp' },
     },
@@ -50,7 +52,7 @@ return {
     end
   },
 
-  -- LSP FileType
+  -- CMP FileType
   {
     'hrsh7th/cmp-nvim-lua',
     ft = 'lua',
@@ -69,6 +71,7 @@ return {
     },
   },
 
+  -- serching in buffer
   {
     'hrsh7th/cmp-buffer',
     event = 'InsertEnter',
@@ -77,6 +80,7 @@ return {
     },
   },
 
+  -- calcultor
   {
     'hrsh7th/cmp-calc',
     event = 'InsertEnter',
