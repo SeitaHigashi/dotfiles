@@ -38,7 +38,7 @@ jq "
       url: .obj.url,
       title: .obj.properties.Name.title[].plain_text,
       due_date: .obj.properties.\"Planned/End Date\".date,
-      progress: (try (100 - (now - .start_date)/(.end_date - .start_date)*100) catch null)
+      progress: (try (100 - (now - .start_date)/(.end_date - .start_date)*100) catch false)
     }
   ]
 "

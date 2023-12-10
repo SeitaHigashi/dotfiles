@@ -18,6 +18,7 @@
               :text "end: ${entry.due_date.end}"
             )
             (progress
+              :visible {entry.progress}
               :flipped true
               :value {entry.progress}
             )
