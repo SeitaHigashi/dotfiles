@@ -5,7 +5,6 @@
       :orientation "vertical"
       (for entry in {todo}
         (button
-          ;;:tooltip "${entry.due_date}"
           :onclick "xdg-open ${entry.url}"
           (box
           :orientation "vertical"
@@ -13,11 +12,9 @@
               :text {entry.title}
             )
             (label
-              :visible {entry.due_date.start=="null"?false:true}
               :text "start: ${entry.due_date.start}"
             )
             (label
-              :visible {entry.due_date.end=="null"?false:true}
               :text "end: ${entry.due_date.end}"
             )
             (progress
