@@ -1,0 +1,44 @@
+(defwidget todo []
+  (scroll
+    :vscroll: true
+    (box
+      :orientation "vertical"
+      (for entry in "${todo}"
+        (box
+        :orientation "vertical"
+          (button
+            :tooltip "${entry.due_date}"
+            :onclick "xdg-open ${entry.url}"
+            "${entry.title}"
+          )
+          (progress
+            :value "${entry.progress}"
+          )
+        )
+      )
+    )
+  )
+)
+
+
+(defpoll todo
+  :initial "init"
+  ; 60s * 30m  = 1800s
+  ;;:interval "1800s"
+  :interval "1800s"
+  "./scripts/todo.sh"
+)
+
+(defwindow todo
+  :monitor 0
+  :exclusive false
+  :stacking "bottom"
+  :geometry (geometry
+    :x "20%"
+    :y "2%"
+    :width "25%"
+    :height "25%"
+    :anchor "right top"
+  )
+  (todo)
+)
