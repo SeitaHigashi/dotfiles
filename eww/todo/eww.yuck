@@ -18,7 +18,8 @@
               :text "end: ${entry.due_date.end}"
             )
             (progress
-              :visible {entry.progress}
+              ;entry.progress returns false if no progress is set
+              :visible {entry.progress!=false}
               :flipped true
               :value {entry.progress}
             )
