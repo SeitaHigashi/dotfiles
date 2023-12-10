@@ -20,10 +20,10 @@
               :visible {entry.due_date.end=="null"?false:true}
               :text "end: ${entry.due_date.end}"
             )
-            ;;(progress
             (progress
               :flipped true
               :value {entry.progress}
+            )
           )
         )
       )
