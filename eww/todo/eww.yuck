@@ -12,10 +12,14 @@
               :text {entry.title}
             )
             (label
-              :text "start: ${entry.due_date.start}"
+              ;:text "start: ${entry.due_date.start}"
+              :text "start: ${entry.start_date}"
             )
             (label
-              :text "end: ${entry.due_date.end}"
+              ;:text "end: ${entry.due_date.end}"
+              ;:text "end: ${formattime(entry.end_date, "%Y-%m-%d %H:%M")}"
+              ;:text {formattime(1702224984, "HH:mm")}
+              :text "Hello"
             )
             (progress
               ;entry.progress returns false if no progress is set
@@ -32,10 +36,7 @@
 
 
 (defpoll todo
-  :initial "init"
-  ; 60s * 30m  = 1800s
-  ;;:interval "1800s"
-  :interval "1800s"
+  :interval "900s"
   "./scripts/todo.sh"
 )
 
@@ -44,10 +45,10 @@
   :exclusive false
   :stacking "bottom"
   :geometry (geometry
-    :x "20%"
+    :x "50%"
     :y "2%"
     :width "25%"
-    :height "25%"
+    :height "90%"
     :anchor "right top"
   )
   (todo)

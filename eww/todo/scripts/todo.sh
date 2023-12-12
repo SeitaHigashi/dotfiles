@@ -24,13 +24,13 @@ jq "
         try (
           .properties.\"Planned/End Date\".date.start |
             strptime(\"%Y-%m-%dT%H:%M:%S.000%z\") |
-            mktime) catch null
+            mktime) catch false
         ),
       end_date: (
         try (
           .properties.\"Planned/End Date\".date.end |
             strptime(\"%Y-%m-%dT%H:%M:%S.000%z\") |
-            mktime) catch null
+            mktime) catch false
         ),
     } |
 
@@ -38,6 +38,8 @@ jq "
       url: .obj.url,
       title: .obj.properties.Name.title[].plain_text,
       due_date: .obj.properties.\"Planned/End Date\".date,
+      start_date: .start_date,
+      end_date: .end_date,
       progress: (try (100 - (now - .start_date)/(.end_date - .start_date)*100) catch false)
     }
   ]
