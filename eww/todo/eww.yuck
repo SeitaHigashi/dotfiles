@@ -12,14 +12,12 @@
               :text {entry.title}
             )
             (label
-              ;:text "start: ${entry.due_date.start}"
-              :text "start: ${entry.start_date}"
+              :visible {entry.start_date!=false}
+              :text "start: ${formattime(entry.start_date, "%Y-%m-%d %H:%M")}"
             )
             (label
-              ;:text "end: ${entry.due_date.end}"
-              ;:text "end: ${formattime(entry.end_date, "%Y-%m-%d %H:%M")}"
-              ;:text {formattime(1702224984, "HH:mm")}
-              :text "Hello"
+              :visible {entry.end_date!=false}
+              :text "end: ${formattime(entry.end_date, "%Y-%m-%d %H:%M")}"
             )
             (progress
               ;entry.progress returns false if no progress is set
