@@ -15,9 +15,15 @@
   margin: 2px;
 }
 
-.todo label {
+label,
+progress,
+box {
   border-radius: 0;
   padding: 0px;
   margin: 0px;
+}
+
+.small {
+  font-size: 0.8em;
 }
 

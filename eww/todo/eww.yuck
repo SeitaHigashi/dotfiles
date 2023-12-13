@@ -1,26 +1,29 @@
 (defwidget todo []
   (scroll
-    :vscroll: true
+    ; only enable vertical
+    :hscroll false
     (box
       :orientation "vertical"
       (for entry in {todo}
         (button
           :onclick "xdg-open ${entry.url}"
           (box
-          :orientation "vertical"
+          :orientation "v"
             (label
               :text {entry.title}
             )
             (label
+              :class "small"
               :visible {entry.start_date!=false}
               :text "start: ${formattime(entry.start_date, "%Y-%m-%d %H:%M")}"
             )
             (label
+              :class "small"
               :visible {entry.end_date!=false}
               :text "end: ${formattime(entry.end_date, "%Y-%m-%d %H:%M")}"
             )
             (progress
-              ;entry.progress returns false if no progress is set
+              ; entry.progress returns false if no progress is set
               :visible {entry.progress!=false}
               :flipped true
               :value {entry.progress}
