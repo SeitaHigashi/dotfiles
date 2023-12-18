@@ -1,0 +1,15 @@
+* {
+  //background is transparent by default.
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+label, button {
+  font-size: 14;
+  border-radius: 8;
+  margin: 0 2;
+  padding: 0 8;
+  background: #444;
+  color: #fff;
+}

@@ -1,0 +1,68 @@
+(defwidget bar []
+  ;(literal :content hyprland)
+  (centerbox
+    :orientation "h"
+    (left-bar)
+    (center-bar)
+    (right-bar)
+  )
+)
+
+(defwidget left-bar []
+  (box
+    :class "left-bar"
+    :halign "start"
+    (label
+      :text {formattime(EWW_TIME, "%H:%M")}
+    )
+  )
+)
+
+(defwidget center-bar []
+  (box
+    :class "center-bar"
+    (label
+      :text {active-window}
+    )
+  )
+)
+
+(defwidget right-bar []
+  (box
+    :class "right-bar"
+    :halign "end"
+    (label
+      :text "${round(EWW_CPU.avg, 0)}%"
+    )
+    (label
+      :text "${round(EWW_RAM.used_mem_perc, 0)}%"
+    )
+    (label
+      :text "${round(EWW_BATTERY.total_avg, 0)}%"
+    )
+  )
+)
+
+(deflisten active-window
+  "while true; do
+    hyprctl activewindow -j | jq -r .title
+  done"
+)
+
+(deflisten hyprland
+  "./hyprland.sh"
+)
+
+(defwindow bar
+  :monitor 0
+  :exclusive true
+  :stacking "fg"
+  :geometry (geometry
+    :x "0%"
+    :y "0%"
+    :width "100%"
+    :height "2%"
+    :anchor "top center"
+  )
+  (bar)
+)
