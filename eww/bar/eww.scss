@@ -6,10 +6,26 @@
 }
 
 label, button {
-  font-size: 14;
+  font-size: 14px;
   border-radius: 8;
-  margin: 0 2;
-  padding: 0 8;
-  background: #444;
-  color: #fff;
+  margin: 0px 2px;
+  padding: 0px 6px;
+  background: rgba(80,80,80, 0.85);
+  color: #f8f8f2;
+}
+
+.cpu {
+  color: #4d4d4d;
+  background: rgba(241, 250, 140, 0.85);
+  border-radius: 14px 0px 0px 14px;
+  margin: 0px 0px 0px 2px;
+  padding: 0px 0px 0px 6px;
+}
+
+.mem {
+  color: #4d4d4d;
+  background: rgba(255, 110, 103, 0.85);
+  border-radius: 0px 14px 14px 0px;
+  margin: 0px 2px 0px 0px;
+  padding: 0px 6px 0px 0px;
 }
