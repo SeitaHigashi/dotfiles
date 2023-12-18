@@ -32,6 +32,9 @@
     :class "right-bar"
     :halign "end"
     (label
+      :text "${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
+    )
+    (label
       :text "${round(EWW_CPU.avg, 0)}%"
     )
     (label
@@ -46,6 +49,7 @@
 (deflisten active-window
   "while true; do
     hyprctl activewindow -j | jq -r .title
+    sleep 0.4
   done"
 )
 
