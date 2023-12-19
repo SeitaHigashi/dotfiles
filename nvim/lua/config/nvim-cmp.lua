@@ -50,11 +50,9 @@ return function()
     ["<Tab>"] = cmp.mapping(function(fallback)
       local entry = cmp.get_selected_entry()
       if cmp.visible() and entry  then
-          cmp.confirm({behavior = cmp.ConfirmBehavior.Replace, select = false })
+        cmp.confirm({behavior = cmp.ConfirmBehavior.Replace, select = false })
       elseif luasnip.expand_or_jumpable() then
         luasnip.expand_or_jump()
-      elseif has_words_before() then
-        cmp.complete()
       else
         fallback()
       end
