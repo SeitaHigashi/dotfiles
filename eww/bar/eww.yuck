@@ -51,11 +51,9 @@ CPU3 - Usage: ${EWW_CPU.cores[3].usage}% Freq: ${EWW_CPU.cores[3].freq}MHz
   )
 )
 
-(deflisten active-window
-  "while true; do
-    hyprctl activewindow -j | jq -r .title
-    sleep 0.4
-  done"
+(defpoll active-window
+  :interval "0.4s"
+  "hyprctl activewindow -j | jq -r .title"
 )
 
 (deflisten hyprland
