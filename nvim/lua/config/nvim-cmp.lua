@@ -66,6 +66,10 @@ return function()
     end, { "i", "s" }),
   }
 
+  local documentation_window = cmp.config.window.bordered()
+  documentation_window.max_width = 1000
+  documentation_window.max_height = 1000
+
   cmp.setup({
     completion = {
       completeopt = "menu,menuone,noselect",
@@ -115,7 +119,7 @@ return function()
     },
     window = {
       completion = cmp.config.window.bordered(),
-      documentation = cmp.config.window.bordered(),
+      documentation = documentation_window,
     },
     experimental = {
       ghost_text = true,
@@ -146,7 +150,6 @@ return function()
       format = formatting_func,
     },
   })
-
 
   -- Auto pairs
   local cmp_autopairs = require('nvim-autopairs.completion.cmp')
