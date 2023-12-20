@@ -54,6 +54,7 @@ return function()
       elseif luasnip.expand_or_jumpable() then
         luasnip.expand_or_jump()
       else
+        print(vim.inspect(has_words_before()))
         fallback()
       end
     end, { "i", "s" }),
@@ -69,6 +70,12 @@ return function()
   local documentation_window = cmp.config.window.bordered()
   documentation_window.max_width = 1000
   documentation_window.max_height = 1000
+
+  -- If unix and number of CPU divided by 3 is greater than 1, use that number
+  local ripgrep_thread = 1
+  if vim.fn.has('unix') == 1 then
+    ripgrep_thread = math.max(1, math.floor(vim.fn.system('nproc') / 3))
+  end
 
   cmp.setup({
     completion = {
@@ -105,12 +112,13 @@ return function()
       {
         name = 'rg',
         option = {
-          additional_arguments = "--max-depth 4 --follow --threads 1",
+          additional_arguments = "--max-depth 4 --follow --threads " .. ripgrep_thread,
           cwd = function()
             return vim.fn.expand("%:p:h:h")
           end
         },
       },
+
       -- Search from treesitter
       { name = 'treesitter' },
     }),
