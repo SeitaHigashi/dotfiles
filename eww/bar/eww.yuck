@@ -56,6 +56,11 @@ CPU3 - Usage: ${EWW_CPU.cores[3].usage}% Freq: ${EWW_CPU.cores[3].freq}MHz
   "hyprctl activewindow -j | jq -r .title"
 )
 
+(defpoll sound-volume
+  :interval "0.1s"
+  "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po \"[0-9]+%\" | head -1"
+)
+
 (deflisten hyprland
   "./hyprland.sh"
 )
