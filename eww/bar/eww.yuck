@@ -1,3 +1,5 @@
+(defvar eww "eww -c $HOME/.config/eww/bar")
+
 (defwidget bar []
   ;(literal :content hyprland)
   (centerbox
@@ -31,6 +33,11 @@
   (box
     :class "right-bar"
     :halign "end"
+    :space-evenly false
+    (label
+      :class "sound-volume"
+      :text {sound-volume}
+    )
     (label
       :class "cpu"
       :tooltip "CPU0 - Usage: ${EWW_CPU.cores[0].usage}% Freq: ${EWW_CPU.cores[0].freq}MHz
@@ -48,8 +55,55 @@ CPU3 - Usage: ${EWW_CPU.cores[3].usage}% Freq: ${EWW_CPU.cores[3].freq}MHz
       :class "bat"
       :text "${round(EWW_BATTERY.total_avg, 0)}%"
     )
+    (eventbox
+      :onhover "${eww} update power=true"
+      :onhoverlost "${eww} update power=false"
+      (box
+        :orientation "h"					
+				:space-evenly false 	 
+				:vexpand false 	
+				:class "powermenu"
+	      (revealer
+          :transition "slideleft"				
+	      	:reveal power			 
+	      	:duration "550ms"
+	        (box
+            :orientation "h"					
+	        	:space-evenly false
+            (button
+              :class "button-reb"					
+	            :tooltip "Reboot"		 
+	          	:onclick "reboot"
+              "󰜉"
+            )
+	          (button
+              :class "button-quit" 				
+	          	:tooltip "Log Out" 		 
+	          	:onclick "hyprctl dispatch exit"
+              "󰍃"
+            )
+	          (button
+              ;:class "button-lock" 				
+              :visible false
+	          	:tooltip "Lock Screen"	 
+	          	;:onclick "betterlockscreen -l"
+              ""
+              
+            )
+          )
+        )
+	      (button
+          :class "button-off"					
+	      	:tooltip "Shutdown"		 
+	      	:onclick "shutdown now"
+          "⏻"
+        )
+      )
+    )
   )
 )
+
+(defvar power false)
 
 (defpoll active-window
   :interval "0.4s"
