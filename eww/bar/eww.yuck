@@ -22,7 +22,12 @@
 
 (defwidget center-bar []
   (box
-    :class "center-bar"
+    :class "center-bar indicator"
+    :space-evenly false
+    (label
+      :class "workspace-indicator"
+      :text {active-workspace}
+    )
     (label
       :text {active-window}
     )
@@ -130,6 +135,11 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 )
 
 (defvar power false)
+
+(defpoll active-workspace
+  :interval "0.4s"
+  "hyprctl activewindow -j | jq -r .workspace.name"
+)
 
 (defpoll active-window
   :interval "0.4s"
