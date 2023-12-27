@@ -2,34 +2,52 @@
   // background is transparent by default
   // mergin and padding are 0 by default
   all: unset;
+  // font is Hack by default
+  font-family: "Hack", monospace;
+  // font is bold by default
+  font-weight: bold;
 }
 
 label, button {
   font-size: 14px;
   border-radius: 14px;
   margin: 0px 2px;
-  padding: 0px 6px;
+  padding: 0px 4px;
   background: rgba(80,80,80, 0.85);
   color: #f8f8f2;
 }
 
-.cpu {
+.indicator {
   color: #4d4d4d;
-  background: rgba(241, 250, 140, 0.85);
-  border-radius: 14px 0px 0px 14px;
-  margin: 0px 0px 0px 2px;
-  padding: 0px 0px 0px 6px;
+  background: rgba(80,80,80, 0.85);
+  border-radius: 14px;
+  padding: 0px;
+  margin: 0px 2px;
+
+  label {
+    margin: 0px;
+    padding: 0px 5px;
+
+  }
+
+  .bat-icon {
+    color: #4d4d4d;
+    background: rgba(241, 250, 140, 0.85);
+  }
+
+  .mem-icon {
+    color: #4d4d4d;
+    background: rgba(255, 110, 103, 0.85);
+  }
+
+  .cpu-icon {
+    color: #4d4d4d;
+    background: rgba(251, 200, 140, 0.85);
+  }
+
+  .vol-icon {
+    color: #4d4d4d;
+    background: rgba(154, 237, 254, 0.85);
+  }
 }
 
-.mem {
-  color: #4d4d4d;
-  background: rgba(255, 110, 103, 0.85);
-  border-radius: 0px 14px 14px 0px;
-  margin: 0px 2px 0px 0px;
-  padding: 0px 6px 0px 0px;
-}
-
-.sound-volume {
-  color: #4d4d4d;
-  background: rgba(154, 237, 254, 0.85);
-}

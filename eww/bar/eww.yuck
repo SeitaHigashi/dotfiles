@@ -34,26 +34,52 @@
     :class "right-bar"
     :halign "end"
     :space-evenly false
-    (label
-      :class "sound-volume"
-      :text {sound-volume}
+    (box
+      :class "indicator"
+      :orientation "h"					
+      :space-evenly false 	 
+      (label
+        :class "vol-icon"
+        :text "󰕾"
+      )
+      (label :text {sound-volume})
     )
-    (label
-      :class "cpu"
-      :tooltip "CPU0 - Usage: ${EWW_CPU.cores[0].usage}% Freq: ${EWW_CPU.cores[0].freq}MHz
+    (box
+      :class "indicator"
+      :orientation "h"					
+      :space-evenly false 	 
+      (label
+        :class "cpu-icon"
+        :text "󰍛"
+      )
+      (label
+        :tooltip "CPU0 - Usage: ${EWW_CPU.cores[0].usage}% Freq: ${EWW_CPU.cores[0].freq}MHz
 CPU1 - Usage: ${EWW_CPU.cores[1].usage}% Freq: ${EWW_CPU.cores[1].freq}MHz
 CPU2 - Usage: ${EWW_CPU.cores[2].usage}% Freq: ${EWW_CPU.cores[2].freq}MHz
 CPU3 - Usage: ${EWW_CPU.cores[3].usage}% Freq: ${EWW_CPU.cores[3].freq}MHz
-        Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
-      :text "${round(EWW_CPU.avg, 0)}%"
+Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
+        :text "${round(EWW_CPU.avg, 0)}%"
+      )
     )
-    (label
-      :class "mem"
-      :text "${round(EWW_RAM.used_mem_perc, 0)}%"
+    (box
+      :class "indicator"
+      :orientation "h"					
+      :space-evenly false 	 
+      (label
+        :class "mem-icon"
+        :text "󰍛"
+      )
+      (label :text "${round(EWW_RAM.used_mem_perc, 0)}%")
     )
-    (label
-      :class "bat"
-      :text "${round(EWW_BATTERY.total_avg, 0)}%"
+    (box
+      :class "indicator"
+      :orientation "h"					
+      :space-evenly false 	 
+      (label
+        :class "bat-icon"
+        :text "󱐋"
+      )
+      (label :text "${round(EWW_BATTERY.total_avg, 0)}%")
     )
     (eventbox
       :onhover "${eww} update power=true"
