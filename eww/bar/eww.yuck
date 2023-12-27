@@ -14,9 +14,9 @@
   (box
     :class "left-bar"
     :halign "start"
-    (label
-      :text {formattime(EWW_TIME, "%H:%M")}
-    )
+    :space-evenly false
+    (label :text {formattime(EWW_TIME, "%H:%M")})
+    (label :text {playerctl})
   )
 )
 
@@ -147,8 +147,13 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 )
 
 (defpoll sound-volume
-  :interval "0.1s"
+  :interval "0.15s"
   "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po \"[0-9]+%\" | head -1"
+)
+
+(defpoll playerctl
+  :interval "0.8s"
+  "playerctl metadata --format \"{{ artist }} - {{ title }}\""
 )
 
 (deflisten hyprland
