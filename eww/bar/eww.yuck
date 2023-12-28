@@ -16,7 +16,50 @@
     :halign "start"
     :space-evenly false
     (label :text {formattime(EWW_TIME, "%H:%M")})
-    (label :text {playerctl})
+    (revealer
+      :reveal {player_status != ""}
+      (eventbox
+        :class "indicator"
+        :onhover "${eww} update player=true"
+        :onhoverlost "${eww} update player=false"
+        (box
+          :space-evenly false
+          (revealer
+            :transition "slideleft"				
+            :reveal player
+	        	:duration "1s"
+            (box
+              :space-evenly false
+              (button
+                :onclick "playerctl previous"
+                ""
+              )
+              (button
+                :onclick "playerctl play-pause"
+                ""
+              )
+              (button
+                :onclick "playerctl next"
+                ""
+              )
+            )
+          )
+          (label
+            :class "player-indicator"
+            :text {playing_title}
+          )
+          (revealer
+            :transition "slideright"				
+            :reveal player
+	        	:duration "1s"
+            (box
+              :space-evenly false
+              (label :text {playing_artist})
+            )
+          )
+        )
+      )
+    )
   )
 )
 
@@ -119,7 +162,6 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 	          	:tooltip "Lock Screen"	 
 	          	;:onclick "betterlockscreen -l"
               ""
-              
             )
           )
         )
@@ -136,6 +178,8 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 
 (defvar power false)
 
+(defvar player false)
+
 (defpoll active-workspace
   :interval "0.4s"
   "hyprctl activewindow -j | jq -r .workspace.name"
@@ -151,9 +195,19 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
   "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po \"[0-9]+%\" | head -1"
 )
 
-(defpoll playerctl
-  :interval "0.8s"
-  "playerctl metadata --format \"{{ artist }} - {{ title }}\""
+(deflisten playing_artist
+  :initial ""
+  "playerctl -F metadata artist"
+)
+
+(deflisten playing_title
+  :initial ""
+  "playerctl -F metadata title"
+)
+
+(deflisten player_status
+  :initial ""
+  "playerctl -sF status"
 )
 
 (deflisten hyprland
