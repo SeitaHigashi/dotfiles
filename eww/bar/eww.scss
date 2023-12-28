@@ -17,6 +17,18 @@ label, button {
   color: #f8f8f2;
 }
 
+scale {
+  highlight {
+    border: 3px solid rgb(170, 247, 146);
+  }
+  trough {
+    border: 3px solid rgb(170, 247, 146);
+    border-radius: 6px;
+    min-width: 100px;
+    margin: 0px 4px;
+  }
+}
+
 .indicator {
   color: #4d4d4d;
   background: rgba(80,80,80, 0.85);

@@ -47,7 +47,6 @@
               (button
                 :onclick "playerctl previous"
                 ""
-  :initial ""
               )
               (button
                 :onclick "playerctl play-pause"
@@ -70,6 +69,12 @@
             (box
               :space-evenly false
               (label :text {playing_artist})
+              (scale
+                :min 0
+                :max {mpris.length}
+                :value {mpris_positions[mpris.name].position}
+                :onchange "playerctl position {}"
+              )
             )
           )
         )
@@ -220,6 +225,16 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 
 (deflisten player_status
   "playerctl -sF status"
+)
+
+(deflisten mpris
+  :initial "{}"
+  "./scripts/mpris.sh"
+)
+
+(deflisten mpris_positions
+  :initial "{}"
+  "scripts/positions.sh"
 )
 
 (deflisten hyprland
