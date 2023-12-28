@@ -15,7 +15,21 @@
     :class "left-bar"
     :halign "start"
     :space-evenly false
-    (label :text {formattime(EWW_TIME, "%H:%M")})
+    (eventbox
+      :onhover "${eww} update timebox=true"
+      :onhoverlost "${eww} update timebox=false"
+      (box
+        :class "indicator"
+        :space-evenly false
+        (revealer
+          :transition "slideleft"				
+          :reveal timebox
+	        :duration "1s"
+          (label :text {formattime(EWW_TIME, "%Y-%m-%d")})
+        )
+        (label :text {formattime(EWW_TIME, "%H:%M")})
+      )
+    )
     (revealer
       :reveal {player_status != ""}
       (eventbox
@@ -33,10 +47,11 @@
               (button
                 :onclick "playerctl previous"
                 ""
+  :initial ""
               )
               (button
                 :onclick "playerctl play-pause"
-                ""
+                { player_status == "Playing" ? "" : "" }
               )
               (button
                 :onclick "playerctl next"
@@ -177,8 +192,8 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 )
 
 (defvar power false)
-
 (defvar player false)
+(defvar timebox false)
 
 (defpoll active-workspace
   :interval "0.4s"
@@ -196,17 +211,14 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 )
 
 (deflisten playing_artist
-  :initial ""
   "playerctl -F metadata artist"
 )
 
 (deflisten playing_title
-  :initial ""
   "playerctl -F metadata title"
 )
 
 (deflisten player_status
-  :initial ""
   "playerctl -sF status"
 )
 
