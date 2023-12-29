@@ -1,7 +1,6 @@
 (defvar eww "eww -c $HOME/.config/eww/bar")
 
 (defwidget bar []
-  ;(literal :content hyprland)
   (centerbox
     :orientation "h"
     (left-bar)
@@ -31,7 +30,7 @@
       )
     )
     (revealer
-      :reveal {player_status != ""}
+      :reveal {mpris.status != ""}
       (eventbox
         :class "indicator"
         :onhover "${eww} update player=true"
@@ -60,7 +59,7 @@
           )
           (label
             :class "player-indicator"
-            :text {playing_title}
+            :text {mpris.title}
           )
           (revealer
             :transition "slideright"				
@@ -68,7 +67,7 @@
 	        	:duration "1s"
             (box
               :space-evenly false
-              (label :text {playing_artist})
+              (label :text {mpris.artist})
               (scale
                 :min 0
                 :max {mpris.length}
@@ -89,10 +88,10 @@
     :space-evenly false
     (label
       :class "workspace-indicator"
-      :text {active-workspace}
+      :text {hyprland.workspace.name}
     )
     (label
-      :text {active-window}
+      :text {hyprland.title}
     )
   )
 )
@@ -200,27 +199,14 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 (defvar player false)
 (defvar timebox false)
 
-(defpoll active-workspace
-  :interval "0.4s"
-  "hyprctl activewindow -j | jq -r .workspace.name"
-)
-
-(defpoll active-window
-  :interval "0.4s"
-  "hyprctl activewindow -j | jq -r .title"
+(defpoll hyprland
+  :interval "0.2s"
+  "hyprctl activewindow -j"
 )
 
 (defpoll sound-volume
   :interval "0.15s"
   "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po \"[0-9]+%\" | head -1"
-)
-
-(deflisten playing_artist
-  "playerctl -F metadata artist"
-)
-
-(deflisten playing_title
-  "playerctl -F metadata title"
 )
 
 (deflisten player_status
@@ -235,10 +221,6 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 (deflisten mpris_positions
   :initial "{}"
   "scripts/positions.sh"
-)
-
-(deflisten hyprland
-  "./hyprland.sh"
 )
 
 (defwindow bar
