@@ -86,12 +86,27 @@
   (box
     :class "center-bar indicator"
     :space-evenly false
-    (label
-      :class "workspace-indicator"
-      :text {hyprland.workspace.name}
-    )
-    (label
-      :text {hyprland.title}
+    (eventbox
+      :onhover "${eww} update onhover_hyprland=true"
+      :onhoverlost "${eww} update onhover_hyprland=false"
+      (box
+        :space-evenly false
+        (label
+          :class "workspace-indicator"
+          :text {hyprland.workspace.name}
+        )
+        (label
+          :text {hyprland.class}
+        )
+        (revealer
+          :transition "slideright"				
+          :reveal onhover_hyprland
+	      	:duration "1s"
+          (label
+            :text {hyprland.title}
+          )
+        )
+      )
     )
   )
 )
@@ -198,6 +213,7 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 (defvar power false)
 (defvar player false)
 (defvar timebox false)
+(defvar onhover_hyprland false)
 
 (defpoll hyprland
   :interval "0.2s"
