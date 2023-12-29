@@ -49,7 +49,7 @@
               )
               (button
                 :onclick "playerctl play-pause"
-                { player_status == "Playing" ? "" : "" }
+                { mpris.status == "Playing" ? "" : "" }
               )
               (button
                 :onclick "playerctl next"
@@ -207,10 +207,6 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 (defpoll sound-volume
   :interval "0.15s"
   "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po \"[0-9]+%\" | head -1"
-)
-
-(deflisten player_status
-  "playerctl -sF status"
 )
 
 (deflisten mpris
