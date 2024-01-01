@@ -1,5 +1,11 @@
 (defvar eww "eww -c $HOME/.config/eww/bar")
 
+(defvar power false)
+(defvar player false)
+(defvar timebox false)
+(defvar onhover_hyprland false)
+(defvar onhover_volume false)
+
 (defwidget bar []
   (centerbox
     :orientation "h"
@@ -30,7 +36,7 @@
       )
     )
     (revealer
-      :reveal {mpris.status != ""}
+      :reveal {mpris?.status != ""}
       (eventbox
         :class "indicator"
         :onhover "${eww} update player=true"
@@ -49,7 +55,7 @@
               )
               (button
                 :onclick "playerctl play-pause"
-                { mpris.status == "Playing" ? "" : "" }
+                { mpris?.status == "Playing" ? "" : "" }
               )
               (button
                 :onclick "playerctl next"
@@ -59,7 +65,7 @@
           )
           (label
             :class "player-indicator"
-            :text {mpris.title}
+            :text {mpris?.title?:""}
           )
           (revealer
             :transition "slideright"				
@@ -67,11 +73,12 @@
 	        	:duration "1s"
             (box
               :space-evenly false
-              (label :text {mpris.artist})
+              (label :text {mpris?.artist?:""})
               (scale
+                :class "music"
                 :min 0
-                :max {mpris.length}
-                :value {mpris_positions[mpris.name].position}
+                :max {position?.length?:0}
+                :value {position?.position?:0}
                 :onchange "playerctl position {}"
               )
             )
@@ -86,6 +93,7 @@
   (box
     :class "center-bar indicator"
     :space-evenly false
+    :visible {hyprland != {}}
     (eventbox
       :onhover "${eww} update onhover_hyprland=true"
       :onhoverlost "${eww} update onhover_hyprland=false"
@@ -93,17 +101,17 @@
         :space-evenly false
         (label
           :class "workspace-indicator"
-          :text {hyprland.workspace.name}
+          :text {hyprland?.workspace?.name?:""}
         )
         (label
-          :text {hyprland.class}
+          :text {hyprland?.class?:""}
         )
         (revealer
           :transition "slideright"				
           :reveal onhover_hyprland
-	      	:duration "1s"
+        	:duration "1s"
           (label
-            :text {hyprland.title}
+            :text {hyprland?.title?:""}
           )
         )
       )
@@ -116,15 +124,35 @@
     :class "right-bar"
     :halign "end"
     :space-evenly false
-    (box
-      :class "indicator"
-      :orientation "h"					
-      :space-evenly false 	 
-      (label
-        :class "vol-icon"
-        :text "󰕾"
+    (eventbox
+      :onhover "${eww} update onhover_volume=true"
+      :onhoverlost "${eww} update onhover_volume=false"
+      (box
+        :class "indicator"
+        :orientation "h"					
+        :space-evenly false 	 
+        (button
+          :onclick "pactl set-sink-mute @DEFAULT_SINK@ toggle"
+          (label
+            :class { sound-mute =~ "no" ? "vol-icon" : "inactive"}
+            :text {sound-mute =~ "yes" ? "󰖁" : "󰕾"}
+          )
+        )
+        (revealer
+          :class "volume"
+          :class { sound-mute =~ "no" ? "volume" : "inactive"}
+          :transition "slideright"				
+          :reveal onhover_volume
+	        :duration "1s"
+          (scale
+            :min 0
+            :max 100
+            :value {sound-volume?:0}
+            :onchange "pactl set-sink-volume @DEFAULT_SINK@ {}%"
+          )
+        )
+        (label :text "${sound-volume}%")
       )
-      (label :text {sound-volume})
     )
     (box
       :class "indicator"
@@ -210,29 +238,30 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
   )
 )
 
-(defvar power false)
-(defvar player false)
-(defvar timebox false)
-(defvar onhover_hyprland false)
-
 (defpoll hyprland
   :interval "0.2s"
+  :initial "{}"
   "hyprctl activewindow -j"
 )
 
 (defpoll sound-volume
   :interval "0.15s"
-  "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po \"[0-9]+%\" | head -1"
+  "pactl get-sink-volume @DEFAULT_SINK@ | grep -Po \"[0-9]+%\" | head -1 | grep -Po \"[0-9]+\""
+)
+
+(defpoll sound-mute
+  :interval "0.3s"
+  "pactl get-sink-mute @DEFAULT_SINK@"
 )
 
 (deflisten mpris
-  :initial "{}"
+  :initial "{\"status\": \"\"}"
   "./scripts/mpris.sh"
 )
 
-(deflisten mpris_positions
+(deflisten position
   :initial "{}"
-  "scripts/positions.sh"
+  "scripts/position.sh"
 )
 
 (defwindow bar

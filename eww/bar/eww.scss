@@ -1,3 +1,7 @@
+$black-string-color: #4d4d4d;
+$music-color: rgba(170, 247, 146, 0.85);
+$volume-background: rgba(154, 237, 254, 0.85);
+
 * {
   // background is transparent by default
   // mergin and padding are 0 by default
@@ -17,20 +21,20 @@ label, button {
   color: #f8f8f2;
 }
 
-scale {
-  highlight {
-    border: 3px solid rgb(170, 247, 146);
-  }
-  trough {
-    border: 3px solid rgb(170, 247, 146);
-    border-radius: 6px;
-    min-width: 100px;
-    margin: 0px 4px;
-  }
-}
+ scale {
+   highlight {
+     border: 3px solid;
+   }
+   trough {
+     border: 3px solid;
+     border-radius: 6px;
+     min-width: 100px;
+     margin: 0px 4px;
+   }
+ }
 
 .indicator {
-  color: #4d4d4d;
+  color: $black-string-color;
   background: rgba(80,80,80, 0.85);
   border-radius: 14px;
   padding: 0px;
@@ -43,33 +47,51 @@ scale {
   }
 
   .bat-icon {
-    color: #4d4d4d;
+    color: $black-string-color;
     background: rgba(241, 250, 140, 0.85);
   }
 
   .mem-icon {
-    color: #4d4d4d;
+    color: $black-string-color;
     background: rgba(255, 110, 103, 0.85);
   }
 
   .cpu-icon {
-    color: #4d4d4d;
+    color: $black-string-color;
     background: rgba(251, 200, 140, 0.85);
   }
 
   .vol-icon {
-    color: #4d4d4d;
+    color: $black-string-color;
     background: rgba(154, 237, 254, 0.85);
   }
 
   .player-indicator {
-    color: #4d4d4d;
-    background: rgba(170, 247, 146, 0.85);
+    color: $black-string-color;
+    background: $music-color;
   }
 
   .workspace-indicator {
-    color: #4d4d4d;
+    color: $black-string-color;
     background: rgba(154, 237, 254, 0.85);
+  }
+
+  .inactive {
+    background: rgba(110, 110, 110, 0.85);
+  }
+}
+
+.music {
+  highlight,
+  trough {
+    border-color: $music-color;
+  }
+}
+
+.volume {
+  highlight,
+  trough {
+    border-color: $volume-background;
   }
 }
 
