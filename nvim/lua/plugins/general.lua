@@ -119,5 +119,11 @@ return {
     enabled = vim.env.HOME_ENV,
     --lazy = false,
     opts = {},
+  },
+
+  {
+    'elkowar/yuck.vim',
+    ft = 'yuck',
   }
+
 }
