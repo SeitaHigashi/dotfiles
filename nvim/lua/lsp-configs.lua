@@ -5,6 +5,11 @@ function M.on_attach(client, bufnr)
   -- Enable completion triggered by <c-x><c-o>
   vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
 
+  -- If vim version is 0.10.0 or later, enalbe the inlay hints
+  if vim.fn.has('nvim-0.10') == 1 then
+    vim.lsp.inlay_hint.enable(bufnr)
+  end
+
   require('keybinds')['lsp'](bufnr)
   require('config.which-key').lsp(bufnr)
 
