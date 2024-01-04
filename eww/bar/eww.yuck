@@ -4,6 +4,8 @@
 (defvar player false)
 (defvar timebox false)
 (defvar onhover_hyprland false)
+(defvar onhover_cpu false)
+(defvar onhover_bat false)
 (defvar onhover_volume false)
 
 (defwidget bar []
@@ -142,26 +144,35 @@
       (label :text "${sound-volume}%")
     )
     (indicator
-      :class "cpu"
-      :icon "󰍛"
-      (label
-        :tooltip "CPU0 - Usage: ${EWW_CPU.cores[0].usage}% Freq: ${EWW_CPU.cores[0].freq}MHz
+      :onhover "${eww} update onhover_cpu=true"
+      :onhoverlost "${eww} update onhover_cpu=false"
+      :tooltip "CPU0 - Usage: ${EWW_CPU.cores[0].usage}% Freq: ${EWW_CPU.cores[0].freq}MHz
 CPU1 - Usage: ${EWW_CPU.cores[1].usage}% Freq: ${EWW_CPU.cores[1].freq}MHz
 CPU2 - Usage: ${EWW_CPU.cores[2].usage}% Freq: ${EWW_CPU.cores[2].freq}MHz
-CPU3 - Usage: ${EWW_CPU.cores[3].usage}% Freq: ${EWW_CPU.cores[3].freq}MHz
-Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
-        :text "${round(EWW_CPU.avg, 0)}%"
-      )
-    )
-    (indicator
-      :class "mem"
+CPU3 - Usage: ${EWW_CPU.cores[3].usage}% Freq: ${EWW_CPU.cores[3].freq}MHz"
+      :class "cpu"
       :icon "󰍛"
+      (label :text "${round(EWW_CPU.avg, 0)}%")
+      (revealer
+        :transition "slideright"				
+        :reveal onhover_cpu
+	      :duration "1s"
+        (label :text "${EWW_TEMPS.CORETEMP_PACKAGE_ID_0?:0}°C")
+      )
       (label :text "${round(EWW_RAM.used_mem_perc, 0)}%")
     )
     (indicator
+      :onhover "${eww} update onhover_bat=true"
+      :onhoverlost "${eww} update onhover_bat=false"
       :class "bat"
       :icon "󱐋"
       (label :text "${round(EWW_BATTERY.total_avg, 0)}%")
+      (revealer
+        :transition "slideright"				
+        :reveal onhover_bat
+	      :duration "1s"
+        (label :text "${EWW_TEMPS.BAT0_TEMP?:0}°C")
+      )
     )
     (eventbox
       :onhover "${eww} update power=true"
@@ -213,6 +224,7 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 
 (defwidget indicator [
   icon
+  ?tooltip
   ?class
   ?onscroll
   ?onhover
@@ -222,6 +234,7 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
   ?onrightclick
 ]
   (eventbox
+    :tooltip tooltip
     :onclick onclick
     :onscroll onscroll
     :onhover onhover

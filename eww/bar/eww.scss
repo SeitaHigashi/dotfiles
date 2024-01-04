@@ -56,14 +56,9 @@ scale {
     color: #f8f8f2;
   }
 
-  .mem {
-    color: $black-string-color;
-    background: rgba(255, 110, 103, 0.85);
-  }
-
   .cpu {
     color: $black-string-color;
-    background: rgba(251, 200, 140, 0.85);
+    background: rgba(250, 140, 163, 0.85);
   }
 
   .bat {
