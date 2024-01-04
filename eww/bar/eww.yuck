@@ -20,6 +20,7 @@
     :class "left-bar"
     :halign "start"
     :space-evenly false
+    :spacing 2
     (eventbox
       :onhover "${eww} update timebox=true"
       :onhoverlost "${eww} update timebox=false"
@@ -43,12 +44,14 @@
         :onhoverlost "${eww} update player=false"
         (box
           :space-evenly false
+          :spacing 2
           (revealer
             :transition "slideleft"				
             :reveal player
 	        	:duration "1s"
             (box
               :space-evenly false
+              :spacing 2
               (button
                 :onclick "playerctl previous"
                 ""
@@ -93,27 +96,19 @@
   (box
     :class "center-bar indicator"
     :space-evenly false
+    :spacing 2
     :visible {hyprland != {}}
-    (eventbox
+    (indicator
+      :class "workspace"
       :onhover "${eww} update onhover_hyprland=true"
       :onhoverlost "${eww} update onhover_hyprland=false"
-      (box
-        :space-evenly false
-        (label
-          :class "workspace-indicator"
-          :text {hyprland?.workspace?.name?:""}
-        )
-        (label
-          :text {hyprland?.class?:""}
-        )
-        (revealer
-          :transition "slideright"				
-          :reveal onhover_hyprland
-        	:duration "1s"
-          (label
-            :text {hyprland?.title?:""}
-          )
-        )
+      :icon {hyprland?.workspace?.name?:""}
+      (label :text {hyprland?.class?:""})
+      (revealer
+        :transition "slideright"				
+        :reveal onhover_hyprland
+      	:duration "1s"
+        (label :text {hyprland?.title?:""})
       )
     )
   )
@@ -121,47 +116,34 @@
 
 (defwidget right-bar []
   (box
-    :class "right-bar"
-    :halign "end"
-    :space-evenly false
-    (eventbox
+   :class "right-bar"
+   :halign "end"
+   :space-evenly false
+    :spacing 2
+    (indicator
       :onhover "${eww} update onhover_volume=true"
       :onhoverlost "${eww} update onhover_volume=false"
-      (box
-        :class "indicator"
-        :orientation "h"					
-        :space-evenly false 	 
-        (button
-          :onclick "pactl set-sink-mute @DEFAULT_SINK@ toggle"
-          (label
-            :class { sound-mute =~ "no" ? "vol-icon" : "inactive"}
-            :text {sound-mute =~ "yes" ? "󰖁" : "󰕾"}
-          )
+      :onclick "pactl set-sink-mute @DEFAULT_SINK@ toggle"
+      :icon {sound-mute =~ "yes" ? "󰖁" : "󰕾"}
+      :class { sound-mute =~ "no" ? "volume" : "inactive"}
+      (revealer
+        :class "volume"
+        :class { sound-mute =~ "no" ? "volume" : "inactive"}
+        :transition "slideright"				
+        :reveal onhover_volume
+	      :duration "1s"
+        (scale
+          :min 0
+          :max 100
+          :value {sound-volume?:0}
+          :onchange "pactl set-sink-volume @DEFAULT_SINK@ {}%"
         )
-        (revealer
-          :class "volume"
-          :class { sound-mute =~ "no" ? "volume" : "inactive"}
-          :transition "slideright"				
-          :reveal onhover_volume
-	        :duration "1s"
-          (scale
-            :min 0
-            :max 100
-            :value {sound-volume?:0}
-            :onchange "pactl set-sink-volume @DEFAULT_SINK@ {}%"
-          )
-        )
-        (label :text "${sound-volume}%")
       )
+      (label :text "${sound-volume}%")
     )
-    (box
-      :class "indicator"
-      :orientation "h"					
-      :space-evenly false 	 
-      (label
-        :class "cpu-icon"
-        :text "󰍛"
-      )
+    (indicator
+      :class "cpu"
+      :icon "󰍛"
       (label
         :tooltip "CPU0 - Usage: ${EWW_CPU.cores[0].usage}% Freq: ${EWW_CPU.cores[0].freq}MHz
 CPU1 - Usage: ${EWW_CPU.cores[1].usage}% Freq: ${EWW_CPU.cores[1].freq}MHz
@@ -171,24 +153,14 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
         :text "${round(EWW_CPU.avg, 0)}%"
       )
     )
-    (box
-      :class "indicator"
-      :orientation "h"					
-      :space-evenly false 	 
-      (label
-        :class "mem-icon"
-        :text "󰍛"
-      )
+    (indicator
+      :class "mem"
+      :icon "󰍛"
       (label :text "${round(EWW_RAM.used_mem_perc, 0)}%")
     )
-    (box
-      :class "indicator"
-      :orientation "h"					
-      :space-evenly false 	 
-      (label
-        :class "bat-icon"
-        :text "󱐋"
-      )
+    (indicator
+      :class "bat"
+      :icon "󱐋"
       (label :text "${round(EWW_BATTERY.total_avg, 0)}%")
     )
     (eventbox
@@ -206,14 +178,15 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
 	        (box
             :orientation "h"					
 	        	:space-evenly false
+            :spacing 2
             (button
-              :class "button-reb"					
+              :class "power"					
 	            :tooltip "Reboot"		 
 	          	:onclick "reboot"
               "󰜉"
             )
 	          (button
-              :class "button-quit" 				
+              :class "power"					
 	          	:tooltip "Log Out" 		 
 	          	:onclick "hyprctl dispatch exit"
               "󰍃"
@@ -228,12 +201,43 @@ Package Temp: ${EWW_TEMPS.CORETEMP_PACKAGE_ID_0}°C"
           )
         )
 	      (button
-          :class "button-off"					
+          :class "power"					
 	      	:tooltip "Shutdown"		 
 	      	:onclick "shutdown now"
           "⏻"
         )
       )
+    )
+  )
+)
+
+(defwidget indicator [
+  icon
+  ?class
+  ?onscroll
+  ?onhover
+  ?onhoverlost
+  ?onclick
+  ?onmiddleclick
+  ?onrightclick
+]
+  (eventbox
+    :onclick onclick
+    :onscroll onscroll
+    :onhover onhover
+    :onhoverlost onhoverlost
+    :onclick onclick
+    :onmiddleclick onmiddleclick
+    :onrightclick onrightclick
+    (box
+      :class "indicator"
+      :orientation "h"					
+      :space-evenly false 	 
+      (label
+        :class "icon ${class}"
+        :text icon
+      )
+      (children)
     )
   )
 )

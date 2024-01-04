@@ -1,7 +1,33 @@
 * {
-  //background is transparent by default.
-  //background: transparent;
+  // background is transparent by default
+  // mergin and padding are 0 by default
+  all: unset;
+  // font is Hack by default
+  font-family: "Hack", monospace;
+  // font is bold by default
+  font-weight: bold;
+  font-size: 14px;
+  margin: 0px;
+  padding: 0px;
 }
 
-.right-bar {
+.window {
+  border-radius: 14px;
+  margin: 0px;
+  padding: 12px;
+  background: rgb(80,80,80);
+  color: #f8f8f2;
+}
+
+scale {
+  trough {
+    border-radius: 6px;
+    min-width: 100px;
+    margin: 0px 4px;
+  }
+  highlight,
+  trough {
+    border: 3px solid;
+    color: #f8f8f2;
+  }
 }

@@ -10,75 +10,25 @@ $volume-background: rgba(154, 237, 254, 0.85);
   font-family: "Hack", monospace;
   // font is bold by default
   font-weight: bold;
-}
-
-label, button {
   font-size: 14px;
-  border-radius: 14px;
-  margin: 0px 2px;
-  padding: 0px 4px;
-  background: rgba(80,80,80, 0.85);
-  color: #f8f8f2;
 }
 
- scale {
-   highlight {
-     border: 3px solid;
-   }
-   trough {
-     border: 3px solid;
-     border-radius: 6px;
-     min-width: 100px;
-     margin: 0px 4px;
-   }
- }
+scale {
+  highlight {
+    border: 3px solid;
+  }
+  trough {
+    border: 3px solid;
+    border-radius: 6px;
+    min-width: 100px;
+    margin: 0px 4px;
+  }
+}
 
-.indicator {
+.player-indicator {
   color: $black-string-color;
-  background: rgba(80,80,80, 0.85);
+  background: $music-color;
   border-radius: 14px;
-  padding: 0px;
-  margin: 0px 2px;
-
-  label {
-    margin: 0px;
-    padding: 0px 5px;
-
-  }
-
-  .bat-icon {
-    color: $black-string-color;
-    background: rgba(241, 250, 140, 0.85);
-  }
-
-  .mem-icon {
-    color: $black-string-color;
-    background: rgba(255, 110, 103, 0.85);
-  }
-
-  .cpu-icon {
-    color: $black-string-color;
-    background: rgba(251, 200, 140, 0.85);
-  }
-
-  .vol-icon {
-    color: $black-string-color;
-    background: rgba(154, 237, 254, 0.85);
-  }
-
-  .player-indicator {
-    color: $black-string-color;
-    background: $music-color;
-  }
-
-  .workspace-indicator {
-    color: $black-string-color;
-    background: rgba(154, 237, 254, 0.85);
-  }
-
-  .inactive {
-    background: rgba(110, 110, 110, 0.85);
-  }
 }
 
 .music {
@@ -88,10 +38,69 @@ label, button {
   }
 }
 
-.volume {
-  highlight,
-  trough {
-    border-color: $volume-background;
+.indicator {
+  border-radius: 14px;
+  margin: 0px;
+  background: rgba(80,80,80, 0.85);
+  color: #f8f8f2;
+
+  label {
+    padding: 0px 5px;
   }
+
+  .icon {
+    font-size: 14px;
+    border-radius: 14px;
+    padding: 0px 5px;
+    background: rgba(80,80,80, 0.85);
+    color: #f8f8f2;
+  }
+
+  .mem {
+    color: $black-string-color;
+    background: rgba(255, 110, 103, 0.85);
+  }
+
+  .cpu {
+    color: $black-string-color;
+    background: rgba(251, 200, 140, 0.85);
+  }
+
+  .bat {
+    color: $black-string-color;
+    background: rgba(241, 250, 140, 0.85);
+  }
+
+  .workspace {
+     color: $black-string-color;
+     background: rgba(154, 237, 254, 0.85);
+   }
+
+  .volume {
+    color: $black-string-color;
+    background: rgba(154, 237, 254, 0.85);
+
+    highlight,
+    trough {
+      border-color: $volume-background;
+    }
+  }
+
+  .inactive {
+    color: $black-string-color;
+    background: rgba(200, 200, 200, 0.85);
+
+    highlight,
+    trough {
+      border-color: rgba(200, 200, 200, 0.85);
+    }
+  }
+}
+
+.power {
+  border-radius: 14px;
+  padding: 0px 5px;
+  background: rgba(80,80,80, 0.85);
+  color: #f8f8f2;
 }
 
