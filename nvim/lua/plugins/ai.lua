@@ -15,6 +15,11 @@ return {
   },
 
   {
+    'AndreM222/copilot-lualine',
+    event = 'UIEnter',
+  },
+
+  {
     'zbirenbaum/copilot-cmp',
     event = 'InsertEnter',
     opts = {},
