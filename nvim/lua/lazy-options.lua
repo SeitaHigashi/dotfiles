@@ -1,4 +1,4 @@
-return {
+M = {
   spec = 'plugins',
   defaults = {
     lazy = true,
@@ -26,3 +26,12 @@ return {
     enabled = true,
   }
 }
+
+-- If the system enables python3, rplugin will be enabled.
+if vim.fn.has('python3') == 1 then
+  M.performance.rtp.disabled_plugins = vim.tbl_filter(function(v)
+    return v ~= 'rplugin'
+  end, M.performance.rtp.disabled_plugins)
+end
+
+return M

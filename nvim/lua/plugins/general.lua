@@ -117,7 +117,7 @@ return {
   {
     'andweeb/presence.nvim',
     enabled = vim.env.HOME_ENV,
-    --lazy = false,
+    event = 'VeryLazy',
     opts = {},
   },
 
