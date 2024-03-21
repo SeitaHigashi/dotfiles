@@ -16,10 +16,14 @@ return {
     },
   },
   {
+    'nvim-neotest/nvim-nio',
+  },
+  {
     'rcarriga/nvim-dap-ui',
     event = 'VeryLazy',
     depends = {
       'mfussenegger/nvim-dap',
+      'nvim-neotest/nvim-nio',
     },
     opts = function ()
       local dap, dapui = require("dap"), require("dapui")
