@@ -7,7 +7,7 @@ function M.on_attach(client, bufnr)
 
   -- If vim version is 0.10.0 or later, enalbe the inlay hints
   if vim.fn.has('nvim-0.10') == 1 then
-    vim.lsp.inlay_hint.enable(bufnr)
+    vim.lsp.inlay_hint.enable(true, {bufnr = bufnr})
   end
 
   require('keybinds')['lsp'](bufnr)
