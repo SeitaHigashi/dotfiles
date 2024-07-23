@@ -92,9 +92,7 @@ return {
       disable_extra_info = 'no',
       language = "English"
     },
-    build = function()
-      vim.notify("Please update the remote plugins by running ':UpdateRemotePlugins', then restart Neovim.")
-    end,
+    branch = "canary",
     event = "VeryLazy",
     keys = {
       { "<leader>cce", "<cmd>CopilotChatExplain<cr>", desc = "CopilotChat - Explain code" },
