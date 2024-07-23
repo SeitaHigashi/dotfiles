@@ -19,56 +19,56 @@ end
 
 M.gitsigns = function(bufnr)
   local wk = require('which-key')
-  local gs = package.loaded.gitsigns
+  local gs = require('gitsigns')
 
-  wk.register({
-    -- Actions
-    ["<leader>h"] = {
-      name = "GitSigns",
-      s = { function() gs.stage_hunk() end, "Stage hunk" },
-      r = { function() gs.reset_hunk() end, "Reset hunk" },
-      S = { function() gs.stage_buffer() end, "Stage buffer" },
-      R = { function() gs.reset_buffer() end, "Reset buffer" },
-      p = { function() gs.preview_hunk() end, "Preview hunk" },
-      b = { function() gs.blame_line { full = true } end, "Blame line" },
-      d = { function() gs.diffthis() end, "Diff this" },
-      D = { function() gs.diffthis('~') end, "Diff this (ignore whitespace)" },
-    }
-  }, { buffer = bufnr })
+  wk.add({
+    -- GitSigns
+    { "<leader>hs", function () gs.stage_hunk() end, desc = "Stage hunk" },
+    { "<leader>hr", function() gs.reset_hunk() end, desc = "Reset hunk" },
+    { "<leader>hS", function() gs.stage_buffer() end, desc = "Stage buffer" },
+    { "<leader>hR", function() gs.reset_buffer() end, desc = "Reset buffer" },
+    { "<leader>hp", function() gs.preview_hunk() end, desc = "Preview hunk" },
+    { "<leader>hb", function() gs.blame_line { full = true } end, desc = "Blame line" },
+    { "<leader>hd", function() gs.diffthis() end, desc = "Diff this" },
+    { "<leader>hD", function() gs.diffthis('~') end, desc = "Diff this (ignore whitespace)" },
+  })
 
-  wk.register({
-    ["<leader>h"] = {
-      s = { function() gs.stage_hunk { vim.fn.line('.'), vim.fn.line('v') } end, "Select hunk" },
-      r = { function() gs.reset_hunk { vim.fn.line('.'), vim.fn.line('v') } end, "Reset hunk" }
-    }
-  }, { mode = "v", buffer = bufnr })
+  wk.add({
+    mode = { "v" },
+    { "<leader>hs", function() gs.stage_hunk { vim.fn.line('.'), vim.fn.line('v') } end, desc = "Select hunk" },
+    { "<leader>hr", function() gs.reset_hunk { vim.fn.line('.'), vim.fn.line('v') } end, desc = "Reset hunk" }
+  })
 
   -- Navigation
-  wk.register({
-    ["]c"] = {
+  wk.add({
+    {
+      "]c",
       function()
         if vim.wo.diff then return ']c' end
         vim.schedule(function() gs.next_hunk() end)
         return '<Ignore>'
       end,
-      "Next Hunk",
-      expr = true
+      desc = "Next Hunk",
+      expr = true,
     },
-    ["[c"] = {
+    {
+      "[c",
       function()
-        if vim.wo.diff then return '[c' end
+        if vim.wo.diff then return ']c' end
         vim.schedule(function() gs.prev_hunk() end)
         return '<Ignore>'
       end,
-      "Previous Hunk",
-      expr = true
+      desc = "Previous Hunk",
+      expr = true,
     },
-  }, { buffer = bufnr })
+  })
 
   -- Text object
-  wk.register({
-    ["ih"] = { '<cmd><C-U>Gitsigns select_hunk<CR>', "Select hunk" }
-  }, { mode = { "o", "x" }, buffer = bufnr })
+  wk.add({
+    mode = { "o", "x" },
+    { "ih", function() gs.select_hunk() end, desc = "Select hunk" },
+
+  })
 end
 
 M.lsp = function (bufnr)
