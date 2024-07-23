@@ -2,24 +2,19 @@ local M = {}
 
 M.setup = function()
   local wk = require('which-key')
+  wk.add({
+    { "<leader>j", function() require('telescope.builtin').find_files() end, desc = "Find file" },
+    { "<leader>a", function() require('telescope.builtin').builtin() end, desc = "Telescope" },
+    { "<leader>k", function() require('telescope.builtin').live_grep() end, desc = "Live grep" },
+    { "<leader>d", function() require('telescope.builtin').buffers() end, desc = "Buffers" },
+    { "<leader>f", function() require('telescope').extensions.file_browser.file_browser() end, desc = "File Browser" },
+    { "<leader>T", "<cmd>TranslateW<CR>", desc = "Translate Word to Japanese" },
+    { "<leader>t", "<cmd>Lspsaga term_toggle<CR>", desc = "Toggle terminal window" },
 
-  wk.register({
-    ["<leader>"] = {
-      j = { function() require('telescope.builtin').find_files() end, "Find file" },
-      a = { function() require('telescope.builtin').builtin() end, "Telescope" },
-      k = { function() require('telescope.builtin').live_grep() end, "Live grep" },
-      d = { function() require('telescope.builtin').buffers() end, "Buffers" },
-      f = { function() require('telescope').extensions.file_browser.file_browser() end, "File Browser" },
-      T = { "<cmd>TranslateW<CR>", "Translate Word to Japanese" },
-      t = { "<cmd>Lspsaga term_toggle<CR>", "Toggle terminal window" },
-
-      -- dap
-      b = { "<cmd>DapToggleBreakpoint<CR>", "Toggle Breakpoint" }
-    },
+    -- dap
+    { "<leader>b", "<cmd>DapToggleBreakpoint<CR>", desc = "Toggle Breakpoint" }
   })
-
-  return {
-  }
+  return {}
 end
 
 M.gitsigns = function(bufnr)
@@ -79,46 +74,34 @@ end
 M.lsp = function (bufnr)
   local wk = require('which-key')
   -- Goto
-  wk.register({
-    g = {
-      D = { function () vim.lsp.buf.declaration() end, "Goto declaration" },
-      d = { function () require('telescope.builtin').lsp_definitions() end, "Goto definition" },
-      s = { function () require('telescope.builtin').lsp_dynamic_workspace_symbols() end, "Goto definition" },
-      r = { function () require('telescope.builtin').lsp_references() end, "Goto references" },
-      i = { function () require('telescope.builtin').lsp_implementations() end, "Goto implementations" },
-    },
-    ["<leader>"] = {
-      ["pd"] = { '<cmd>Lspsaga peek_definition<CR>', "Peek definition"},
-      w = {
-        name = "LSP Workspace",
-        a = { function () vim.lsp.buf.add_workspace_folder() end, "Add workspace folder" },
-        r = { function () vim.lsp.buf.remove_workspace_folder() end, "Remove workspace folder" },
-        l = { function () print(vim.inspect(vim.lsp.buf.list_workspace_folders())) end, "List workspace folders" },
-      },
-      D = { function () vim.lsp.buf.type_definition() end, "Goto type definition" },
-      ["rn"] = { '<cmd>Lspsaga rename<CR>', 'Rename'},
-      ["ca"] = { '<cmd>Lspsaga code_action<CR>', 'Code actions'},
-      e = { '<cmd>Lspsaga show_line_diagnostics<CR>', 'Show line diagnostics' },
-      q = { function () vim.diagnostic.setloclist() end, "Set Location List" },
-      l = { '<cmd>Lspsaga finder<CR>', "LSP Finder" },
-      o = { '<cmd>Lspsaga outline<CR>', "LSP Outline" },
-      ["="] = { function () vim.lsp.buf.format() end, "Code Format in buffer"},
-      s = {
-        name = "Show diagnostics",
-        l = { function () require('lspsaga.diagnostic').show_line_diagnostics() end, "Show line diagnostics" },
-        b = { function () require('lspsaga.diagnostic').show_buffer_diagnostics() end, "Show buffer diagnostics" },
-        w = { function () require('lspsaga.diagnostic').show_cursor_diagnostics() end, "Show cursor diagnostics" },
-      }
-    },
-    ["["] = {
-      e = { function () require('lspsaga.diagnostic'):goto_prev() end, 'go to prev diagnostic'},
-      E = { function () require('lspsaga.diagnostic'):goto_prev({ severity = vim.diagnostic.severity.ERROR }) end, 'go to prev error diagnostic'}
-    },
-    ["]"] = {
-      e = { function () require('lspsaga.diagnostic'):goto_next() end, 'go to prev diagnostic'},
-      E = { function () require('lspsaga.diagnostic'):goto_next({ severity = vim.diagnostic.severity.ERROR }) end, 'go to prev error diagnostic'}
-    }
-  }, { buffer = bufnr, silent = true, noremap = true })
+  wk.add({
+    { "gD", function () vim.lsp.buf.declaration() end, desc = "Goto declaration" },
+    { "gd", function () require('telescope.builtin').lsp_definitions() end, desc = "Goto definition" },
+    { "gs", function () require('telescope.builtin').lsp_dynamic_workspace_symbols() end, desc = "Goto definition" },
+    { "gr", function () require('telescope.builtin').lsp_references() end, desc = "Goto references" },
+    { "gi", function () require('telescope.builtin').lsp_implementations() end, desc = "Goto implementations" },
+    { "<leader>pd", '<cmd>Lspsaga peek_definition<CR>', desc = "Peek definition"},
+    -- LSP Workspace
+    { "<leader>wa", function () vim.lsp.buf.add_workspace_folder() end, desc = "Add workspace folder" },
+    { "<leader>wr", function () vim.lsp.buf.remove_workspace_folder() end, desc = "Remove workspace folder" },
+    { "<leader>wl", function () print(vim.inspect(vim.lsp.buf.list_workspace_folders())) end, desc ="List workspace folders" },
+    { "<leader>D", function () vim.lsp.buf.type_definition() end, desc = "Goto type definition" },
+    { "<leader>rn", '<cmd>Lspsaga rename<CR>', desc = 'Rename'},
+    { "<leader>ca", '<cmd>Lspsaga code_action<CR>', desc = 'Code actions'},
+    { "<leader>e", '<cmd>Lspsaga show_line_diagnostics<CR>', desc = 'Show line diagnostics' },
+    { "<leader>q", function () vim.diagnostic.setloclist() end, desc = "Set Location List" },
+    { "<leader>l", '<cmd>Lspsaga finder<CR>', desc = "LSP Finder" },
+    { "<leader>o", '<cmd>Lspsaga outline<CR>', desc = "LSP Outline" },
+    { "<leader>=", function () vim.lsp.buf.format() end, desc = "Code Format in buffer"},
+    -- SHow diagnostics
+    { "<leader>s", function () require('lspsaga.diagnostic').show_line_diagnostics() end, desc = "Show line diagnostics" },
+    { "<leader>s", function () require('lspsaga.diagnostic').show_buffer_diagnostics() end, desc = "Show buffer diagnostics" },
+    { "<leader>s", function () require('lspsaga.diagnostic').show_cursor_diagnostics() end, desc = "Show cursor diagnostics" },
+    { "[e", function () require('lspsaga.diagnostic'):goto_prev() end, desc = 'go to prev diagnostic'},
+    { "[E", function () require('lspsaga.diagnostic'):goto_prev({ severity = vim.diagnostic.severity.ERROR }) end, desc = 'go to prev error diagnostic'},
+    { "]e", function () require('lspsaga.diagnostic'):goto_next() end, desc = 'go to prev diagnostic'},
+    { "]E", function () require('lspsaga.diagnostic'):goto_next({ severity = vim.diagnostic.severity.ERROR }) end, desc = 'go to prev error diagnostic'},
+  })
 end
 
 return M
