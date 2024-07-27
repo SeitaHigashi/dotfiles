@@ -47,6 +47,7 @@ M.gitsigns = function(bufnr)
   wk.add({
     {
       "]c",
+      function ()
         vim.schedule(function() gs.next_hunk() end)
         return '<Ignore>'
       end,
