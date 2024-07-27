@@ -7,6 +7,10 @@ return {
       vim.o.timeout = true
       vim.o.timeoutlen = 300
     end,
+    dependencies = {
+      'nvim-tree/nvim-web-devicons',
+      'echasnovski/mini.icons'
+    },
     opts = require('config.which-key').setup,
   },
 

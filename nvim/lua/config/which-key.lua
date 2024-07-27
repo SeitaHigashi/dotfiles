@@ -14,7 +14,9 @@ M.setup = function()
     -- dap
     { "<leader>b", "<cmd>DapToggleBreakpoint<CR>", desc = "Toggle Breakpoint" }
   })
-  return {}
+  return {
+    preset = 'modern',
+  }
 end
 
 M.gitsigns = function(bufnr)
@@ -23,6 +25,7 @@ M.gitsigns = function(bufnr)
 
   wk.add({
     -- GitSigns
+    { "<leader>h", group = "GitSigns" },
     { "<leader>hs", function () gs.stage_hunk() end, desc = "Stage hunk" },
     { "<leader>hr", function() gs.reset_hunk() end, desc = "Reset hunk" },
     { "<leader>hS", function() gs.stage_buffer() end, desc = "Stage buffer" },
@@ -35,6 +38,7 @@ M.gitsigns = function(bufnr)
 
   wk.add({
     mode = { "v" },
+    { "<leader>h", group = "GitSigns" },
     { "<leader>hs", function() gs.stage_hunk { vim.fn.line('.'), vim.fn.line('v') } end, desc = "Select hunk" },
     { "<leader>hr", function() gs.reset_hunk { vim.fn.line('.'), vim.fn.line('v') } end, desc = "Reset hunk" }
   })
@@ -43,8 +47,6 @@ M.gitsigns = function(bufnr)
   wk.add({
     {
       "]c",
-      function()
-        if vim.wo.diff then return ']c' end
         vim.schedule(function() gs.next_hunk() end)
         return '<Ignore>'
       end,
