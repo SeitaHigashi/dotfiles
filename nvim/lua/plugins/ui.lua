@@ -131,6 +131,13 @@ return {
     event = 'BufReadPre', -- need run before LspAttach if you use nvim 0.9. On 0.10 use 'LspAttach'
     opts = {},
   },
+  {
+    'MeanderingProgrammer/markdown.nvim',
+    ft = 'markdown',
+    main = "render-markdown",
+    opts = {},
+    dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons', 'echasnovski/mini.icons' },
+  }
 }
 
 
