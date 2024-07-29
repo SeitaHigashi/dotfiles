@@ -39,7 +39,7 @@ M.gitsigns = function(bufnr)
   wk.add({
     mode = { "v" },
     { "<leader>h", group = "GitSigns" },
-    { "<leader>hs", function() gs.stage_hunk { vim.fn.line('.'), vim.fn.line('v') } end, desc = "Select hunk" },
+    { "<leader>hs", function() gs.stage_hunk { vim.fn.line('.'), vim.fn.line('v') } end, desc = "Stage hunk" },
     { "<leader>hr", function() gs.reset_hunk { vim.fn.line('.'), vim.fn.line('v') } end, desc = "Reset hunk" }
   })
 
