@@ -18,6 +18,8 @@
   # The home.packages option allows you to install Nix packages into your
   # environment.
   home.packages = [
+    pkgs.nodejs_22
+    pkgs.gcc
     # # Adds the 'hello' command to your environment. It prints a friendly
     # # "Hello, world!" when run.
     # pkgs.hello
@@ -72,6 +74,7 @@
   };
 
   programs.git = {
+    enable = true;
     userName = "Seita Higashi";
     userEmail = "higashi110902@gmail.com";
   };
