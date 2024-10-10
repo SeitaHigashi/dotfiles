@@ -6,6 +6,7 @@
   home.username = "seita";
   home.homeDirectory = "/home/seita";
 
+  nixpkgs.config.allowUnfree = true;
   # This value determines the Home Manager release that your configuration is
   # compatible with. This helps avoid breakage when a new Home Manager release
   # introduces backwards incompatible changes.
@@ -20,7 +21,8 @@
   home.packages = [
     pkgs.nodejs_22
     pkgs.gcc
-    # # Adds the 'hello' command to your environment. It prints a friendly
+    pkgs.ripgrep
+    pkgs.tmux
     # # "Hello, world!" when run.
     # pkgs.hello
 
@@ -77,6 +79,11 @@
     enable = true;
     userName = "Seita Higashi";
     userEmail = "higashi110902@gmail.com";
+    extraConfig = {
+      init = {
+        defaultBranch = "main";
+      };
+    };
   };
 
   # Let Home Manager install and manage itself.
