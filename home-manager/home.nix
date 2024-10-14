@@ -89,10 +89,11 @@
 
   programs.bash.enable = true;
 
+  programs.fzf.enable = true;
+
   programs.zoxide = {
     enable = true;
     options = ["--cmd cd"];
-    enableBashIntegration = true;
   };
 
   # Let Home Manager install and manage itself.
