@@ -152,8 +152,8 @@ return {
     },
     ---@type Ollama.Config
     opts = {
-      model = "codegemma",
-      url = "http://arch-kde.seita.home:11434",
+      model = "codellama:13b",
+      url = "http://ollama.seita.home:11434",
     }
   },
 }
