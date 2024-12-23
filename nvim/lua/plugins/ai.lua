@@ -127,6 +127,34 @@ return {
   },
 
   {
+    'tzachar/cmp-ai',
+    event = 'InsertEnter',
+    dependencies = {
+      'nvim-lua/plenary.nvim'
+    },
+    config = function()
+      local cmp_ai = require('cmp_ai.config')
+      cmp_ai:setup({
+        provider = 'Ollama',
+        provider_options = {
+          model = 'codegemma:2b',
+          base_url = 'http://ollama.seita.home:11434/api/generate',
+        },
+        notify = true,
+        notify_callback = function(msg)
+          vim.notify(msg)
+        end,
+        run_on_every_keystroke = false,
+        ignored_file_types = {
+          -- default is not to ignore
+          -- uncomment to ignore in lua:
+          -- lua = true
+        },
+      })
+    end,
+  },
+
+  {
     'nomnivore/ollama.nvim',
     dependencies = {
       'nvim-lua/plenary.nvim',
@@ -151,7 +179,7 @@ return {
     },
     ---@type Ollama.Config
     opts = {
-      model = "codellama:13b",
+      model = "codegemma:2b",
       url = "http://ollama.seita.home:11434",
     }
   },
