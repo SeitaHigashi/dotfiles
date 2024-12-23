@@ -92,7 +92,6 @@ return {
       disable_extra_info = 'no',
       language = "English"
     },
-    branch = "canary",
     event = "VeryLazy",
     keys = {
       { "<leader>cce", "<cmd>CopilotChatExplain<cr>", desc = "CopilotChat - Explain code" },
