@@ -1,3 +1,5 @@
+local utils = require('utils')
+
 return {
   {
     'zbirenbaum/copilot.lua',
@@ -47,10 +49,7 @@ return {
   -- If memory free space is lower than 1GB, disable this plugin.
   {
     "Exafunction/codeium.nvim",
-    enabled = function()
-      local mem = vim.fn.system("free -m | awk 'NR==2{printf $7}'")
-      return tonumber(mem) > 1024 and vim.env.HOME_ENV
-    end,
+    enabled = function() return utils.memory_available() > 1024 and vim.env.HOME_ENV end,
     event = 'VeryLazy',
     dependencies = {
         "nvim-lua/plenary.nvim",
@@ -66,10 +65,7 @@ return {
   -- If memory free space is lower than 2GB, disable this plugin.
   {
     'tzachar/cmp-tabnine',
-    enabled = function()
-      local mem = vim.fn.system("free -m | awk 'NR==2{printf $7}'")
-      return tonumber(mem) > 2048 and vim.env.HOME_ENV
-    end,
+    enabled = function() return utils.memory_available() > 2048 and vim.env.HOME_ENV end,
     event = 'InsertEnter',
     build = "./install.sh",
     config = function()
@@ -112,7 +108,7 @@ return {
       },
       {
         "<leader><leader>g",
-        "<cmd>CopilotChatCommitStaged<cr>", -- Reset chat history and clear buffer.
+        "<cmd>CopilotChatCommitStaged<cr>",
         desc = "CopilotChat - Generate commit comment based on staged changes",
       },
       {
@@ -125,7 +121,7 @@ return {
       },
       {
         "<leader><leader>r",
-        "<cmd>CopilotChatReset<cr>", -- Reset chat history and clear buffer.
+        "<cmd>CopilotChatReset<cr>",
         desc = "CopilotChat - Reset chat history and clear buffer",
       }
     },
