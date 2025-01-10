@@ -94,32 +94,44 @@ return {
     },
     event = "VeryLazy",
     keys = {
-      { "<leader>cce", "<cmd>CopilotChatExplain<cr>", desc = "CopilotChat - Explain code" },
-      { "<leader>cct", "<cmd>CopilotChatTests<cr>", desc = "CopilotChat - Generate tests" },
+      { "<leader><leader>e", "<cmd>CopilotChatExplain<cr>", desc = "CopilotChat - Explain code" },
+      { "<leader><leader>t", "<cmd>CopilotChatTests<cr>", desc = "CopilotChat - Generate tests" },
       {
-        "<leader>ccT",
-        "<cmd>CopilotChatVsplitToggle<cr>",
-        desc = "CopilotChat - Toggle Vsplit", -- Toggle vertical split
+        "<leader><leader><leader>",
+        function()
+          local chat = require("CopilotChat")
+          chat.toggle({
+            window = {
+              layout = "float"
+            }
+          })
+        end,
+        desc = "CopilotChat - Toggle",
       },
       {
-        "<leader>ccv",
+        "<leader><leader>v",
         ":CopilotChatVisual",
         mode = "x",
         desc = "CopilotChat - Open in vertical split",
       },
       {
-        "<leader>ccx",
+        "<leader><leader>x",
         ":CopilotChatInPlace<cr>",
         mode = "x",
         desc = "CopilotChat - Run in-place code",
       },
       {
-        "<leader>ccf",
+        "<leader><leader>f",
         "<cmd>CopilotChatFixDiagnostic<cr>", -- Get a fix for the diagnostic message under the cursor.
         desc = "CopilotChat - Fix diagnostic",
       },
       {
-        "<leader>ccr",
+        "<leader><leader>g",
+        "<cmd>CopilotChatCommitStaged<cr>", -- Reset chat history and clear buffer.
+        desc = "CopilotChat - Generate commit comment based on staged changes",
+      },
+      {
+        "<leader><leader>r",
         "<cmd>CopilotChatReset<cr>", -- Reset chat history and clear buffer.
         desc = "CopilotChat - Reset chat history and clear buffer",
       }
