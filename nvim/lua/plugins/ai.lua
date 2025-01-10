@@ -96,7 +96,7 @@ return {
         layout = "float"
       }
     },
-    event = "VeryLazy",
+    -- event = "VeryLazy",
     keys = {
       { "<leader><leader>e", "<cmd>CopilotChatExplain<cr>", desc = "CopilotChat - Explain code" },
       { "<leader><leader>t", "<cmd>CopilotChatTests<cr>", desc = "CopilotChat - Generate tests" },
