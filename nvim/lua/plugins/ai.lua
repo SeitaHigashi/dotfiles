@@ -90,7 +90,10 @@ return {
       show_help = "yes",
       debug = false,
       disable_extra_info = 'no',
-      language = "English"
+      language = "English",
+      window = {
+        layout = "float"
+      }
     },
     event = "VeryLazy",
     keys = {
@@ -98,14 +101,7 @@ return {
       { "<leader><leader>t", "<cmd>CopilotChatTests<cr>", desc = "CopilotChat - Generate tests" },
       {
         "<leader><leader><leader>",
-        function()
-          local chat = require("CopilotChat")
-          chat.toggle({
-            window = {
-              layout = "float"
-            }
-          })
-        end,
+        "<cmd>CopilotChatToggle<cr>",
         desc = "CopilotChat - Toggle",
       },
       {
