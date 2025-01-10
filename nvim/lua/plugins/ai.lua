@@ -91,12 +91,12 @@ return {
       debug = false,
       disable_extra_info = 'no',
       insert_at_end = true, -- Move cursor to end of buffer when inserting text
+      clear_chat_on_new_prompt = true, -- Clears chat on every new prompt
       language = "English",
       window = {
         layout = "float"
       }
     },
-    -- event = "VeryLazy",
     keys = {
       { "<leader><leader>e", "<cmd>CopilotChatExplain<cr>", desc = "CopilotChat - Explain code" },
       { "<leader><leader>t", "<cmd>CopilotChatTests<cr>", desc = "CopilotChat - Generate tests" },
@@ -104,18 +104,6 @@ return {
         "<leader><leader><leader>",
         "<cmd>CopilotChatToggle<cr>",
         desc = "CopilotChat - Toggle",
-      },
-      {
-        "<leader><leader>v",
-        ":CopilotChatVisual",
-        mode = "x",
-        desc = "CopilotChat - Open in vertical split",
-      },
-      {
-        "<leader><leader>x",
-        ":CopilotChatInPlace<cr>",
-        mode = "x",
-        desc = "CopilotChat - Run in-place code",
       },
       {
         "<leader><leader>f",
