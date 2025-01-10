@@ -120,7 +120,7 @@ return {
         "<leader><leader>f",
         "<cmd>CopilotChatFixDiagnostic<cr>", -- Get a fix for the diagnostic message under the cursor.
         desc = "CopilotChat - Fix diagnostic",
-      },
+      }
       {
         "<leader><leader>g",
         "<cmd>CopilotChatCommitStaged<cr>", -- Reset chat history and clear buffer.

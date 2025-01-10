@@ -22,7 +22,6 @@ return function()
           nvim_lsp = " LSP",
           copilot = " Copilot",
           cmp_tabnine = " Tabnine",
-          cmp_ai = " Ollama",
           codeium = " Codeium",
           nvim_lua = " Lua",
           luasnip = " Snip",
@@ -97,7 +96,6 @@ return function()
       { name = 'nvim_lsp' },
       -- AI completion is third priority
       { name = 'copilot', keyword_length = 0},
-      { name = 'cmp_ai', keyword_length = 4},
       { name = 'codeium', keyword_length = 0},
       { name = 'cmp_tabnine', keyword_length = 0, max_item_count = 1 },
       -- Other completion is last priority
