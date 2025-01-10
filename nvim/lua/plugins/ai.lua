@@ -120,7 +120,7 @@ return {
         "<leader><leader>f",
         "<cmd>CopilotChatFixDiagnostic<cr>", -- Get a fix for the diagnostic message under the cursor.
         desc = "CopilotChat - Fix diagnostic",
-      }
+      },
       {
         "<leader><leader>g",
         "<cmd>CopilotChatCommitStaged<cr>", -- Reset chat history and clear buffer.
@@ -132,63 +132,5 @@ return {
         desc = "CopilotChat - Reset chat history and clear buffer",
       }
     },
-  },
-
-  {
-    'tzachar/cmp-ai',
-    event = 'InsertEnter',
-    dependencies = {
-      'nvim-lua/plenary.nvim'
-    },
-    config = function()
-      local cmp_ai = require('cmp_ai.config')
-      cmp_ai:setup({
-        provider = 'Ollama',
-        provider_options = {
-          model = 'codegemma:2b',
-          base_url = 'http://ollama.seita.home:11434/api/generate',
-        },
-        notify = true,
-        notify_callback = function(msg)
-          vim.notify(msg)
-        end,
-        run_on_every_keystroke = false,
-        ignored_file_types = {
-          -- default is not to ignore
-          -- uncomment to ignore in lua:
-          -- lua = true
-        },
-      })
-    end,
-  },
-
-  {
-    'nomnivore/ollama.nvim',
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-    },
-    cmd = { "Ollama", "OllamaModel", "OllamaServe", "OllamaServeStop" },
-    keys = {
-    -- Sample keybind for prompt menu. Note that the <c-u> is important for selections to work properly.
-      {
-        "<leader>oo",
-        ":<c-u>lua require('ollama').prompt()<cr>",
-        desc = "ollama prompt",
-        mode = { "n", "v" },
-      },
-
-      -- Sample keybind for direct prompting. Note that the <c-u> is important for selections to work properly.
-      {
-        "<leader>oG",
-        ":<c-u>lua require('ollama').prompt('Generate_Code')<cr>",
-        desc = "ollama Generate Code",
-        mode = { "n", "v" },
-      },
-    },
-    ---@type Ollama.Config
-    opts = {
-      model = "codegemma:2b",
-      url = "http://ollama.seita.home:11434",
-    }
-  },
+  }
 }
