@@ -90,6 +90,7 @@ return {
       show_help = "yes",
       debug = false,
       disable_extra_info = 'no',
+      insert_at_end = true, -- Move cursor to end of buffer when inserting text
       language = "English",
       window = {
         layout = "float"
@@ -125,6 +126,14 @@ return {
         "<leader><leader>g",
         "<cmd>CopilotChatCommitStaged<cr>", -- Reset chat history and clear buffer.
         desc = "CopilotChat - Generate commit comment based on staged changes",
+      },
+      {
+        "<leader><leader>p",
+        function()
+          local actions = require("CopilotChat.actions")
+          require("CopilotChat.integrations.telescope").pick(actions.prompt_actions())
+        end,
+        desc = "CopilotChat - Prompt actions",
       },
       {
         "<leader><leader>r",
