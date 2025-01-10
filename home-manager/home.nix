@@ -24,6 +24,7 @@
     pkgs.ripgrep
     pkgs.tmux
     pkgs.bat
+    pkgs.trash-cli
     # # "Hello, world!" when run.
     # pkgs.hello
 
@@ -112,7 +113,12 @@
     '';
   };
 
-  programs.bash.enable = true;
+  programs.bash = {
+    enable = true;
+    shellAliases = {
+      rm = "trash-put";
+    };
+  };
 
   programs.fzf.enable = true;
 
