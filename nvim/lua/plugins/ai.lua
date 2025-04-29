@@ -108,7 +108,7 @@ return {
       },
       {
         "<leader><leader>g",
-        "<cmd>CopilotChatCommitStaged<cr>",
+        "<cmd>CopilotChatCommit<cr>",
         desc = "CopilotChat - Generate commit comment based on staged changes",
       },
       {
