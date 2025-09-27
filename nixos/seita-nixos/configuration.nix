@@ -24,7 +24,8 @@ in {
   # services.blueman.enable = true;
 
   # Enable OpenGL
-  hardware.opengl.enable = true;
+  # hardware.opengl.enable = true;
+  hardware.graphics.enable = true;
 
   # Load nvidia driver for Xorg and Wayland
   services.xserver.videoDrivers = ["nvidia"];
@@ -106,7 +107,8 @@ in {
   };
 
   i18n.inputMethod = {
-    enabled = "fcitx5";
+    enable = true;
+    type = "fcitx5";
     fcitx5.addons = with pkgs; [
       fcitx5-mozc
       fcitx5-gtk
@@ -128,7 +130,8 @@ in {
 
   # Enable the KDE Plasma Desktop Environment.
   services.displayManager.sddm.enable = true;
-  services.xserver.desktopManager.plasma5.enable = true;
+  # services.xserver.desktopManager.plasma5.enable = true;
+  services.desktopManager.plasma6.enable = true;
 
   services.xrdp.enable = true;
   services.xrdp.defaultWindowManager = "startplasma-x11";
@@ -147,7 +150,8 @@ in {
   services.printing.enable = true;
 
   # Enable sound with pipewire.
-  hardware.pulseaudio.enable = false;
+  # hardware.pulseaudio.enable = false;
+  services.pulseaudio.enable = false;
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
@@ -182,8 +186,8 @@ in {
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    pulseeffects-legacy
-    discover
+    # pulseeffects-legacy
+    kdePackages.discover
     ffmpeg
     neovim
 
@@ -200,11 +204,18 @@ in {
     "flakes"
   ];
 
+  # Nix settings
+  nix.settings = {
+    download-buffer-size = 67108864 * 2;
+    warn-dirty = false;
+    max-jobs = 2;
+  };
+
   # Nix store garbage collection
   nix.gc = {
     automatic = true;
     dates = "daily";
-    options = "--delete-older-than 14d";
+    options = "--delete-older-than 7d";
   };
 
   # Nix store optimisation
@@ -317,6 +328,13 @@ in {
         #PIPELINES_URL = "https://github.com/open-webui/pipelines/blob/main/examples/filters/detoxify_filter_pipeline.py";
       };
     };
+
+    # containers.langsmith-frontend = {
+    #   # volumes = [ "stable-diffusion:/app/stable-diffusion-webui"];
+    #   environment.TZ = "Tokyo/Asia";
+    #   image = "docker.io/langchain/langsmith-frontend";
+    #   ports = [ "3001:3001" ];
+    # };
   };
 
   # FlatPak

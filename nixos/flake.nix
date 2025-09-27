@@ -25,14 +25,13 @@
       seita-nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
-          /etc/nixos/configuration.nix
+          ./seita-nixos/configuration.nix
 
-          # home-manager.nixosModules.home-manager
-          # {
-          #   home-manager.useGlobalPkgs = true;
-          #   home-manager.useUserPackages = true;
-          #   home-manager.users.seita = import ../home-manager/home.nix;
-          # }
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useUserPackages = true;
+            home-manager.users.seita = import ../home-manager/home.nix;
+          }
         ];
       };
     };
