@@ -4,10 +4,8 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
+      ../commons.nix
     ];
-
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -19,9 +17,6 @@
 
   # Enable networking
   networking.networkmanager.enable = true;
-
-  # Set your time zone.
-  time.timeZone = "Asia/Tokyo";
 
   # Select internationalisation properties.
   i18n.defaultLocale = "ja_JP.UTF-8";
@@ -47,24 +42,6 @@
     ];
   };
 
-  # Fonts
-  fonts = {
-    packages = with pkgs; [
-      noto-fonts
-      noto-fonts-cjk-sans
-      noto-fonts-extra
-      noto-fonts-emoji
-      hackgen-nf-font
-    ];
-    fontconfig = {
-      enable = true;
-      defaultFonts = {
-        sansSerif = [ "Noto Sans CJK JP" "Noto Sans" ];
-        serif = [ "Noto Serif JP" "Noto Serif" ];
-      };
-      subpixel = { lcdfilter = "light"; };
-    };
-  };
 
   virtualisation.waydroid.enable = true;
 
@@ -90,16 +67,6 @@
     variant = "";
   };
 
-  # Enable CUPS to print documents.
-  services.printing.enable = true;
-  services.printing.drivers = [
-    pkgs.gutenprint
-    pkgs.gutenprintBin
-    pkgs.canon-cups-ufr2
-    pkgs.canon-capt
-    # pkgs.cnijfilter2
-  ];
-
   # Enable sound with pipewire.
   services.pulseaudio.enable = false;
   security.rtkit.enable = true;
@@ -108,16 +75,7 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # If you want to use JACK applications, uncomment this
-    #jack.enable = true;
-
-    # use the example session manager (no others are packaged yet so this is enabled by default,
-    # no need to redefine it in your config for now)
-    #media-session.enable = true;
   };
-
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.seita = {
@@ -138,9 +96,6 @@
     ];
   };
 
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
-
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
@@ -156,19 +111,6 @@
     winetricks # winetricks (all versions)
     wineWowPackages.waylandFull # native wayland support (unstable)
   ];
-  
-  # Nix store garbage collection
-  nix.gc = {
-    automatic = true;
-    dates = "daily";
-    options = "--delete-order-than 7d";
-  };
-
-  # Nix store optimisation
-  nix.optimise.automatic = true;
-  nix.settings.auto-optimise-store = true;
-
-  programs.nix-ld.enable = true;
 
   programs.steam = {
     enable = true;

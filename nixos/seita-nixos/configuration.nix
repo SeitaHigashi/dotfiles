@@ -8,6 +8,7 @@ in {
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
+      ../commons.nix
     ];
   
   # Enable Bluetooh
@@ -88,9 +89,6 @@ in {
     };
   };
 
-  # Set your time zone.
-  time.timeZone = "Asia/Tokyo";
-
   # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
 
@@ -114,10 +112,6 @@ in {
       fcitx5-gtk
     ];
   };
-
-  fonts.packages = [
-  	pkgs.noto-fonts-cjk-sans
-  ];
 
   # Enable the X11 windowing system.
   services.xserver = {
@@ -146,9 +140,6 @@ in {
   # Configure console keymap
   console.keyMap = "jp106";
 
-  # Enable CUPS to print documents.
-  services.printing.enable = true;
-
   # Enable sound with pipewire.
   # hardware.pulseaudio.enable = false;
   services.pulseaudio.enable = false;
@@ -158,16 +149,7 @@ in {
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # If you want to use JACK applications, uncomment this
-    #jack.enable = true;
-
-    # use the example session manager (no others are packaged yet so this is enabled by default,
-    # no need to redefine it in your config for now)
-    #media-session.enable = true;
   };
-
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.seita = {
@@ -179,9 +161,6 @@ in {
       hypnotix
     ];
   };
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
@@ -198,38 +177,7 @@ in {
 
   ];
 
-  # Enable nix command and flakes
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
-
-  # Nix settings
-  nix.settings = {
-    download-buffer-size = 67108864 * 2;
-    warn-dirty = false;
-    max-jobs = 2;
-  };
-
-  # Nix store garbage collection
-  nix.gc = {
-    automatic = true;
-    dates = "daily";
-    options = "--delete-older-than 7d";
-  };
-
-  # Nix store optimisation
-  nix.optimise.automatic = true;
-  nix.settings.auto-optimise-store = true;
-
   # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
-  services.openssh.enable = true;
-  services.openssh.settings = {
-    PermitRootLogin = "yes";
-    X11Forwarding = true;
-  };
 
   # QEmu Guest Agent
   services.qemuGuest.enable = true;
@@ -251,19 +199,6 @@ in {
     acceleration = "cuda";
     host = "[::]";
   };
-
-
-  # services.postgresql = {
-  #   enable = false;
-  #   ensureDatabases = [ "open-webui" ];
-  #   enableTCPIP = true;
-  #   authentication = pkgs.lib.mkOverride 10 ''
-  #     #type database DBuser origin-address auth-method
-  #     local all all trust
-  #     #host all all 127.0.0.1/32 trust
-  #     host all all ::1/128 trust
-  #   '';
-  # };
 
   hardware.nvidia-container-toolkit.enable = true;
 
@@ -291,21 +226,6 @@ in {
       ];
     };
 
-    # containers.siyuan = {
-    #   volumes = [ "siyuan:/siyuan" ];
-    #   environment.TZ = "Tokyo/Asia";
-    #   environment.PUID = "0";
-    #   environment.PGID = "0";
-    #   image = "docker.io/b3log/siyuan";
-    #   labels = {
-    #     "io.containers.autoupdate" = "image";
-    #   };
-    #   extraOptions = [
-    #     "--network=host"
-    #   ];
-    #   workdir="/siyuan";
-    # };
-
     containers.stable-diffusion-webui = {
       volumes = [ "stable-diffusion:/app/stable-diffusion-webui"];
       environment.TZ = "Tokyo/Asia";
@@ -328,30 +248,9 @@ in {
         #PIPELINES_URL = "https://github.com/open-webui/pipelines/blob/main/examples/filters/detoxify_filter_pipeline.py";
       };
     };
-
-    # containers.langsmith-frontend = {
-    #   # volumes = [ "stable-diffusion:/app/stable-diffusion-webui"];
-    #   environment.TZ = "Tokyo/Asia";
-    #   image = "docker.io/langchain/langsmith-frontend";
-    #   ports = [ "3001:3001" ];
-    # };
   };
 
-  # FlatPak
-  services.flatpak.enable = true;
-
   # SW settings
-
-  programs.nix-ld.enable = true;
-
-  # Set Neovim as default editor
-  # programs.neovim = {
-  #   enable = true;
-  #   defaultEditor = true;
-  #   vimAlias = true;
-  #   viAlias = true;
-  # };
-
   # Git
   programs.git.enable = true;
 
@@ -370,14 +269,6 @@ in {
     localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
   };
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [
-  #   11434
-  #   8123
-  #   8080
-  #   6443
-  # ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
   networking.firewall.enable = false;
 
   # For kubernetes settings
