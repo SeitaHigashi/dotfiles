@@ -14,7 +14,7 @@
   # You should not change this value, even if you update Home Manager. If you do
   # want to update the value, then make sure to first check the Home Manager
   # release notes.
-  home.stateVersion = "24.05"; # Please read the comment before changing.
+  home.stateVersion = "25.05"; # Please read the comment before changing.
 
   # The home.packages option allows you to install Nix packages into your
   # environment.
@@ -32,7 +32,8 @@
     # # overrides. You can do that directly here, just don't forget the
     # # parentheses. Maybe you want to install Nerd Fonts with a limited number of
     # # fonts?
-    (pkgs.nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
+
+    #(pkgs.nerdfonts.override { fonts = [ "FantasqueSansMono" ]; })
 
     # # You can also create simple shell scripts directly inside your
     # # configuration. For example, this adds a command 'my-hello' to your
@@ -85,6 +86,19 @@
       init = {
         defaultBranch = "main";
       };
+    };
+  };
+
+  programs.zellij = {
+    enable = true;
+    #enableBashIntegration = true;
+    #attachExistingSession = true;
+    #exitShellOnExit = true;
+    settings = {
+      pane_frames = false;
+      simplified_ui = true;
+      default_mode = "locked";
+      show_startup_tips = false;
     };
   };
 
