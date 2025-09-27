@@ -4,11 +4,10 @@ return {
     'williamboman/mason-lspconfig.nvim',
     dependencies = {
       { 'neovim/nvim-lspconfig' },
-      { 'williamboman/mason.nvim', config = {} },
+      { 'williamboman/mason.nvim', opts = {} },
     },
-    --lazy = false,
     event = 'VeryLazy',
-    config = require('config.mason-lspconfig'),
+    opts = {},
   },
 
   -- improve the LSP related UI.

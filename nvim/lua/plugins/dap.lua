@@ -6,7 +6,7 @@ return {
   },
   {
     'jay-babu/mason-nvim-dap.nvim',
-    depends = {
+    dependencies = {
       'williamboman/mason.nvim',
       'mfussenegger/nvim-dap',
     },
@@ -21,7 +21,7 @@ return {
   {
     'rcarriga/nvim-dap-ui',
     event = 'VeryLazy',
-    depends = {
+    dependencies = {
       'mfussenegger/nvim-dap',
       'nvim-neotest/nvim-nio',
     },
@@ -41,7 +41,7 @@ return {
   },
   {
     'nvim-telescope/telescope-dap.nvim',
-    depends = {
+    dependencies = {
       'mfussenegger/nvim-dap',
       'nvim-telescope/telescope.nvim',
     },
