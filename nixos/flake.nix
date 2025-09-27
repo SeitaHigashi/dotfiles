@@ -29,6 +29,12 @@
           ./seita-nixos/configuration.nix
         ] ++ commons;
       };
+      seita-mac-nix = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./seita-mac-nix/configuration.nix
+        ] ++ commons;
+      };
     };
   };
 }
