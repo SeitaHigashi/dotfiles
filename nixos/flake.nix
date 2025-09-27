@@ -18,7 +18,7 @@
   {
     nixosConfigurations = {
       myNixOS = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
+        system = builtins.currentSystem;
         modules = [
           /etc/nixos/configuration.nix
         ] ++ commons;
