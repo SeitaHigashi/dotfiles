@@ -119,8 +119,6 @@
     localNetworkGameTransfers.openFirewall = true;
   };
 
-  programs.nano.enable = false;
-
   nix.settings.allowed-users = [ "*" ];
 
   networking.firewall = {

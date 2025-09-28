@@ -71,4 +71,7 @@
 
   # SW settings
   programs.nix-ld.enable = true;
+
+  # Nano
+  programs.nano.enable = false;
 }

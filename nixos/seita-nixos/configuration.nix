@@ -25,7 +25,6 @@ in {
   # services.blueman.enable = true;
 
   # Enable OpenGL
-  # hardware.opengl.enable = true;
   hardware.graphics.enable = true;
 
   # Load nvidia driver for Xorg and Wayland
@@ -124,7 +123,6 @@ in {
 
   # Enable the KDE Plasma Desktop Environment.
   services.displayManager.sddm.enable = true;
-  # services.xserver.desktopManager.plasma5.enable = true;
   services.desktopManager.plasma6.enable = true;
 
   services.xrdp.enable = true;
@@ -253,9 +251,6 @@ in {
   # SW settings
   # Git
   programs.git.enable = true;
-
-  # Nano
-  programs.nano.enable = false;
 
   #
   programs.firefox.enable = true;
