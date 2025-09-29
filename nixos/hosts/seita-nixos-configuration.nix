@@ -7,7 +7,7 @@ let
 in {
   imports =
     [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
+      ./seita-nixos-hardware-configuration.nix
       ../commons/commons.nix
       ../commons/i18n.nix
     ];
