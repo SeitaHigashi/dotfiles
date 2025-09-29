@@ -26,7 +26,6 @@
       seita-nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
-          # ./seita-nixos/configuration.nix
           ./hosts/seita-nixos-configuration.nix
         ] ++ commons;
       };
