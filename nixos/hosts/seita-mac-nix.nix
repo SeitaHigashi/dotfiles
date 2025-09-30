@@ -19,8 +19,6 @@
   # Enable networking
   networking.networkmanager.enable = true;
 
-  virtualisation.waydroid.enable = true;
-
   # Enable the X11 windowing system.
   services.xserver.enable = true;
 
@@ -69,6 +67,7 @@
       gnomeExtensions.tailscale-qs
       gnomeExtensions.media-controls
       gnomeExtensions.home-assistant-extension
+      gnomeExtensions.paperwm
     ];
   };
 
