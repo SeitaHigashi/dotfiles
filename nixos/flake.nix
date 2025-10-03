@@ -35,6 +35,12 @@
           ./hosts/seita-mac-nix.nix
         ] ++ commons;
       };
+      seita-wsl = nixpkgs.lib.nixosSystem {
+        system = builtins.currentSystem;
+        modules = [
+          ./hosts/seita-wsl.nix
+        ] ++ commons;
+      };
     };
   };
 }
