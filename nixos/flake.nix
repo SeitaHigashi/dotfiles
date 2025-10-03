@@ -7,7 +7,7 @@
 
   outputs = inputs @ { nixpkgs, home-manager, ... }:
   let
-    commons = [
+    hm = [
       home-manager.nixosModules.home-manager
       {
         home-manager.useUserPackages = true;
@@ -21,25 +21,25 @@
         system = builtins.currentSystem;
         modules = [
           /etc/nixos/configuration.nix
-        ] ++ commons;
+        ] ++ hm;
       };
       seita-nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           ./hosts/seita-nixos-configuration.nix
-        ] ++ commons;
+        ] ++ hm;
       };
       seita-mac-nix = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
           ./hosts/seita-mac-nix.nix
-        ] ++ commons;
+        ] ++ hm;
       };
       seita-wsl = nixpkgs.lib.nixosSystem {
         system = builtins.currentSystem;
         modules = [
           ./hosts/seita-wsl.nix
-        ] ++ commons;
+        ] ++ hm;
       };
     };
   };
