@@ -100,6 +100,7 @@ in {
 
   # Enable the KDE Plasma Desktop Environment.
   services.displayManager.sddm.enable = true;
+  services.displayManager.sddm.wayland.enable = true;
   services.desktopManager.plasma6.enable = true;
 
   services.xrdp.enable = true;
@@ -132,7 +133,6 @@ in {
     description = "seita";
     extraGroups = [ "networkmanager" "wheel" ];
     packages = with pkgs; [
-      brave
       hypnotix
     ];
   };
