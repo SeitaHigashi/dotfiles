@@ -175,6 +175,15 @@ in {
     host = "[::]";
   };
 
+  # Nvidia GPU exporter for prometheus
+  services.prometheus.exporters = {
+    nvidia-gpu = {
+      enable = true;
+      openFirewall = true;
+      listenAddress = "192.168.11.251";
+    };
+  };
+
   hardware.nvidia-container-toolkit.enable = true;
 
   virtualisation.oci-containers = {
