@@ -55,11 +55,13 @@
 
   programs.git = {
     enable = true;
-    userName = "Seita Higashi";
-    userEmail = "higashi110902@gmail.com";
-    extraConfig = {
+    settings = {
       init = {
         defaultBranch = "main";
+      };
+      user = {
+        name = "Seita Higashi";
+        email = "higashi110902@gmail.com";
       };
     };
   };
