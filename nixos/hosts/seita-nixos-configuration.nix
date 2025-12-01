@@ -1,10 +1,6 @@
 { config, pkgs, ... }:
 
-let
-  kubeMasterIP = "192.168.11.220";
-  kubeMasterHostname = "api.kube";
-  kubeMasterAPIServerPort = 6443;
-in {
+{
   imports =
     [ # Include the results of the hardware scan.
       ./seita-nixos-hardware-configuration.nix
@@ -146,10 +142,7 @@ in {
     neovim
 
     # for kubernetes
-    kompose
     kubectl
-    kubernetes
-
   ];
 
   # List services that you want to enable:
@@ -251,29 +244,6 @@ in {
   };
 
   networking.firewall.enable = false;
-
-  # For kubernetes settings
-  # resolve master hostname
-  networking.extraHosts = "${kubeMasterIP} ${kubeMasterHostname}";
-
-  services.kubernetes = let
-    api = "https://${kubeMasterHostname}:${toString kubeMasterAPIServerPort}";
-  in
-  {
-    roles = ["node"];
-    masterAddress = kubeMasterHostname;
-    easyCerts = true;
-
-    # point kubelet and other services to kube-apiserver
-    kubelet.kubeconfig.server = api;
-    apiserverAddress = api;
-
-    # use coredns
-    addons.dns.enable = true;
-
-    # needed if you use swap
-    kubelet.extraOpts = "--fail-swap-on=false";
-  };
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
