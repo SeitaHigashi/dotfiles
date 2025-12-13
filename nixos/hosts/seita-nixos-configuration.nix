@@ -140,6 +140,7 @@
     kdePackages.discover
     ffmpeg
     neovim
+    git
 
     # for kubernetes
     kubectl
@@ -228,10 +229,7 @@
   };
 
   # SW settings
-  # Git
-  programs.git.enable = true;
 
-  #
   programs.firefox.enable = true;
 
   programs.kdeconnect.enable = true;
