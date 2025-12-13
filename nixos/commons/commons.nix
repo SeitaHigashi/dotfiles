@@ -22,6 +22,12 @@
     };
   };
 
+  console.earlySetup = true;
+  console.packages = with pkgs; [
+    terminus_font
+  ];
+  console.font = "ter-v32n";
+
   # Enable CUPS to print documents.
   services.printing.enable = true;
   services.printing.drivers = [
