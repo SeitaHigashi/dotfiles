@@ -145,6 +145,21 @@
     };
   };
 
+  services.hyprpaper = {
+    enable = true;
+    settings = {
+      ipc = "on";
+      splash = false;
+      splash_offset = 2.0;
+
+      preload = [ "~/Pictures/pexels-pixabay-531880.jpg" ];
+
+      wallpaper = [
+        "eDP-1, ~/Pictures/pexels-pixabay-531880.jpg"
+      ];
+    };
+  };
+
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 }
