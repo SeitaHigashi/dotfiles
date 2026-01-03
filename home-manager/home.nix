@@ -1,8 +1,6 @@
 { inputs, config, pkgs, ... }:
 
 {
-  imports = [ inputs.ags.homeManagerModules.default ];
-
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
   home.username = "seita";
@@ -30,7 +28,7 @@
     pkgs.neovim
 
     pkgs.hyprpanel
-    inputs.astal.packages.${pkgs.system}.notifd
+    pkgs.brightnessctl # for Hyprland keybinding
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -195,12 +193,27 @@
         # Scroll through existing workspaces with mod + scroll
         "$mod, mouse_down, workspace, e+1"
         "$mod, mouse_up, workspace, e-1"
+        ",XF86AudioPrev,         exec, playerctl previous" # Audio previous button on keyboard
+        ",XF86AudioPlay,         exec, playerctl play-pause" # Audio play/pause button on keyboard
+        ",XF86AudioNext,         exec, playerctl next" # Audio next button on keyboard
+        ",XF86AudioMute,         exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" #  Audio mute button on keyboard
       ];
 
       bindm = [
         # Move/resize windows with mainMod + LMB/RMB and dragging
         "$mod, mouse:272, movewindow"
         "$mod, mouse:273, resizewindow"
+      ];
+
+      binde = [
+        ",XF86MonBrightnessDown, exec, brightnessctl s 5%-" # Brightness down button on keyboard
+        ",XF86MonBrightnessUp,   exec, brightnessctl s 5%+" # Brightness up button on keyboard
+        ",XF86KbdBrightnessDown, exec, brightnessctl -d smc::kbd_backlight s 10%-" # Keyboard brightness down button on keyboard
+        ",XF86KbdBrightnessUp,   exec, brightnessctl -d smc::kbd_backlight s 10%+" # Keyboard brightness up button on keyboard
+
+        ",XF86AudioRaiseVolume, exec, wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 1%+" # Audio volume up button on keyboard
+        ",XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-" # Audio volume down button on keyboard
+
       ];
 
       input = {
@@ -239,20 +252,6 @@
       bar.workspaces.show_icons = true;
       general.scailingpriority = "hyprland";
     };
-  };
-
-  programs.ags = {
-    enable = false;
-
-    # symlink to ~/.config/ags
-    # configDir = ../ags;
-    configDir = null;
-
-    # additional packages and executables to add to gjs's runtime
-    extraPackages = with pkgs; [
-      inputs.astal.packages.${pkgs.system}.battery
-      fzf
-    ];
   };
 
   # Let Home Manager install and manage itself.
