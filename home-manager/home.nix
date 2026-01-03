@@ -1,6 +1,8 @@
 { inputs, config, pkgs, ... }:
 
 {
+  imports = [ inputs.ags.homeManagerModules.default ];
+
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
   home.username = "seita";
@@ -26,6 +28,9 @@
     pkgs.bat
     pkgs.trash-cli
     pkgs.neovim
+
+    pkgs.hyprpanel
+    inputs.astal.packages.${pkgs.system}.notifd
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -228,12 +233,26 @@
   };
 
   programs.hyprpanel = {
-    enable = true;
+    enable = false;
     # package = inputs.hyprpanel.packages.${pkgs.system}.default;
     settings = {
       bar.workspaces.show_icons = true;
       general.scailingpriority = "hyprland";
     };
+  };
+
+  programs.ags = {
+    enable = false;
+
+    # symlink to ~/.config/ags
+    # configDir = ../ags;
+    configDir = null;
+
+    # additional packages and executables to add to gjs's runtime
+    extraPackages = with pkgs; [
+      inputs.astal.packages.${pkgs.system}.battery
+      fzf
+    ];
   };
 
   # Let Home Manager install and manage itself.

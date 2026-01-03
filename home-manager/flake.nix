@@ -9,10 +9,12 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hyprpanel = {
-      url = "github:Jas-SinghFSU/HyprPanel";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+#     hyprpanel = {
+#       url = "github:Jas-SinghFSU/HyprPanel";
+#       inputs.nixpkgs.follows = "nixpkgs";
+#     };
+#     astal.url = "github:aylur/astal";
+#     ags.url = "github:aylur/ags";
   };
 
   outputs = inputs @ { nixpkgs, home-manager, ... }:
@@ -22,7 +24,6 @@
     in {
       homeConfigurations."seita" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        specialArgs = { inherit inputs; }; # this is the important part
 
         # Specify your home configuration modules here, for example,
         # the path to your home.nix.
