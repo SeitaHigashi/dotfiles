@@ -1,17 +1,25 @@
-{ config, pkgs, ... }:
-
+{ inputs, config, pkgs, ... }:
 {
   imports =
     [ # Include the results of the hardware scan.
       ./seita-mac-nix-hardware.nix
       ../commons/commons.nix
       ../commons/i18n.nix
+      inputs.hyprland.nixosModules.default
     ];
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.plymouth.enable = true; # Start up screen
+
+
+  boot.tmp.cleanOnBoot = true;
+
+  zramSwap = {
+    enable = true;
+    memoryPercent = 100; # Use 100% of RAM for zram
+  };
 
   networking.hostName = "seita-mac-nix"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
@@ -23,11 +31,25 @@
   services.xserver.enable = true;
 
   # Enable the GNOME Desktop Environment.
-  # services.displayManager.gdm.enable = true;
-  services.displayManager.cosmic-greeter.enable = true;
+  services.displayManager.gdm.enable = true;
+  # services.displayManager.cosmic-greeter.enable = true;
   services.desktopManager.gnome.enable = true;
   services.desktopManager.cosmic.enable = true;
   # services.desktopManager.cosmic.xwayland.enable = true;
+
+  nix.settings = {
+    substituters = ["https://hyprland.cachix.org"];
+    trusted-substituters = ["https://hyprland.cachix.org"];
+    trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="];
+  };
+
+  programs.hyprland = {
+    enable = true;
+    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    # make sure to also set the portal package, so that they are in sync
+    portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+  };
+
 
   environment.gnome.excludePackages = with pkgs; [
     gnome-tour
@@ -79,6 +101,11 @@
   environment.systemPackages = with pkgs; [
     git
     neovim
+
+    # For Hyprland
+    rofi
+    hyprlauncher
+    kitty
 
     # For wine
     wineWowPackages.stable # support both 32-bit and 64-bit applications

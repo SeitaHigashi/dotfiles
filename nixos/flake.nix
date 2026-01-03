@@ -2,6 +2,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     home-manager.url = "github:nix-community/home-manager";
+    hyprland.url = "github:hyprwm/Hyprland";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -31,6 +32,7 @@
       };
       seita-mac-nix = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
+        specialArgs = { inherit inputs; }; # this is the important part
         modules = [
           ./hosts/seita-mac-nix.nix
         ] ++ hm;
