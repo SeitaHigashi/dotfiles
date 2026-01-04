@@ -4,10 +4,17 @@
     enable = true;
     package = null;
     portalPackage = null;
-    # plugins =  with pkgs.hyprlandPlugins; [
-    #   hyprscrolling
-    # ];
+    plugins = [
+      inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hyprexpo
+      # inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hyprscrolling
+    ];
     settings = {
+      plugin = {
+        hyprexpo = {
+          columns = 3;
+          workspace_method = "first 1";
+        };
+      };
       "$mod" = "SUPER";
       bind = [
         "$mod SHIFT, Q, killactive, "
@@ -16,7 +23,8 @@
         "$mod, F, fullscreen, "
         "$mod, P, pseudo,"
         "$mod, D, exec, hyprlauncher"
-        "$mod, return, exec, alacritty"
+        # "$mod, return, exec, alacritty"
+        "$mod, return, exec, wezterm"
         # Move focus with mod + arrow keys
         "$mod, left, movefocus, l"
         "$mod, right, movefocus, r"
@@ -43,8 +51,11 @@
         "$mod, 0, workspace, 10"
         "$mod SHIFT, S, movetoworkspace, special"
         "$mod, S, togglespecialworkspace,"
+        "$mod CTRL, S, togglespecialworkspace, spotify"
+        "$mod CTRL, D, togglespecialworkspace, discord"
         "$mod, TAB, layoutmsg, cyclenext"
         "$mod, TAB, layoutmsg, swapwithmaster master"
+        "$mod, g, hyprexpo:expo, toggle"
         # Move active window to a workspace with mod + SHIFT + [0-9]
         "$mod SHIFT, 1, movetoworkspace, 1"
         "$mod SHIFT, 2, movetoworkspace, 2"
@@ -94,18 +105,33 @@
 
       general = {
           gaps_in = 3;
-          gaps_out = 3;
-          border_size = 2;
-          # col.active_border = rgba(33ccffee) rgba(00ff99ee) 45deg;
-          # col.inactive_border = rgba(595959aa);
-          # layout = dwindle;
+          gaps_out = 8;
+          border_size = 1;
+          # col.active_border = "rgba(33ccffee) rgba(00ff99ee) 45deg";
+          # col.inactive_border = "rgba(595959aa)";
+          layout = "dwindle";
+          # layout = "scrolling";
       };
       decoration = {
-          rounding = 5;
+          rounding = 4;
+          blur.size = 1;
       };
       exec-once = [
         "fcitx5"
         "hyprpanel"
+        "discord"
+        "spotify"
+      ];
+
+      windowrule = [
+      # General rules
+        "match:class .*, float on, size 1000 600, center on"
+        # If tiled windows are opened on the workspace, new window will be opened as tiled
+        "match:workspace w[t2-99], float off"
+
+      # Special workspace rules
+        "match:class Spotify, float off, workspace special:spotify silent, border_size 0"
+        "match:class discord, float off, workspace special:discord silent, border_size 0"
       ];
     };
 
