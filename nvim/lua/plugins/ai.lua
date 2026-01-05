@@ -125,5 +125,18 @@ return {
         desc = "CopilotChat - Reset chat history and clear buffer",
       }
     },
+  },
+
+  {
+    "folke/sidekick.nvim",
+    event = 'VeryLazy',
+    opts = {
+      cli = {
+        mux = {
+          backend = "zellij",
+          enabled = true,
+        }
+      }
+    }
   }
 }
