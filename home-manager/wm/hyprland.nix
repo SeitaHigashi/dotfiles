@@ -130,10 +130,12 @@
         # If tiled windows are opened on the workspace, new window will be opened as tiled
         "match:workspace w[t2-99], float off"
 
+      # Picture in picture rule
+        "match:title (Picture\\s+in\\s+picture), pin on, size 320 180, border_size 0, float on, move (monitor_w-320-8) (monitor_h-180-8)"
+
       # Special workspace rules
         "match:class Spotify, float off, workspace special:spotify silent, border_size 0"
         "match:class discord, float off, workspace special:discord silent, border_size 0"
-        "match:title (Picture\\s+in\\s+picture), pin on, size 320 180, border_size 0, float on, move (monitor_w-320-8) (monitor_h-180-8)"
       ];
 
       animation = [
