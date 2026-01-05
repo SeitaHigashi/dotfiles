@@ -115,6 +115,7 @@
       decoration = {
           rounding = 4;
           blur.size = 1;
+          shadow.enabled = false;
       };
       exec-once = [
         "fcitx5"
@@ -125,7 +126,7 @@
 
       windowrule = [
       # General rules
-        "match:class .*, float on, size 1000 600, center on"
+        "match:class .*, float on, size 1100 700, center on"
         # If tiled windows are opened on the workspace, new window will be opened as tiled
         "match:workspace w[t2-99], float off"
 
@@ -133,6 +134,19 @@
         "match:class Spotify, float off, workspace special:spotify silent, border_size 0"
         "match:class discord, float off, workspace special:discord silent, border_size 0"
         "match:title (Picture\\s+in\\s+picture), pin on, size 320 180, border_size 0, float on, move (monitor_w-320-8) (monitor_h-180-8)"
+      ];
+
+      animation = [
+        "specialWorkspace, 1, 8, default, slidefadevert"
+      ];
+
+      gesture = [
+        "3, horizontal, workspace"
+        "3, down, special, discord"
+        "3, up, special, spotify"
+        "4, swipe, move"
+        "3, pinch, fullscreen"
+        "4, pinch, fullscreen"
       ];
     };
   };
