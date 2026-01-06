@@ -114,14 +114,21 @@
       };
       decoration = {
           rounding = 4;
-          blur.size = 1;
+          blur.size = 6;
           shadow.enabled = false;
       };
+
+      misc = {
+        focus_on_activate = true ;
+      };
+
       exec-once = [
-        "fcitx5"
+        "fcitx5 -d -r"
+        "fcitx5-remote -r"
         "hyprpanel"
         "discord"
         "spotify"
+        "tailscale systray"
       ];
 
       windowrule = [

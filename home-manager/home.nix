@@ -57,6 +57,16 @@
     EDITOR = "nvim";
   };
 
+  gtk = {
+    enable = true;
+    theme = {
+      package = pkgs.tokyonight-gtk-theme;
+      name = "Tokyonight-Dark";
+      # package = pkgs.nightfox-gtk-theme;
+      # name = "Nightfox-Dark-hdpi";
+    };
+  };
+
   programs.git = {
     enable = true;
     settings = {
@@ -153,10 +163,13 @@
       splash = false;
       splash_offset = 2.0;
 
-      preload = [ "~/Pictures/pexels-pixabay-531880.jpg" ];
+      preload = [
+        # "~/Pictures/pexels-pixabay-531880.jpg"
+        "~/Pictures/Minori_49_trained_art.png"
+      ];
 
       wallpaper = [
-        "eDP-1, ~/Pictures/pexels-pixabay-531880.jpg"
+        "eDP-1, ~/Pictures/Minori_49_trained_art.png"
       ];
     };
   };
