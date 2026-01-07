@@ -67,6 +67,8 @@
     };
   };
 
+  imports = [ ./wm/hyprland.nix ];
+
   programs.git = {
     enable = true;
     settings = {
@@ -145,7 +147,10 @@
     nix-direnv.enable = true;
   };
 
-  imports = [ ./wm/hyprland.nix ];
+  programs.wezterm = {
+    enable = true;
+    extraConfig = builtins.readFile ../wezterm/wezterm.lua;
+  };
 
   programs.hyprpanel = {
     enable = false;
