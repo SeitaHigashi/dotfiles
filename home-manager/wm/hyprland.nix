@@ -141,7 +141,7 @@
         "match:title (Picture\\s+in\\s+picture), pin on, size 320 180, border_size 0, float on, move (monitor_w-320-8) (monitor_h-180-8)"
 
       # Special workspace rules
-        "match:class Spotify, float off, workspace special:spotify silent, border_size 0"
+        "match:class Spotify, float off, workspace special:spotify silent, border_size 0, suppress_event activate fullscreen fullscreenoutput maximize"
         "match:class discord, float off, workspace special:discord silent, border_size 0"
       ];
 
