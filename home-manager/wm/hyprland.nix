@@ -107,8 +107,7 @@
           gaps_in = 3;
           gaps_out = 8;
           border_size = 1;
-          # col.active_border = "rgba(33ccffee) rgba(00ff99ee) 45deg";
-          # col.inactive_border = "rgba(595959aa)";
+          "col.active_border" = "0xff999999";
           layout = "dwindle";
           # layout = "scrolling";
       };
@@ -116,6 +115,8 @@
           rounding = 4;
           blur.size = 6;
           shadow.enabled = false;
+          dim_inactive = true;
+          dim_strength = 0.05;
       };
 
       misc = {
