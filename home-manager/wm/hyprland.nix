@@ -126,7 +126,7 @@
         "fcitx5 -d -r"
         "fcitx5-remote -r"
         "hyprpanel"
-        "discord"
+        "discord --silent"
         "spotify"
         "tailscale systray"
       ];
