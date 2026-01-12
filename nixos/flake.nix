@@ -1,9 +1,11 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    home-manager.url = "github:nix-community/home-manager";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     hyprland.url = "github:hyprwm/Hyprland";
-    home-manager.inputs.nixpkgs.follows = "nixpkgs";
     hyprland-plugins = {
       url = "github:hyprwm/hyprland-plugins";
       inputs.hyprland.follows = "hyprland";
@@ -15,6 +17,7 @@
     hm = [
       home-manager.nixosModules.home-manager
       {
+        home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.users.seita = import ../home-manager/home.nix;
         home-manager.extraSpecialArgs = { inherit inputs; };
