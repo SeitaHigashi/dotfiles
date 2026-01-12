@@ -165,7 +165,7 @@
   # Ollama
   services.ollama = {
     enable = true;
-    acceleration = "cuda";
+    # acceleration = "cuda";
     host = "[::]";
   };
 
