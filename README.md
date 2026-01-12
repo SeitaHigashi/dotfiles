@@ -49,6 +49,6 @@ ln -s ~/.dotfiles/wezterm ~/.config/wezterm
 ## Features
 
 - Hyprland compositor with custom keybindings
-- Neovim with packer.nvim plugin management
+- Neovim with lazy.nvim plugin management
 - WezTerm with custom tab bar and font settings
 - Declarative package management via Nix flakes
