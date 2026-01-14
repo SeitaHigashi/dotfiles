@@ -5,6 +5,7 @@
       ./seita-mac-nix-hardware.nix
       ../commons/commons.nix
       ../commons/i18n.nix
+      ../commons/applications.nix
       inputs.hyprland.nixosModules.default
     ];
 
@@ -100,8 +101,6 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    git
-    neovim
 
     # For wine
     wineWowPackages.stable # support both 32-bit and 64-bit applications

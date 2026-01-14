@@ -6,6 +6,7 @@
       ./seita-nixos-hardware-configuration.nix
       ../commons/commons.nix
       ../commons/i18n.nix
+      ../commons/applications.nix
     ];
   
   # Enable Bluetooh
@@ -139,8 +140,6 @@
     # pulseeffects-legacy
     kdePackages.discover
     ffmpeg
-    neovim
-    git
 
     # for kubernetes
     kubectl
