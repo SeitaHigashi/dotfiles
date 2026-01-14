@@ -13,17 +13,19 @@
   # The home.packages option allows you to install Nix packages into your
   # environment.
   home.packages = [
-    pkgs.nodejs_22
+    pkgs.neovim
+
+    # Useful utilities and Neovim dependencies
     pkgs.gcc
+    pkgs.nodejs_22
     pkgs.ripgrep
+
+    # Useful utilities
     pkgs.tmux
     pkgs.bat
     pkgs.trash-cli
-    pkgs.neovim
     pkgs.lsof
   ];
-
-  home.file = { };
 
   home.sessionVariables = {
     EDITOR = "nvim";
