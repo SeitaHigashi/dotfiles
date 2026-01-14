@@ -11,9 +11,9 @@ return function()
     if vim.fn.winwidth(0) > 70 then
       if os.time() % 2 == 0 then
         -- Convert to JST from UTC
-        return ' ' .. os.date("%H:%M", os.time() + 9 * 60 * 60)
+        return ' ' .. os.date("%H:%M", os.time())
       else
-        return ' ' .. os.date("%H %M", os.time() + 9 * 60 * 60)
+        return ' ' .. os.date("%H %M", os.time())
       end
     end
     return ''
