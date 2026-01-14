@@ -14,9 +14,6 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-
-  boot.tmp.cleanOnBoot = true;
-
   zramSwap = {
     enable = true;
     memoryPercent = 100; # Use 100% of RAM for zram
@@ -33,9 +30,8 @@
 
   # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
-  # services.displayManager.cosmic-greeter.enable = true;
-  services.desktopManager.gnome.enable = true;
-  services.desktopManager.cosmic.enable = true;
+  # services.desktopManager.gnome.enable = true;
+  # services.desktopManager.cosmic.enable = true;
   # services.desktopManager.cosmic.xwayland.enable = true;
 
   nix.settings = {
