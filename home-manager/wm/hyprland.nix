@@ -201,5 +201,7 @@
   home.packages = lib.mkIf osConfig.programs.hyprland.enable [
     pkgs.hyprpanel
     pkgs.brightnessctl # for Hyprland keybinding
+    pkgs.rofi
+    pkgs.hyprlauncher
   ];
 }

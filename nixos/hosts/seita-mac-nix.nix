@@ -103,11 +103,6 @@
     git
     neovim
 
-    # For Hyprland
-    rofi
-    hyprlauncher
-    kitty
-
     # For wine
     wineWowPackages.stable # support both 32-bit and 64-bit applications
     wine # support 32-bit only
