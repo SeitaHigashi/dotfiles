@@ -197,4 +197,9 @@
       ];
     };
   };
+
+  home.packages = [
+    pkgs.hyprpanel
+    pkgs.brightnessctl # for Hyprland keybinding
+  ];
 }
