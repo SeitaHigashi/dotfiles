@@ -1,8 +1,6 @@
 { inputs, config, pkgs, lib, osConfig, ... }:
 
 # Only enable Hyprland related configuration when Hyprland is enabled
-{
-  programs.hyprland =
 lib.mkIf osConfig.programs.hyprland.enable {
   wayland.windowManager.hyprland =  {
     enable = true;
