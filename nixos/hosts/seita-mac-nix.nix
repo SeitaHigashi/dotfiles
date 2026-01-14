@@ -3,6 +3,7 @@
   imports =
     [ # Include the results of the hardware scan.
       ./seita-mac-nix-hardware.nix
+      ../user.nix
       ../commons/commons.nix
       ../commons/i18n.nix
       ../commons/applications.nix
@@ -78,29 +79,18 @@
     pulse.enable = true;
   };
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.seita = {
-    isNormalUser = true;
-    description = "seita";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      # brave
-      # discord
-      gnomeExtensions.dash-to-dock
-      gnomeExtensions.blur-my-shell
-      gnomeExtensions.kimpanel
-      gnomeExtensions.gsconnect
-      gnomeExtensions.appindicator
-      gnomeExtensions.tailscale-qs
-      gnomeExtensions.media-controls
-      gnomeExtensions.home-assistant-extension
-      gnomeExtensions.paperwm
-    ];
-  };
-
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    gnomeExtensions.dash-to-dock
+    gnomeExtensions.blur-my-shell
+    gnomeExtensions.kimpanel
+    gnomeExtensions.gsconnect
+    gnomeExtensions.appindicator
+    gnomeExtensions.tailscale-qs
+    gnomeExtensions.media-controls
+    gnomeExtensions.home-assistant-extension
+    gnomeExtensions.paperwm
 
     # For wine
     wineWowPackages.stable # support both 32-bit and 64-bit applications
