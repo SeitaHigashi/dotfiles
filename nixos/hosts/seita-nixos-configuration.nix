@@ -54,7 +54,6 @@
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.plymouth.enable = true;
   # boot.kernelPackages = pkgs.linuxPackages_zen;
 
   # enable KSM(Kernel Samepage Merging)
