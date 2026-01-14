@@ -1,6 +1,10 @@
 { inputs, config, pkgs, lib, osConfig, ... }:
+
+# Only enable Hyprland related configuration when Hyprland is enabled
 {
-  wayland.windowManager.hyprland = lib.mkIf osConfig.programs.hyprland.enable {
+  programs.hyprland =
+lib.mkIf osConfig.programs.hyprland.enable {
+  wayland.windowManager.hyprland =  {
     enable = true;
     package = null;
     portalPackage = null;
@@ -171,7 +175,7 @@
 
   # additional hyprland related programs
 
-  programs.hyprpanel = lib.mkIf osConfig.programs.hyprland.enable {
+  programs.hyprpanel = {
     enable = false;
     # package = inputs.hyprpanel.packages.${pkgs.system}.default;
     settings = {
@@ -180,7 +184,7 @@
     };
   };
 
-  services.hyprpaper = lib.mkIf osConfig.programs.hyprland.enable {
+  services.hyprpaper = {
     enable = true;
     settings = {
       ipc = "on";
@@ -198,7 +202,7 @@
     };
   };
 
-  home.packages = lib.mkIf osConfig.programs.hyprland.enable [
+  home.packages = [
     pkgs.hyprpanel
     pkgs.brightnessctl # for Hyprland keybinding
     pkgs.rofi
