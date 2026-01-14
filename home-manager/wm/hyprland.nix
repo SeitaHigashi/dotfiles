@@ -1,6 +1,6 @@
-{ inputs, config, pkgs, ... }:
+{ inputs, config, pkgs, lib, osConfig, ... }:
 {
-  wayland.windowManager.hyprland = {
+  wayland.windowManager.hyprland = lib.mkIf osConfig.programs.hyprland.enable {
     enable = true;
     package = null;
     portalPackage = null;
