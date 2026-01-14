@@ -168,4 +168,33 @@
       ];
     };
   };
+
+  # additional hyprland related programs
+
+  programs.hyprpanel = lib.mkIf osConfig.programs.hyprland.enable {
+    enable = false;
+    # package = inputs.hyprpanel.packages.${pkgs.system}.default;
+    settings = {
+      bar.workspaces.show_icons = true;
+      general.scailingpriority = "hyprland";
+    };
+  };
+
+  services.hyprpaper = lib.mkIf osConfig.programs.hyprland.enable {
+    enable = true;
+    settings = {
+      ipc = "on";
+      splash = false;
+      splash_offset = 2.0;
+
+      preload = [
+        # "~/Pictures/pexels-pixabay-531880.jpg"
+        "~/Pictures/Minori_49_trained_art.png"
+      ];
+
+      wallpaper = [
+        "eDP-1, ~/Pictures/Minori_49_trained_art.png"
+      ];
+    };
+  };
 }

@@ -151,33 +151,6 @@
     extraConfig = builtins.readFile ../wezterm/wezterm.lua;
   };
 
-  programs.hyprpanel = {
-    enable = false;
-    # package = inputs.hyprpanel.packages.${pkgs.system}.default;
-    settings = {
-      bar.workspaces.show_icons = true;
-      general.scailingpriority = "hyprland";
-    };
-  };
-
-  services.hyprpaper = {
-    enable = true;
-    settings = {
-      ipc = "on";
-      splash = false;
-      splash_offset = 2.0;
-
-      preload = [
-        # "~/Pictures/pexels-pixabay-531880.jpg"
-        "~/Pictures/Minori_49_trained_art.png"
-      ];
-
-      wallpaper = [
-        "eDP-1, ~/Pictures/Minori_49_trained_art.png"
-      ];
-    };
-  };
-
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 }
