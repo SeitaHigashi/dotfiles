@@ -21,7 +21,7 @@
         "$mod, M, exit, "
         "$mod SHIFT,  F, togglefloating, "
         "$mod, F, fullscreen, "
-        "$mod, P, pseudo,"
+        "$mod, P, pin,"
         "$mod, D, exec, hyprlauncher"
         # "$mod, return, exec, alacritty"
         "$mod, return, exec, wezterm"
@@ -53,8 +53,6 @@
         "$mod, S, togglespecialworkspace,"
         "$mod CTRL, S, togglespecialworkspace, spotify"
         "$mod CTRL, D, togglespecialworkspace, discord"
-        "$mod, TAB, layoutmsg, cyclenext"
-        "$mod, TAB, layoutmsg, swapwithmaster master"
         "$mod, g, hyprexpo:expo, toggle"
         # Move active window to a workspace with mod + SHIFT + [0-9]
         "$mod SHIFT, 1, movetoworkspace, 1"
@@ -74,6 +72,16 @@
         ",XF86AudioPlay,         exec, playerctl play-pause" # Audio play/pause button on keyboard
         ",XF86AudioNext,         exec, playerctl next" # Audio next button on keyboard
         ",XF86AudioMute,         exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" #  Audio mute button on keyboard
+        # Move to next/previous window
+        # Change focused window and change z-order
+        "$mod, TAB, cyclenext"
+        "$mod, TAB, alterzorder, top"
+        "$mod SHIFT, TAB, cyclenext, prev"
+        "$mod SHIFT, TAB, alterzorder, top"
+        "ALT, TAB, cyclenext"
+        "ALT, TAB, alterzorder, top"
+        "ALT SHIFT, TAB, cyclenext, prev"
+        "ALT SHIFT, TAB, alterzorder, top"
       ];
 
       bindm = [
