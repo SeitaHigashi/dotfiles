@@ -4,7 +4,6 @@
 lib.mkIf osConfig.programs.hyprland.enable {
   wayland.windowManager.hyprland =  {
     enable = true;
-    systemd.enable = lib.mkIf osConfig.programs.hyprland.withUWSM false;
     package = null;
     portalPackage = null;
     plugins = [
