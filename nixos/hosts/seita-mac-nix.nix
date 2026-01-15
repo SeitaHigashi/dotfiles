@@ -7,6 +7,7 @@
       ../commons/commons.nix
       ../commons/i18n.nix
       ../commons/applications.nix
+      ../commons/de/gnome
       inputs.hyprland.nixosModules.default
     ];
 
@@ -48,16 +49,6 @@
     # withUWSM = true;
   };
 
-
-  environment.gnome.excludePackages = with pkgs; [
-    gnome-tour
-    epiphany # web browser
-    geary # email reader.
-    cheese
-    gnome-music
-    evince # document viewer
-  ];
-  
   # Configure keymap in X11
   services.xserver.xkb = {
     layout = "jp";
@@ -77,16 +68,6 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    gnomeExtensions.dash-to-dock
-    gnomeExtensions.blur-my-shell
-    gnomeExtensions.kimpanel
-    gnomeExtensions.gsconnect
-    gnomeExtensions.appindicator
-    gnomeExtensions.tailscale-qs
-    gnomeExtensions.media-controls
-    gnomeExtensions.home-assistant-extension
-    gnomeExtensions.paperwm
-
     # For wine
     wineWowPackages.stable # support both 32-bit and 64-bit applications
     winetricks # winetricks (all versions)
