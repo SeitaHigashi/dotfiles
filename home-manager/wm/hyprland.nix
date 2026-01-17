@@ -1,6 +1,8 @@
-{ inputs, config, pkgs, ... }:
-{
-  wayland.windowManager.hyprland = {
+{ inputs, config, pkgs, lib, osConfig, ... }:
+
+# Only enable Hyprland related configuration when Hyprland is enabled
+lib.mkIf osConfig.programs.hyprland.enable {
+  wayland.windowManager.hyprland =  {
     enable = true;
     package = null;
     portalPackage = null;
@@ -21,7 +23,7 @@
         "$mod, M, exit, "
         "$mod SHIFT,  F, togglefloating, "
         "$mod, F, fullscreen, "
-        "$mod, P, pseudo,"
+        "$mod, P, pin,"
         "$mod, D, exec, hyprlauncher"
         # "$mod, return, exec, alacritty"
         "$mod, return, exec, wezterm"
@@ -49,12 +51,10 @@
         "$mod, 8, workspace, 8"
         "$mod, 9, workspace, 9"
         "$mod, 0, workspace, 10"
-        "$mod SHIFT, S, movetoworkspace, special"
-        "$mod, S, togglespecialworkspace,"
+        # "$mod SHIFT, S, movetoworkspace, special"
+        # "$mod, S, togglespecialworkspace,"
         "$mod CTRL, S, togglespecialworkspace, spotify"
         "$mod CTRL, D, togglespecialworkspace, discord"
-        "$mod, TAB, layoutmsg, cyclenext"
-        "$mod, TAB, layoutmsg, swapwithmaster master"
         "$mod, g, hyprexpo:expo, toggle"
         # Move active window to a workspace with mod + SHIFT + [0-9]
         "$mod SHIFT, 1, movetoworkspace, 1"
@@ -74,6 +74,16 @@
         ",XF86AudioPlay,         exec, playerctl play-pause" # Audio play/pause button on keyboard
         ",XF86AudioNext,         exec, playerctl next" # Audio next button on keyboard
         ",XF86AudioMute,         exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" #  Audio mute button on keyboard
+        # Move to next/previous window
+        # Change focused window and change z-order
+        "$mod, TAB, cyclenext"
+        "$mod, TAB, alterzorder, top"
+        "$mod SHIFT, TAB, cyclenext, prev"
+        "$mod SHIFT, TAB, alterzorder, top"
+        "ALT, TAB, cyclenext"
+        "ALT, TAB, alterzorder, top"
+        "ALT SHIFT, TAB, cyclenext, prev"
+        "ALT SHIFT, TAB, alterzorder, top"
       ];
 
       bindm = [
@@ -160,4 +170,40 @@
       ];
     };
   };
+
+  # additional hyprland related programs
+
+  programs.hyprpanel = {
+    enable = false;
+    # package = inputs.hyprpanel.packages.${pkgs.system}.default;
+    settings = {
+      bar.workspaces.show_icons = true;
+      general.scailingpriority = "hyprland";
+    };
+  };
+
+  services.hyprpaper = {
+    enable = true;
+    settings = {
+      ipc = "on";
+      splash = false;
+      splash_offset = 2.0;
+
+      preload = [
+        # "~/Pictures/pexels-pixabay-531880.jpg"
+        "~/Pictures/Minori_49_trained_art.png"
+      ];
+
+      wallpaper = [
+        "eDP-1, ~/Pictures/Minori_49_trained_art.png"
+      ];
+    };
+  };
+
+  home.packages = [
+    pkgs.hyprpanel
+    pkgs.brightnessctl # for Hyprland keybinding
+    pkgs.rofi
+    pkgs.hyprlauncher
+  ];
 }

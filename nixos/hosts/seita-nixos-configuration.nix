@@ -4,8 +4,10 @@
   imports =
     [ # Include the results of the hardware scan.
       ./seita-nixos-hardware-configuration.nix
+      ../user.nix
       ../commons/commons.nix
       ../commons/i18n.nix
+      ../commons/applications.nix
     ];
   
   # Enable Bluetooh
@@ -52,7 +54,6 @@
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.plymouth.enable = true;
   # boot.kernelPackages = pkgs.linuxPackages_zen;
 
   # enable KSM(Kernel Samepage Merging)
@@ -123,24 +124,12 @@
     pulse.enable = true;
   };
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.seita = {
-    isNormalUser = true;
-    description = "seita";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      hypnotix
-    ];
-  };
-
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
     # pulseeffects-legacy
     kdePackages.discover
     ffmpeg
-    neovim
-    git
 
     # for kubernetes
     kubectl

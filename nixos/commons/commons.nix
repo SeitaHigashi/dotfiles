@@ -4,6 +4,9 @@
   # Set your time zone.
   time.timeZone = "Asia/Tokyo";
 
+  boot.plymouth.enable = true; # Start up screen
+  boot.tmp.cleanOnBoot = true;
+
   # Fonts
   fonts = {
     packages = with pkgs; [

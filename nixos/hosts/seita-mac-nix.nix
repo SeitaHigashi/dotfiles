@@ -3,18 +3,16 @@
   imports =
     [ # Include the results of the hardware scan.
       ./seita-mac-nix-hardware.nix
+      ../user.nix
       ../commons/commons.nix
       ../commons/i18n.nix
+      ../commons/applications.nix
       inputs.hyprland.nixosModules.default
     ];
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.plymouth.enable = true; # Start up screen
-
-
-  boot.tmp.cleanOnBoot = true;
 
   zramSwap = {
     enable = true;
@@ -32,8 +30,7 @@
 
   # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
-  # services.displayManager.cosmic-greeter.enable = true;
-  services.desktopManager.gnome.enable = true;
+  # services.desktopManager.gnome.enable = true;
   services.desktopManager.cosmic.enable = true;
   # services.desktopManager.cosmic.xwayland.enable = true;
 
@@ -77,43 +74,21 @@
     pulse.enable = true;
   };
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.seita = {
-    isNormalUser = true;
-    description = "seita";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      # brave
-      # discord
-      gnomeExtensions.dash-to-dock
-      gnomeExtensions.blur-my-shell
-      gnomeExtensions.kimpanel
-      gnomeExtensions.gsconnect
-      gnomeExtensions.appindicator
-      gnomeExtensions.tailscale-qs
-      gnomeExtensions.media-controls
-      gnomeExtensions.home-assistant-extension
-      gnomeExtensions.paperwm
-    ];
-  };
-
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    git
-    neovim
-
-    # For Hyprland
-    rofi
-    hyprlauncher
-    kitty
+    gnomeExtensions.dash-to-dock
+    gnomeExtensions.blur-my-shell
+    gnomeExtensions.kimpanel
+    gnomeExtensions.gsconnect
+    gnomeExtensions.appindicator
+    gnomeExtensions.tailscale-qs
+    gnomeExtensions.media-controls
+    gnomeExtensions.home-assistant-extension
+    gnomeExtensions.paperwm
 
     # For wine
     wineWowPackages.stable # support both 32-bit and 64-bit applications
-    wine # support 32-bit only
-    (wine.override { wineBuild = "wine64"; }) # support 64-bit only
-    wine64 # support 64-bit only
-    wineWowPackages.staging # wine-staging (version with experimental features)
     winetricks # winetricks (all versions)
     wineWowPackages.waylandFull # native wayland support (unstable)
   ];
