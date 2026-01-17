@@ -26,6 +26,8 @@
     pkgs.trash-cli
     pkgs.neovim
     pkgs.lsof
+    pkgs.unzip
+    pkgs.wget
 
     pkgs.hyprpanel
     pkgs.brightnessctl # for Hyprland keybinding
