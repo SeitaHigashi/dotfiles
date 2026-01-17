@@ -13,38 +13,33 @@
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
 
+  # local-lvm:vm-106-disk1
   fileSystems."/" =
     { device = "/dev/disk/by-uuid/91bfeff1-bffd-465e-981c-14ef65748ffa";
       fsType = "ext4";
     };
 
+  # local-lvm:vm-106-disk1
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/D074-78CC";
       fsType = "vfat";
       options = [ "fmask=0022" "dmask=0022" ];
     };
 
+  # local-lvm:vm-106-disk3
   fileSystems."/home" =
     #{ device = "/dev/disk/by-uuid/542dc3f6-b40f-4264-b624-6f25699d9322";
     { device = "/dev/disk/by-uuid/113f020f-b091-4d0d-96fe-93d3570267f8";
       fsType = "ext4";
     };
 
+  # local-lvm:vm-106-disk2
   fileSystems."/nix" =
     { device = "/dev/disk/by-uuid/55584c05-d735-41e8-b638-62a9926e9b25";
       fsType = "ext4";
     };
 
-  # fileSystems."/var/lib/containers/storage/volumes" =
-  #   { device = "/dev/disk/by-uuid/4a9c20d5-bd92-4ca4-aebb-6ee2736d4ba4";
-  #     fsType = "ext4";
-  #   };
-
-  # fileSystems."/var/lib/containers/storage/overlay" =
-  #   { device = "/dev/disk/by-uuid/b024b62d-7c63-4f30-8006-decb97edc579 ";
-  #     fsType = "ext4";
-  #   };
-
+  # hdd-thin:vm-106-disk2
   fileSystems."/var" =
     { device = "/dev/disk/by-uuid/d2944180-59d7-4f3a-8241-0c892785b316 ";
       fsType = "ext4";
