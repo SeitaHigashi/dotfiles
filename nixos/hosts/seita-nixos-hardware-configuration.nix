@@ -13,6 +13,8 @@
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
 
+  boot.supportedFilesystems = [ "bcachefs" ];
+
   # local-lvm:vm-106-disk1
   fileSystems."/" =
     { device = "/dev/disk/by-uuid/91bfeff1-bffd-465e-981c-14ef65748ffa";
@@ -27,11 +29,11 @@
     };
 
   # local-lvm:vm-106-disk3
-  fileSystems."/home" =
-    #{ device = "/dev/disk/by-uuid/542dc3f6-b40f-4264-b624-6f25699d9322";
-    { device = "/dev/disk/by-uuid/113f020f-b091-4d0d-96fe-93d3570267f8";
-      fsType = "ext4";
-    };
+  # fileSystems."/home" =
+  #   #{ device = "/dev/disk/by-uuid/542dc3f6-b40f-4264-b624-6f25699d9322";
+  #   { device = "/dev/disk/by-uuid/113f020f-b091-4d0d-96fe-93d3570267f8";
+  #     fsType = "ext4";
+  #   };
 
   # local-lvm:vm-106-disk2
   fileSystems."/nix" =
@@ -43,6 +45,20 @@
   fileSystems."/var" =
     { device = "/dev/disk/by-uuid/d2944180-59d7-4f3a-8241-0c892785b316 ";
       fsType = "ext4";
+    };
+
+  # local-lvm:vm-106-disk4
+  # hdd-thin:vm-106-disk1
+  fileSystems."/home" =
+    { device = "/dev/disk/by-uuid/5c6723e2-4bc6-4f71-a5a7-41cf4e402450";
+      fsType = "bcachefs";
+      options = [
+        "foreground_target=ssd" 
+        "promote_target=ssd"
+        "metadata_target=ssd"
+        "background_target=hdd"
+        "background_compression=zstd:3"
+      ];
     };
 
   swapDevices = [ ];
