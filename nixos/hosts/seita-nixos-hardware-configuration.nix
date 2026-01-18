@@ -29,16 +29,17 @@
     };
 
   # local-lvm:vm-106-disk3
-  # fileSystems."/home" =
-  #   #{ device = "/dev/disk/by-uuid/542dc3f6-b40f-4264-b624-6f25699d9322";
-  #   { device = "/dev/disk/by-uuid/113f020f-b091-4d0d-96fe-93d3570267f8";
-  #     fsType = "ext4";
-  #   };
-
-  # local-lvm:vm-106-disk2
+  # hdd-thin:vm-106-disk0
   fileSystems."/nix" =
-    { device = "/dev/disk/by-uuid/55584c05-d735-41e8-b638-62a9926e9b25";
-      fsType = "ext4";
+    { device = "/dev/disk/by-uuid/02fef650-b17d-471a-a69f-269564db4877";
+      fsType = "bcachefs";
+      options = [
+        "foreground_target=ssd" 
+        "promote_target=ssd"
+        "metadata_target=ssd"
+        "background_target=hdd"
+        "background_compression=zstd:2"
+      ];
     };
 
   # hdd-thin:vm-106-disk2
