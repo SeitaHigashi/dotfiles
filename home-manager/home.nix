@@ -25,6 +25,8 @@
     pkgs.bat
     pkgs.trash-cli
     pkgs.lsof
+    pkgs.unzip
+    pkgs.wget
   ];
 
   home.sessionVariables = {
