@@ -5,9 +5,10 @@
     [ # Include the results of the hardware scan.
       ./seita-nixos-hardware-configuration.nix
       ../user.nix
-      ../commons/commons.nix
-      ../commons/i18n.nix
-      ../commons/applications.nix
+      # ../commons/commons.nix
+      # ../commons/i18n.nix
+      # ../commons/applications.nix
+      ../commons
     ];
   
   # Enable Bluetooh

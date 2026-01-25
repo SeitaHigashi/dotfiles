@@ -4,10 +4,7 @@
     [ # Include the results of the hardware scan.
       ./seita-mac-nix-hardware.nix
       ../user.nix
-      ../commons/commons.nix
-      ../commons/i18n.nix
-      ../commons/applications.nix
-      ../commons/de/gnome
+      ../commons
       inputs.hyprland.nixosModules.default
     ];
 
