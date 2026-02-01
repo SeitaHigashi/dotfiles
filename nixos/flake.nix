@@ -26,12 +26,12 @@
   in
   {
     nixosConfigurations = {
-      myNixOS = nixpkgs.lib.nixosSystem {
-        system = builtins.currentSystem;
-        modules = [
-          /etc/nixos/configuration.nix
-        ] ++ hm;
-      };
+#       myNixOS = nixpkgs.lib.nixosSystem {
+#         system = builtins.currentSystem;
+#         modules = [
+#           /etc/nixos/configuration.nix
+#         ] ++ hm;
+#       };
       seita-nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
@@ -45,12 +45,12 @@
           ./hosts/seita-mac-nix.nix
         ] ++ hm;
       };
-      seita-wsl = nixpkgs.lib.nixosSystem {
-        system = builtins.currentSystem;
-        modules = [
-          ./hosts/seita-wsl.nix
-        ] ++ hm;
-      };
+#       seita-wsl = nixpkgs.lib.nixosSystem {
+#         system = builtins.currentSystem;
+#         modules = [
+#           ./hosts/seita-wsl.nix
+#         ] ++ hm;
+#       };
     };
   };
 }
