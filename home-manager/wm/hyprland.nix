@@ -24,7 +24,6 @@ lib.mkIf osConfig.programs.hyprland.enable {
         "$mod SHIFT,  F, togglefloating, "
         "$mod, F, fullscreen, "
         "$mod, P, pin,"
-        "$mod, D, exec, hyprlauncher"
         # "$mod, return, exec, alacritty"
         "$mod, return, exec, wezterm"
         # Move focus with mod + arrow keys
@@ -84,6 +83,10 @@ lib.mkIf osConfig.programs.hyprland.enable {
         "ALT, TAB, alterzorder, top"
         "ALT SHIFT, TAB, cyclenext, prev"
         "ALT SHIFT, TAB, alterzorder, top"
+      ];
+
+      bindr = [
+        "$mod, SUPER_L, exec, dms ipc call spotlight open"
       ];
 
       bindm = [
@@ -176,27 +179,8 @@ lib.mkIf osConfig.programs.hyprland.enable {
     };
   };
 
-  services.hyprpaper = {
-    enable = true;
-    settings = {
-      ipc = "on";
-      splash = false;
-      splash_offset = 2.0;
-
-      preload = [
-        # "~/Pictures/pexels-pixabay-531880.jpg"
-        "~/Pictures/Minori_49_trained_art.png"
-      ];
-
-      wallpaper = [
-        "eDP-1, ~/Pictures/Minori_49_trained_art.png"
-      ];
-    };
-  };
-
   home.packages = [
     pkgs.brightnessctl # for Hyprland keybinding
     pkgs.rofi
-    pkgs.hyprlauncher
   ];
 }
