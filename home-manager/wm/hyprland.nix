@@ -131,12 +131,13 @@ lib.mkIf osConfig.programs.hyprland.enable {
 
       misc = {
         focus_on_activate = true ;
+        disable_hyprland_logo = true;
+        disable_splash_rendering = true;
       };
 
       exec-once = [
         "fcitx5 -d -r"
         "fcitx5-remote -r"
-        "hyprpanel"
         "discord --silent"
         "spotify"
         "tailscale systray"
@@ -171,17 +172,6 @@ lib.mkIf osConfig.programs.hyprland.enable {
     };
   };
 
-  # additional hyprland related programs
-
-  programs.hyprpanel = {
-    enable = false;
-    # package = inputs.hyprpanel.packages.${pkgs.system}.default;
-    settings = {
-      bar.workspaces.show_icons = true;
-      general.scailingpriority = "hyprland";
-    };
-  };
-
   services.hyprpaper = {
     enable = true;
     settings = {
@@ -201,7 +191,6 @@ lib.mkIf osConfig.programs.hyprland.enable {
   };
 
   home.packages = [
-    pkgs.hyprpanel
     pkgs.brightnessctl # for Hyprland keybinding
     pkgs.rofi
     pkgs.hyprlauncher

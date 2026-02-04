@@ -6,6 +6,7 @@
       ../user.nix
       ../commons
       inputs.hyprland.nixosModules.default
+      inputs.dms.nixosModules.dank-material-shell
     ];
 
   # Bootloader.
@@ -27,10 +28,11 @@
   services.xserver.enable = true;
 
   # Enable the GNOME Desktop Environment.
-  services.displayManager.gdm.enable = true;
-  # services.desktopManager.gnome.enable = true;
   services.desktopManager.cosmic.enable = true;
-  # services.desktopManager.cosmic.xwayland.enable = true;
+  services.displayManager.dms-greeter = {
+    enable = true;
+    compositor.name = "hyprland";  # Or "hyprland" or "sway"
+  };
 
   nix.settings = {
     substituters = ["https://hyprland.cachix.org"];
@@ -44,6 +46,14 @@
     # make sure to also set the portal package, so that they are in sync
     portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
     # withUWSM = true;
+  };
+
+  programs.dank-material-shell = {
+    enable = true;
+    systemd = {
+      enable = true;             # Systemd service for auto-start
+      restartIfChanged = true;   # Auto-restart dms.service when dank-material-shell changes
+    };
   };
 
   # Configure keymap in X11
