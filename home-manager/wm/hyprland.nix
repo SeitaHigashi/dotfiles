@@ -169,6 +169,10 @@ lib.mkIf osConfig.programs.hyprland.enable {
         "3, pinch, fullscreen"
         "4, pinch, fullscreen"
       ];
+
+      monitor = [
+        "eDP-1, preferred, auto, 1.6"
+      ];
     };
   };
 
