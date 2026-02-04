@@ -5,11 +5,13 @@ on:
     branches: [ main, master ]
     paths:
       - 'nixos/**'
+      - 'home-manager/**'
       - '.github/workflows/nixos-test.yml'
   pull_request:
     branches: [ main, master ]
     paths:
       - 'nixos/**'
+      - 'home-manager/**'
       - '.github/workflows/nixos-test.yml'
 
 jobs:
