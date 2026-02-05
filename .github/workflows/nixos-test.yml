@@ -2,13 +2,13 @@ name: NixOS Configuration Test
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - 'nixos/**'
       - 'home-manager/**'
       - '.github/workflows/nixos-test.yml'
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - 'nixos/**'
       - 'home-manager/**'
@@ -26,10 +26,11 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
+      - name: Evaluate NixOS configuration
+        working-directory: ./nixos
+        run: nix flake show
+
       - name: Check flake
         working-directory: ./nixos
         run: nix flake check
 
-      - name: Evaluate NixOS configuration
-        working-directory: ./nixos
-        run: nix flake show
