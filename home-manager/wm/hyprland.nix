@@ -148,7 +148,7 @@ lib.mkIf osConfig.programs.hyprland.enable {
 
       windowrule = [
       # General rules
-        "match:class .*, float on, size 1100 700, center on"
+        "match:class .*, float on, size 1300 900, center on"
         # If tiled windows are opened on the workspace, new window will be opened as tiled
         "match:workspace w[t2-99], float off"
 
