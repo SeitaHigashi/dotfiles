@@ -1,4 +1,5 @@
 # dotfiles
+[![NixOS Configuration Test](https://github.com/SeitaHigashi/dotfiles/actions/workflows/nixos-test.yml/badge.svg?branch=main)](https://github.com/SeitaHigashi/dotfiles/actions/workflows/nixos-test.yml)
 
 Personal dotfiles managed with NixOS and Home Manager.
 
