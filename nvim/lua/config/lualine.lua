@@ -34,10 +34,6 @@ return function()
       lualine_b = { readonly, 'branch' },
       lualine_c = { 'filename', 'diff' },
       lualine_x = {
-        {
-          'copilot',
-          show_colors = true,
-        },
         'diagnostics',
         'encoding',
         'fileformat',

@@ -2,35 +2,6 @@ local utils = require('utils')
 
 return {
   {
-    'zbirenbaum/copilot.lua',
-    cmd = 'Copilot',
-    opts = {
-      suggestion = { enabled = false },
-      panel = {
-        enabled = false,
-        layout = {
-          position = 'right',
-          ratio = 0.3,
-        }
-      }
-    }
-  },
-
-  {
-    'AndreM222/copilot-lualine',
-    event = 'UIEnter',
-  },
-
-  {
-    'zbirenbaum/copilot-cmp',
-    event = 'InsertEnter',
-    opts = {},
-    dependencies  = {
-      'zbirenbaum/copilot.lua',
-    }
-  },
-
-  {
     'jackMort/ChatGPT.nvim',
     -- If OPENAI_API_KEY is not set, this plugin will not load.
     enabled = function()
@@ -80,53 +51,6 @@ return {
       })
     end,
   },
-  {
-    "CopilotC-Nvim/CopilotChat.nvim",
-    opts = {
-      show_help = "yes",
-      debug = false,
-      disable_extra_info = 'no',
-      insert_at_end = true, -- Move cursor to end of buffer when inserting text
-      clear_chat_on_new_prompt = true, -- Clears chat on every new prompt
-      language = "English",
-      window = {
-        layout = "float"
-      }
-    },
-    keys = {
-      { "<leader><leader>e", "<cmd>CopilotChatExplain<cr>", desc = "CopilotChat - Explain code" },
-      { "<leader><leader>t", "<cmd>CopilotChatTests<cr>", desc = "CopilotChat - Generate tests" },
-      {
-        "<leader><leader><leader>",
-        "<cmd>CopilotChatToggle<cr>",
-        desc = "CopilotChat - Toggle",
-      },
-      {
-        "<leader><leader>f",
-        "<cmd>CopilotChatFixDiagnostic<cr>", -- Get a fix for the diagnostic message under the cursor.
-        desc = "CopilotChat - Fix diagnostic",
-      },
-      {
-        "<leader><leader>g",
-        "<cmd>CopilotChatCommit<cr>",
-        desc = "CopilotChat - Generate commit comment based on staged changes",
-      },
-      {
-        "<leader><leader>p",
-        function()
-          local actions = require("CopilotChat.actions")
-          require("CopilotChat.integrations.telescope").pick(actions.prompt_actions())
-        end,
-        desc = "CopilotChat - Prompt actions",
-      },
-      {
-        "<leader><leader>r",
-        "<cmd>CopilotChatReset<cr>",
-        desc = "CopilotChat - Reset chat history and clear buffer",
-      }
-    },
-  },
-
   {
     "folke/sidekick.nvim",
     event = 'VeryLazy',

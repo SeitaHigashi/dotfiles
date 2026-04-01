@@ -20,7 +20,6 @@ return function()
     vim_item.kind = string.format("%s %s", lspkind.presets.default[vim_item.kind], vim_item.kind)
     vim_item.menu = ({
           nvim_lsp = " LSP",
-          copilot = " Copilot",
           cmp_tabnine = " Tabnine",
           codeium = " Codeium",
           nvim_lua = " Lua",
@@ -95,7 +94,6 @@ return function()
       -- LSP is second priority
       { name = 'nvim_lsp' },
       -- AI completion is third priority
-      { name = 'copilot', keyword_length = 0},
       { name = 'codeium', keyword_length = 0},
       { name = 'cmp_tabnine', keyword_length = 0, max_item_count = 1 },
       -- Other completion is last priority
