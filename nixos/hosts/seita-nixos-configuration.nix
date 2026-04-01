@@ -155,8 +155,15 @@
   # Ollama
   services.ollama = {
     enable = true;
-    # acceleration = "cuda";
+    package = pkgs.ollama-cuda;
+    # package = pkgs.ollama-vulkan;
     host = "[::]";
+    environmentVariables = {
+      # OLLAMA_VULKAN = "1";
+      # OLLAMA_KV_CACHE_TYPE = "q8_0";
+      OLLAMA_FLASH_ATTENTION  = "1";
+      OLLAMA_NUM_PARALLEL = "4";
+    };
   };
 
   # Nvidia GPU exporter for prometheus
