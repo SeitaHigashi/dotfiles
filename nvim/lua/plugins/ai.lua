@@ -52,6 +52,23 @@ return {
     end,
   },
   {
+    'coder/claudecode.nvim',
+    dependencies = { "folke/snacks.nvim" },
+    event = 'VeryLazy',
+    opts = {
+      terminal = {
+        split_width_percentage = 0.40,
+      },
+      diff_opts = {
+        keep_terminal_focus = true,
+      },
+    },
+    keys = {
+      { "<leader><leader><leader>", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude" },
+    }
+  },
+
+  {
     "folke/sidekick.nvim",
     event = 'VeryLazy',
     opts = {
