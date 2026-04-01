@@ -1,55 +1,50 @@
 # dotfiles
+
 [![NixOS Configuration Test](https://github.com/SeitaHigashi/dotfiles/actions/workflows/nixos-test.yml/badge.svg?branch=main)](https://github.com/SeitaHigashi/dotfiles/actions/workflows/nixos-test.yml)
 
-Personal dotfiles managed with NixOS and Home Manager.
+Personal dotfiles managed with NixOS + Home Manager (Nix Flakes).
+
+## Hosts
+
+| Host | OS | DE | Notes |
+|---|---|---|---|
+| `seita-nixos` | NixOS x86_64 | KDE Plasma 6 | Main desktop, Nvidia GPU, CUDA |
+| `seita-mac-nix` | NixOS x86_64 | Hyprland | NixOS on Mac |
 
 ## Structure
 
-- **nixos/** - NixOS system configurations with flakes
-  - `hosts/` - Host-specific configurations (seita-nixos, seita-mac-nix, seita-wsl)
-  - `commons/` - Shared NixOS modules
-- **home-manager/** - User environment configuration
-  - `home.nix` - Main home-manager configuration
-  - `wm/hyprland.nix` - Hyprland window manager setup
-- **nvim/** - Neovim configuration (Lua-based)
-- **wezterm/** - WezTerm terminal emulator config
-- **waybar/** - Waybar status bar configuration
-- **scripts/** - Utility scripts
+```
+.
+├── nixos/                  # NixOS system config (Nix Flakes)
+│   ├── flake.nix           # Entry point
+│   ├── hosts/              # Per-host configs
+│   │   ├── seita-nixos/
+│   │   └── seita-mac-nix/
+│   └── commons/            # Shared NixOS modules
+├── home-manager/           # User environment
+│   ├── home.nix            # Packages, shell, tools
+│   └── wm/hyprland.nix     # Hyprland compositor
+├── nvim/                   # Neovim (Lua + lazy.nvim)
+├── wezterm/                # WezTerm terminal
+├── waybar/                 # Waybar status bar
+├── tmux/                   # Tmux config
+└── scripts/                # Utility scripts
+```
 
-## Setup
-
-### NixOS System
+## Apply
 
 ```sh
 cd nixos
 sudo nixos-rebuild switch --flake .#seita-nixos
 ```
 
-Replace `seita-nixos` with your hostname or configuration name.
+Home Manager is integrated into NixOS — applied automatically with `nixos-rebuild`.
 
-Home Manager is integrated into the NixOS configuration and will be applied automatically.
+## Key Features
 
-### Manual Configs (Legacy)
-
-For non-NixOS systems, symlink configs manually:
-
-```sh
-# Neovim
-ln -s ~/.dotfiles/nvim ~/.config/nvim
-
-# WezTerm
-ln -s ~/.dotfiles/wezterm ~/.config/wezterm
-```
-
-## Hosts
-
-- **seita-nixos** - Main NixOS desktop (x86_64-linux)
-- **seita-mac-nix** - NixOS on Mac (x86_64-linux)
-- **seita-wsl** - WSL environment
-
-## Features
-
-- Hyprland compositor with custom keybindings
-- Neovim with lazy.nvim plugin management
-- WezTerm with custom tab bar and font settings
-- Declarative package management via Nix flakes
+- **Neovim** — lazy.nvim, LSP (mason), Treesitter, DAP, claudecode.nvim, Codeium
+- **Ollama** — local LLM with CUDA, Open WebUI via Podman
+- **Hyprland** — Wayland compositor with custom keybindings
+- **Tailscale** — mesh VPN
+- **Containerized services** — Home Assistant, Stable Diffusion (Podman)
+- **Starship + Zoxide + Fzf** — modern shell tooling
