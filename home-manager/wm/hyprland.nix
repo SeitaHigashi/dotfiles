@@ -7,15 +7,15 @@ lib.mkIf osConfig.programs.hyprland.enable {
     package = null;
     portalPackage = null;
     plugins = [
-      inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hyprexpo
+      # inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hyprexpo
       # inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hyprscrolling
     ];
     settings = {
       plugin = {
-        hyprexpo = {
-          columns = 3;
-          workspace_method = "first 1";
-        };
+        # hyprexpo = {
+        #   columns = 3;
+        #   workspace_method = "first 1";
+        # };
       };
       "$mod" = "SUPER";
       bind = [
@@ -54,7 +54,7 @@ lib.mkIf osConfig.programs.hyprland.enable {
         # "$mod, S, togglespecialworkspace,"
         "$mod CTRL, S, togglespecialworkspace, spotify"
         "$mod CTRL, D, togglespecialworkspace, discord"
-        "$mod, g, hyprexpo:expo, toggle"
+        # "$mod, g, hyprexpo:expo, toggle"
         # Move active window to a workspace with mod + SHIFT + [0-9]
         "$mod SHIFT, 1, movetoworkspace, 1"
         "$mod SHIFT, 2, movetoworkspace, 2"
