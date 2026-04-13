@@ -53,7 +53,7 @@ return {
   },
   {
     'coder/claudecode.nvim',
-    dependencies = { "folke/snacks.nvim" },
+    dependencies = { "folke/snacks.nvim", lazy = false, priority = 1000 , opts = {}},
     event = 'VeryLazy',
     opts = {
       terminal = {

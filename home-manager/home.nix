@@ -19,6 +19,9 @@
     pkgs.gcc
     pkgs.nodejs_22
     pkgs.ripgrep
+    pkgs.luarocks
+    pkgs.lua5_1
+    pkgs.tree-sittek
 
     # Useful utilities
     pkgs.tmux
