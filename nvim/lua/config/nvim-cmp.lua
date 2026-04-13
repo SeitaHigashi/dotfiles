@@ -6,7 +6,7 @@ return function()
   require("luasnip.loaders.from_vscode").lazy_load()
 
   lspkind.init {
-    mode = 'symbom_text',
+    mode = 'symbol_text',
   }
 
   local has_words_before = function()
