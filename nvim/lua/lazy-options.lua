@@ -21,9 +21,6 @@ M = {
         'zipPlugin',
       }
     }
-  },
-  checker = {
-    enabled = true,
   }
 }
 
