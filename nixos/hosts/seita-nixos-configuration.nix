@@ -160,6 +160,7 @@
     host = "[::]";
     environmentVariables = {
       # OLLAMA_VULKAN = "1";
+      OLLAMA_KEEP_ALIVE = "30m";
       OLLAMA_NUM_GPU = "999";
       OLLAMA_KV_CACHE_TYPE = "q8_0";
       OLLAMA_FLASH_ATTENTION  = "1";
