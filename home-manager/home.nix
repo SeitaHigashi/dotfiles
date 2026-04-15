@@ -21,7 +21,7 @@
     pkgs.ripgrep
     pkgs.luarocks
     pkgs.lua5_1
-    pkgs.tree-sittek
+    pkgs.tree-sitter
 
     # Useful utilities
     pkgs.tmux
