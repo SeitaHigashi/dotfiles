@@ -14,9 +14,11 @@
       url = "github:AvengeMedia/DankMaterialShell/stable";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    agenix.url = "github:ryantm/agenix";
+    hermes-agent.url = "github:NousResearch/hermes-agent";
   };
 
-  outputs = inputs @ { nixpkgs, home-manager, ... }:
+  outputs = inputs @ { nixpkgs, home-manager, hermes-agent, agenix, ... }:
   let
     hm = [
       home-manager.nixosModules.home-manager
@@ -40,6 +42,8 @@
       seita-nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
+          agenix.nixosModules.default
+          hermes-agent.nixosModules.default
           ./hosts/seita-nixos-configuration.nix
         ] ++ hm;
       };
