@@ -44,7 +44,7 @@
 
   # hdd-thin:vm-106-disk2
   fileSystems."/var" =
-    { device = "/dev/disk/by-uuid/d2944180-59d7-4f3a-8241-0c892785b316 ";
+    { device = "/dev/disk/by-uuid/d2944180-59d7-4f3a-8241-0c892785b316";
       fsType = "ext4";
     };
 
