@@ -11,6 +11,7 @@
   boot.initrd.availableKernelModules = [ "uhci_hcd" "ehci_pci" "ahci" "virtio_mem" "virtio_pci" "virtio_scsi" "sd_mod" "sr_mod" ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-amd" ];
+  boot.blacklistedKernelModules = [ "vmwgfx" "snd_hda_intel" "ucsi_ccg" ];
   boot.extraModulePackages = [ ];
 
   boot.supportedFilesystems = [ "bcachefs" ];
@@ -33,13 +34,13 @@
   fileSystems."/nix" =
     { device = "/dev/disk/by-uuid/02fef650-b17d-471a-a69f-269564db4877";
       fsType = "bcachefs";
-      options = [
-        "foreground_target=ssd" 
-        "promote_target=ssd"
-        "metadata_target=ssd"
-        "background_target=hdd"
-        "background_compression=zstd:2"
-      ];
+      # options = [
+      #   "foreground_target=ssd" 
+      #   "promote_target=ssd"
+      #   "metadata_target=ssd"
+      #   "background_target=hdd"
+      #   "background_compression=zstd:2"
+      # ];
     };
 
   # hdd-thin:vm-106-disk2
@@ -53,13 +54,13 @@
   fileSystems."/home" =
     { device = "/dev/disk/by-uuid/5c6723e2-4bc6-4f71-a5a7-41cf4e402450";
       fsType = "bcachefs";
-      options = [
-        "foreground_target=ssd" 
-        "promote_target=ssd"
-        "metadata_target=ssd"
-        "background_target=hdd"
-        "background_compression=zstd:3"
-      ];
+      # options = [
+      #   "foreground_target=ssd" 
+      #   "promote_target=ssd"
+      #   "metadata_target=ssd"
+      #   "background_target=hdd"
+      #   "background_compression=zstd:3"
+      # ];
     };
 
   swapDevices = [ ];
