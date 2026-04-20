@@ -152,35 +152,35 @@
     ];
   };
 
-  # Hermes
-  services.hermes-agent = {
-    enable = true;
-    container.enable = true;
-    container.hostUsers = [ "seita" ];
-    container.backend = "podman";
-    settings = {
-      model = {
-        base_url = "http://seita-nixos:11434/v1";
-        default = "gemma4:latest";
-        provider = "custom";
-        context_length = 64000;
-      };
-      toolsets = [ "all" ];
-      memory = { memory_enabled = true; user_profile_enabled = true; };
-    };
-    environmentFiles = [ config.age.secrets.hermes-env.path ];
-    addToSystemPackages = true;
-  };
+  # # Hermes
+  # services.hermes-agent = {
+  #   enable = true;
+  #   container.enable = true;
+  #   container.hostUsers = [ "seita" ];
+  #   container.backend = "podman";
+  #   settings = {
+  #     model = {
+  #       base_url = "http://seita-nixos:11434/v1";
+  #       default = "gemma4:latest";
+  #       provider = "custom";
+  #       context_length = 64000;
+  #     };
+  #     toolsets = [ "all" ];
+  #     memory = { memory_enabled = true; user_profile_enabled = true; };
+  #   };
+  #   environmentFiles = [ config.age.secrets.hermes-env.path ];
+  #   addToSystemPackages = true;
+  # };
 
-  age.secrets.hermes-env.file = ../secrets/hermes-env.age;
+  # age.secrets.hermes-env.file = ../secrets/hermes-env.age;
 
-  security.sudo.extraRules = [{
-    users = [ "seita" ];
-    commands = [{
-      command = "/run/current-system/sw/bin/podman";
-      options = [ "NOPASSWD" ];
-    }];
-  }];
+  # security.sudo.extraRules = [{
+  #   users = [ "seita" ];
+  #   commands = [{
+  #     command = "/run/current-system/sw/bin/podman";
+  #     options = [ "NOPASSWD" ];
+  #   }];
+  # }];
 
   # Ollama
   services.ollama = {
