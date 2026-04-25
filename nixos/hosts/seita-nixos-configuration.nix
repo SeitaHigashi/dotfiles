@@ -9,6 +9,7 @@
       # ../commons/i18n.nix
       # ../commons/applications.nix
       ../commons
+      ../commons/tailclaude.nix
     ];
   
   # Enable Bluetooh
