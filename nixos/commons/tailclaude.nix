@@ -79,7 +79,7 @@ in
       Environment = [
         # iii needs Node.js; tailscale CLI is in /run/current-system/sw/bin
         # claude CLI is expected at /home/seita/.local/bin (installed by user)
-        "PATH=${lib.makeBinPath [ pkgs.nodejs_20 iiiPkg ]}:/run/current-system/sw/bin:/home/seita/.local/bin"
+        "PATH=${lib.makeBinPath [ pkgs.nodejs_20 iiiPkg ]}:/run/current-system/sw/bin:/home/seita/.nix-profile/bin:/home/seita/.local/bin"
         "NODE_ENV=production"
       ];
       ExecStart = "${iiiPkg}/bin/iii -c ${iiiConfig}";
