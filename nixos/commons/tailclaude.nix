@@ -10,7 +10,8 @@ let
   # iii engine config: absolute paths for state and exec, no file watching
   iiiConfig = pkgs.writeText "tailclaude-iii-config.yaml" ''
     modules:
-      - class: modules::state::StateModule
+      - name: state
+        class: modules::state::StateModule
         config:
           adapter:
             class: modules::state::adapters::KvStore
@@ -18,7 +19,8 @@ let
               store_method: file_based
               file_path: /var/lib/tailclaude/state_store.db
 
-      - class: modules::api::RestApiModule
+      - name: restapi
+        class: modules::api::RestApiModule
         config:
           port: 3111
           host: 127.0.0.1
@@ -27,29 +29,34 @@ let
             allowed_origins: ["*"]
             allowed_methods: [GET, POST, OPTIONS]
 
-      - class: modules::queue::QueueModule
+      - name: queue
+        class: modules::queue::QueueModule
         config:
           adapter:
             class: modules::queue::BuiltinQueueAdapter
 
-      - class: modules::pubsub::PubSubModule
+      - name: pubsub
+        class: modules::pubsub::PubSubModule
         config:
           adapter:
             class: modules::pubsub::LocalAdapter
 
-      - class: modules::cron::CronModule
+      - name: cron
+        class: modules::cron::CronModule
         config:
           adapter:
             class: modules::cron::KvCronAdapter
 
-      - class: modules::observability::OtelModule
+      - name: otel
+        class: modules::observability::OtelModule
         config:
           enabled: true
           service_name: tailclaude
           exporter: memory
           logs_enabled: true
 
-      - class: modules::shell::ExecModule
+      - name: shellExec
+        class: modules::shell::ExecModule
         config:
           watch: []
           exec:
