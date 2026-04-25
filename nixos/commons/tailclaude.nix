@@ -81,6 +81,7 @@ in
         # claude CLI is expected at /home/seita/.local/bin (installed by user)
         "PATH=${lib.makeBinPath [ pkgs.nodejs_20 iiiPkg ]}:/run/current-system/sw/bin:/home/seita/.nix-profile/bin:/home/seita/.local/bin"
         "NODE_ENV=production"
+        "HOME=/home/seita"
       ];
       ExecStart = "${iiiPkg}/bin/iii -c ${iiiConfig}";
       Restart = "on-failure";
