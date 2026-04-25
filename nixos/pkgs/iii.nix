@@ -1,34 +1,25 @@
-{ lib, stdenv, fetchurl, autoPatchelfHook, libcap_ng }:
+{ lib, stdenv, fetchurl }:
 
-let
-  iiiBin = fetchurl {
-    url = "https://github.com/iii-hq/iii/releases/download/iii/v0.11.3/iii-x86_64-unknown-linux-musl.tar.gz";
-    hash = "sha256-0a7nvEoPi6Yyvw71duN7rQIa5W4SedEA5qIVgURtF6Y=";
-  };
-
-  iiiWorkerBin = fetchurl {
-    url = "https://github.com/iii-hq/iii/releases/download/iii/v0.11.3/iii-worker-x86_64-unknown-linux-gnu.tar.gz";
-    hash = "sha256-z2as3Ifd/MMpaSYd/zj27hBYPfBronIyi+uRmuKr0pY=";
-  };
-in
-
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   pname = "iii";
-  version = "0.11.3";
+  version = "0.10.0";
 
-  dontUnpack = true;
+  src = fetchurl {
+    url = "https://github.com/iii-hq/iii/releases/download/iii/v${version}/iii-x86_64-unknown-linux-musl.tar.gz";
+    hash = "sha256-kb54njyXlpPjM9q9dwz1OoqMnV/+Duow/kbPimcSxPM=";
+  };
 
-  nativeBuildInputs = [ autoPatchelfHook ];
-  buildInputs = [ libcap_ng stdenv.cc.cc.lib ];
+  dontBuild = true;
+  dontFixup = true;
+
+  unpackPhase = ''
+    tar -xf $src
+  '';
 
   installPhase = ''
     mkdir -p $out/bin
-    tar -xf ${iiiBin} iii
     cp iii $out/bin/iii
     chmod +x $out/bin/iii
-    tar -xf ${iiiWorkerBin} iii-worker
-    cp iii-worker $out/bin/iii-worker
-    chmod +x $out/bin/iii-worker
   '';
 
   meta = {
