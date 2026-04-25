@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 let
   iiiPkg = pkgs.callPackage ../pkgs/iii.nix {};
@@ -62,11 +62,6 @@ in
     "d /var/lib/tailclaude 0750 seita seita -"
   ];
 
-  age.secrets.tailclaude-env = {
-    file = ../secrets/tailclaude-env.age;
-    owner = "seita";
-  };
-
   systemd.services.tailclaude = {
     description = "TailClaude - Claude Code web interface via Tailscale";
     after = [ "network-online.target" "tailscaled.service" ];
@@ -75,9 +70,8 @@ in
 
     serviceConfig = {
       User = "seita";
-      Group = "seita";
+      Group = "users";
       WorkingDirectory = "/var/lib/tailclaude";
-      EnvironmentFile = config.age.secrets.tailclaude-env.path;
       Environment = [
         # iii needs Node.js; tailscale CLI is in /run/current-system/sw/bin
         # claude CLI is expected at /home/seita/.local/bin (installed by user)
