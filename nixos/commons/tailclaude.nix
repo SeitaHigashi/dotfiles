@@ -57,11 +57,6 @@ let
   '';
 in
 {
-  # Writable state directory for SQLite database
-  systemd.tmpfiles.rules = [
-    "d /var/lib/tailclaude 0750 seita seita -"
-  ];
-
   systemd.services.tailclaude = {
     description = "TailClaude - Claude Code web interface via Tailscale";
     after = [ "network-online.target" "tailscaled.service" ];
@@ -71,6 +66,8 @@ in
     serviceConfig = {
       User = "seita";
       Group = "users";
+      # systemd creates /var/lib/tailclaude before start and sets ownership
+      StateDirectory = "tailclaude";
       WorkingDirectory = "/var/lib/tailclaude";
       Environment = [
         # iii needs Node.js; tailscale CLI is in /run/current-system/sw/bin
