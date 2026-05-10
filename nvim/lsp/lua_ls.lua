@@ -3,14 +3,16 @@ table.insert(runtime_path, "lua/?.lua")
 table.insert(runtime_path, "lua/?/init.lua")
 
 return {
-  Lua = {
-    diagnostics = {
-      globals = {
-        "vim"
+  settings = {
+    Lua = {
+      diagnostics = {
+        globals = {
+          "vim"
+        }
       }
+    },
+    runtime = {
+      path = runtime_path
     }
-  },
-  runtime = {
-    path = runtime_path
   }
 }
