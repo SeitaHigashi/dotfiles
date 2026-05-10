@@ -5,7 +5,6 @@ vim.lsp.config('*', {
   on_attach = function (client, bufnr)
     require('config.which-key').lsp(bufnr)
     vim.lsp.inlay_hint.enable(true, {bufnr = bufnr})
-    vim.api.nvim_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc', { buf = bufnr})
   end
 
 })
