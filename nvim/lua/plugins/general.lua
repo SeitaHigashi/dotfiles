@@ -10,9 +10,9 @@ return {
     'nvim-treesitter/nvim-treesitter',
     enabled = not (vim.fn.has('win32') == 1 and vim.fn.has('win64') == 1),
     build = ':TSUpdate',
-    event = 'VeryLazy',
-    --tag = 'v0.8.1',
-    config = require('config.treesitter'),
+    lazy = false,
+    branch = 'main',
+    -- config = require('config.treesitter'),
   },
 
   {

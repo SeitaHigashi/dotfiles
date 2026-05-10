@@ -78,6 +78,7 @@ M.lsp = function (bufnr)
   local wk = require('which-key')
   -- Goto
   wk.add({
+    buffer = bufnr,
     { "gD", function () vim.lsp.buf.declaration() end, desc = "Goto declaration" },
     { "gd", function () require('telescope.builtin').lsp_definitions() end, desc = "Goto definition" },
     { "gs", function () require('telescope.builtin').lsp_dynamic_workspace_symbols() end, desc = "Goto definition" },
@@ -91,15 +92,13 @@ M.lsp = function (bufnr)
     { "<leader>D", function () vim.lsp.buf.type_definition() end, desc = "Goto type definition" },
     { "<leader>rn", '<cmd>Lspsaga rename<CR>', desc = 'Rename'},
     { "<leader>ca", '<cmd>Lspsaga code_action<CR>', desc = 'Code actions'},
-    { "<leader>e", '<cmd>Lspsaga show_line_diagnostics<CR>', desc = 'Show line diagnostics' },
     { "<leader>q", function () vim.diagnostic.setloclist() end, desc = "Set Location List" },
     { "<leader>l", '<cmd>Lspsaga finder<CR>', desc = "LSP Finder" },
     { "<leader>o", '<cmd>Lspsaga outline<CR>', desc = "LSP Outline" },
+    { "K", '<cmd>Lspsaga hover_doc<CR>', desc = "LSP Hover Docs"},
     { "<leader>=", function () vim.lsp.buf.format() end, desc = "Code Format in buffer"},
-    -- SHow diagnostics
-    { "<leader>s", function () require('lspsaga.diagnostic').show_line_diagnostics() end, desc = "Show line diagnostics" },
-    { "<leader>s", function () require('lspsaga.diagnostic').show_buffer_diagnostics() end, desc = "Show buffer diagnostics" },
-    { "<leader>s", function () require('lspsaga.diagnostic').show_cursor_diagnostics() end, desc = "Show cursor diagnostics" },
+    -- Show diagnostics
+    { "<leader>e", '<cmd>Lspsaga show_line_diagnostics<CR>', desc = 'Show line diagnostics' },
     { "[e", function () require('lspsaga.diagnostic'):goto_prev() end, desc = 'go to prev diagnostic'},
     { "[E", function () require('lspsaga.diagnostic'):goto_prev({ severity = vim.diagnostic.severity.ERROR }) end, desc = 'go to prev error diagnostic'},
     { "]e", function () require('lspsaga.diagnostic'):goto_next() end, desc = 'go to prev diagnostic'},
