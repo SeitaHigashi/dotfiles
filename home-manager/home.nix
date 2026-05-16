@@ -30,6 +30,10 @@
     pkgs.lsof
     pkgs.unzip
     pkgs.wget
+    pkgs.python3
+    pkgs.jq
+    pkgs.rtk
+    pkgs.bottom
   ];
 
   home.sessionVariables = {
@@ -44,6 +48,7 @@
       # package = pkgs.nightfox-gtk-theme;
       # name = "Nightfox-Dark-hdpi";
     };
+    gtk4.theme = null;
   };
 
   imports = [ ./wm/hyprland.nix ];
