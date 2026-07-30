@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:wiki.nixos.org)",
+      "Bash(mkdir -p \"C:/Users/higas/OneDrive/ドキュメント/nixos-zfs/modules\" \"C:/Users/higas/OneDrive/ドキュメント/nixos-zfs/scripts\" && echo ok)",
+      "Bash(sed -i -e 's|# /nix を HDD に置く場合のみ（nixOnHdd = true）:|# /nix を HDD に置く場合のみ（NIX_POOL=dpool）:|' -e 's|# /nix を SSD に置く場合（nixOnHdd = false）:|# /nix を SSD に置く場合（NIX_POOL=rpool）:|' -e 's|# nixOnHdd = true の場合|# NIX_POOL=dpool の場合|' -e 's|# nixOnHdd = false の場合|# NIX_POOL=rpool の場合|' README.md)",
+      "Bash(sed -i 's|# modules/zfs-layout.nix の nixOnHdd を NIX_POOL=${NIX_POOL} と一致させる|# machine.nix の nixPool を NIX_POOL=${NIX_POOL} と一致させる|' scripts/datasets.sh)",
+      "Bash(chmod 755 /etc/nixos/modules /etc/nixos/disko /etc/nixos/scripts)",
+      "Bash(chmod 644 /etc/nixos/modules/*.nix /etc/nixos/disko/*.nix)",
+      "Bash(chmod 755 /etc/nixos/scripts/*.sh)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git -c user.name=seita -c user.email=higashi110902@gmail.com commit -q -m '初期コミット: ZFS + disko の NixOS 構成と FTB Evolution サーバー *)"
+    ]
+  }
+}
