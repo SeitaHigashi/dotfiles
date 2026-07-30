@@ -191,6 +191,39 @@ in
           "var"     = fsDataset "/var"     snapshotted;
           "var/log" = fsDataset "/var/log" notSnapshotted;
           "var/lib" = fsDataset "/var/lib" snapshotted;
+
+          # 時系列データベース (modules/monitoring.nix の VictoriaMetrics)。
+          #
+          # 親から独立させる理由は 2 つあります。
+          #   1. スナップショットを切りたい。メトリクスは書き込みが絶え間なく、
+          #      /var/lib と一緒に毎時スナップショットを取ると差分だけが太ります。
+          #      失っても困るデータではありません。
+          #   2. syncoid の複製対象から外れる。modules/replication.nix の
+          #      rpool/var/lib は recursive = false なので、子データセットは
+          #      自動的に対象外になります。
+          #
+          # recordsize=16K は時系列の細かい書き込みに合わせたもの。
+          # 既定の 128K のままだと 1 回の小さな更新で 128K 書き直すことになり、
+          # SSD の書き込み量が無駄に増えます。
+          #
+          # マウント先が /var/lib/victoriametrics ではなく
+          # /var/lib/private/victoriametrics である理由:
+          #   victoriametrics.service は DynamicUser=true で動きます。この場合
+          #   systemd は実体を /var/lib/private/<名前> に置き、
+          #   /var/lib/<名前> はそこへの symlink にします。
+          #   /var/lib/victoriametrics を実ディレクトリ (= マウントポイント) に
+          #   すると、systemd が実体を private 配下へ rename しようとして
+          #   EBUSY で失敗します (マウントポイントは rename できないため):
+          #     Failed to set up special execution directory in /var/lib:
+          #     Device or resource busy
+          #   したがって systemd が実際に使う側に直接マウントします。
+          #
+          #   データセット名は rpool/var/lib/victoriametrics のままです。
+          #   名前を private 込みにすると親データセット rpool/var/lib/private が
+          #   必要になりますが、mountpoint=legacy 運用なので名前とマウント先を
+          #   一致させる必要はありません。
+          "var/lib/victoriametrics" =
+            fsDataset "/var/lib/private/victoriametrics" ({ recordsize = "16K"; } // notSnapshotted);
           "tmp"     = fsDataset "/tmp"     ({ sync = "disabled"; } // notSnapshotted);
         } // lib.optionalAttrs onRpool { "nix" = nixDataset; };
       };

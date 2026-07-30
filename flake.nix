@@ -48,6 +48,8 @@
         ./modules/replication.nix      # rpool -> dpool の定期複製
         ./modules/unstable.nix         # pkgs.unstable.* を使えるようにする
         ./modules/ftb-evolution.nix    # Minecraft (FTB Evolution) を podman で
+        ./modules/gpu.nix              # NVIDIA ドライバ (計算用途 + 監視のため)
+        ./modules/monitoring.nix       # VictoriaMetrics + Grafana
       ];
     };
   };
