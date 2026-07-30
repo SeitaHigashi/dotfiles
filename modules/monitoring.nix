@@ -313,6 +313,12 @@ in
           name = "VictoriaMetrics";
           type = "prometheus";
           access = "proxy";
+
+          # UID を固定する。
+          # dashboards/ の JSON はこの UID でデータソースを参照しているため、
+          # ここを変えるとダッシュボードが軒並み "No data" になります。
+          uid = "victoriametrics";
+
           url = "http://127.0.0.1:${toString ports.victoriametrics}";
           isDefault = true;
           jsonData = {
@@ -322,29 +328,44 @@ in
         }
       ];
 
-      # ダッシュボードは JSON をこのディレクトリに置けば自動で読まれます。
-      # 巨大な JSON を Nix の式に埋め込むと差分が読めなくなるため、
-      # ファイルとして置く形にしています。
+      ########################################################################
+      # ダッシュボード
       #
-      # 最初に入れると良い公式/コミュニティダッシュボード (Grafana.com の ID):
-      #   1860  Node Exporter Full
-      #   14282 cAdvisor exporter
-      #   14574 Nvidia GPU (nvidia_gpu_exporter 用)
-      # UI の Dashboards > New > Import から ID を入れて取り込めます。
+      # リポジトリの dashboards/ を丸ごと参照します。パスが nix store を
+      # 指すので、ダッシュボードの内容は git が唯一の正になります。
+      # (JSON 自体は巨大なので、Nix の式に埋め込まずファイルのまま置きます)
+      #
+      # allowUiUpdates = false なので UI からは読み取り専用です。
+      # 編集したいときは:
+      #   1. UI で "Save as..." して複製を作り、そちらで試行錯誤する
+      #   2. 気に入ったら Export > "Export for sharing externally" を
+      #      オフのまま JSON をコピー
+      #   3. dashboards/ のファイルを書き換えて nixos-rebuild switch
+      #   4. 複製した方は UI から削除する
+      #
+      # 収録物 (uid はファイル内で固定):
+      #   00-overview            自作。Minecraft・CPU・メモリ・ZFS・GPU を 1 画面に
+      #   10-node-exporter-full  Grafana.com ID 1860
+      #   20-cadvisor            Grafana.com ID 14282
+      #   30-nvidia-gpu          Grafana.com ID 14574
+      #
+      # コミュニティ製の 3 つは取り込み時に手を入れてあります:
+      #   - __inputs / __requires を削除 (これが残っていると、provisioning
+      #     しても「インポートしてください」と言われて表示できません)
+      #   - データソース参照を uid "victoriametrics" に固定
+      ########################################################################
       dashboards.settings.providers = [
         {
-          name = "local";
-          options.path = "/var/lib/grafana/dashboards";
+          name = "nixos";
+          options.path = ../dashboards;
+
+          # UI からの編集と削除を禁じ、git を唯一の正にする。
+          allowUiUpdates = false;
+          disableDeletion = true;
         }
       ];
     };
   };
-
-  # プロビジョニングが参照するディレクトリを用意しておく。
-  # 存在しないと Grafana が起動時に警告を出し続けます。
-  systemd.tmpfiles.rules = [
-    "d /var/lib/grafana/dashboards 0750 grafana grafana -"
-  ];
 
   ############################################################################
   # ファイアウォール

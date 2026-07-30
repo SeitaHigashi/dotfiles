@@ -1,0 +1,194 @@
+{
+  "uid": "host-overview",
+  "title": "ホスト概観 (Minecraft / ZFS / ディスク)",
+  "id": null,
+  "tags": ["overview", "minecraft", "zfs"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Minecraft",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "サーバー死活",
+      "description": "mc-monitor による server list ping の結果。1 = 応答あり。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 5, "x": 0, "y": 1 },
+      "targets": [
+        { "refId": "A", "expr": "minecraft_status_healthy", "legendFormat": "healthy" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "停止", "color": "red", "index": 0 }, "1": { "text": "稼働中", "color": "green", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "type": "stat",
+      "title": "オンライン人数",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 5, "x": 5, "y": 1 },
+      "targets": [
+        { "refId": "A", "expr": "minecraft_status_players_online_count", "legendFormat": "online" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "type": "timeseries",
+      "title": "オンライン人数の推移",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 7, "x": 10, "y": 1 },
+      "targets": [
+        { "refId": "A", "expr": "minecraft_status_players_online_count", "legendFormat": "players" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "ping 応答時間",
+      "description": "跳ね上がっていたらサーバーが tick を返せていない (= 重い) 兆候。TPS そのものではない点に注意。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 7, "x": 17, "y": 1 },
+      "targets": [
+        { "refId": "A", "expr": "minecraft_status_response_time_seconds", "legendFormat": "response" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] }
+    },
+
+    {
+      "type": "row",
+      "title": "ホスト負荷 (誰が食っているか)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU 使用率 (モード別)",
+      "description": "4C/8T しかないので、ここが飽和すると Minecraft の tick が真っ先に犠牲になります。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 7 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (mode) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) / on() group_left() count(count by (cpu) (node_cpu_seconds_total))", "legendFormat": "{{mode}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "fillOpacity": 30, "stacking": { "mode": "normal" }, "showPoints": "never" } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "コンテナ別 CPU",
+      "description": "cAdvisor から。Minecraft と将来の n8n の取り分を直接比較できます。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 7 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))", "legendFormat": "{{name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "custom": { "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "メモリの内訳",
+      "description": "ZFS ARC は machine.nix の arcMaxBytes = 16 GiB で頭打ちになる想定。Minecraft のヒープは 8 GiB 固定。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 7 },
+      "targets": [
+        { "refId": "A", "expr": "node_memory_MemTotal_bytes", "legendFormat": "総容量" },
+        { "refId": "B", "expr": "node_memory_MemAvailable_bytes", "legendFormat": "利用可能" },
+        { "refId": "C", "expr": "node_zfs_arc_size", "legendFormat": "ZFS ARC" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] }
+    },
+
+    {
+      "type": "row",
+      "title": "ZFS とディスク",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "プール使用率",
+      "description": "ZFS は 80% を超えると書き込み性能が落ち始めます。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 15 },
+      "targets": [
+        { "refId": "A", "expr": "node_filesystem_size_bytes{fstype=\"zfs\"} - node_filesystem_avail_bytes{fstype=\"zfs\"}", "legendFormat": "{{mountpoint}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "ディスク I/O",
+      "description": "dpool の HDD は SMR (Seagate BarraCuda) です。書き込みが続くと待ち時間が跳ねます。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 15 },
+      "targets": [
+        { "refId": "A", "expr": "rate(node_disk_read_bytes_total[5m])", "legendFormat": "{{device}} read" },
+        { "refId": "B", "expr": "rate(node_disk_written_bytes_total[5m])", "legendFormat": "{{device}} write" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "ディスク温度 (SMART)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 15 },
+      "targets": [
+        { "refId": "A", "expr": "smartctl_device_temperature{temperature_type=\"current\"}", "legendFormat": "{{device}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": { "fillOpacity": 0, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 60 } ] }
+        },
+        "overrides": []
+      }
+    },
+
+    {
+      "type": "row",
+      "title": "GPU",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU 使用率 (カード別)",
+      "description": "2 枚またぎ推論では、遅い側 (GTX 1660 SUPER, PCIe x4) が律速しているかどうかをここで見ます。片方だけ張り付いていたら分割が偏っています。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 23 },
+      "targets": [
+        { "refId": "A", "expr": "nvidia_smi_utilization_gpu_ratio * 100 * on(uuid) group_left(name) nvidia_smi_gpu_info", "legendFormat": "{{name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "VRAM 使用量 (カード別)",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 23 },
+      "targets": [
+        { "refId": "A", "expr": "nvidia_smi_memory_used_bytes * on(uuid) group_left(name) nvidia_smi_gpu_info", "legendFormat": "{{name}} 使用" },
+        { "refId": "B", "expr": "nvidia_smi_memory_total_bytes * on(uuid) group_left(name) nvidia_smi_gpu_info", "legendFormat": "{{name}} 総量" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] }
+    }
+  ]
+}
