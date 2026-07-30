@@ -13,7 +13,8 @@
       "Bash(git -c user.name=seita -c user.email=higashi110902@gmail.com commit -q -m '初期コミット: ZFS + disko の NixOS 構成と FTB Evolution サーバー *)",
       "Bash(nix --extra-experimental-features 'nix-command flakes' eval /etc/nixos#nixosConfigurations.seita-nix-baremetal.config.system.build.toplevel.drvPath)",
       "Bash(nix --extra-experimental-features 'nix-command flakes' eval .#nixosConfigurations.seita-nix-baremetal.config.virtualisation.oci-containers.containers.ftb-evolution.ports)",
-      "Bash(nix --extra-experimental-features 'nix-command flakes' eval .#nixosConfigurations.seita-nix-baremetal.config.fileSystems.\\\\\"/srv/minecraft\\\\\")"
+      "Bash(nix --extra-experimental-features 'nix-command flakes' eval .#nixosConfigurations.seita-nix-baremetal.config.fileSystems.\\\\\"/srv/minecraft\\\\\")",
+      "Bash(git -c user.name=seita -c user.email=higashi110902@gmail.com commit -q -m 'ftb-evolution: systemd タイムアウトの重複定義を削除 *)"
     ]
   }
 }

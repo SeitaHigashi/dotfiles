@@ -122,12 +122,9 @@ in
     autoStart = true;
   };
 
-  # 初回起動は modpack のダウンロードとワールド生成で十数分かかります。
-  # 既定のタイムアウトだと systemd が起動失敗と見なして殺すので伸ばします。
-  systemd.services.podman-ftb-evolution.serviceConfig = {
-    TimeoutStartSec = "30min";
-    TimeoutStopSec = "180";
-  };
+  # systemd 側のタイムアウトは oci-containers モジュールが設定済みです
+  # (TimeoutStartSec=0 = 無制限、TimeoutStopSec=120)。
+  # 初回の modpack ダウンロードで殺されることはありません。
 
   ############################################################################
   # ファイアウォール
