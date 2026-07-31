@@ -246,6 +246,44 @@ in
           "var/lib/ollama" =
             fsDataset "/var/lib/private/ollama" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
 
+          # rpool/srv/minecraft の親。データセットの入れ物でしかなく、
+          # マウントはしません (/srv 本体は dpool/srv のままです)。
+          # 親を明示的に宣言するのは、disko も zfs recv も中間の
+          # データセットを自動生成しないためです。
+          "srv" = {
+            type = "zfs_fs";
+            options = {
+              mountpoint = "none";
+              "com.sun:auto-snapshot" = "false";
+            };
+          };
+
+          # Minecraft (FTB Evolution) のワールドと mod。
+          # modules/ftb-evolution.nix のコンテナがここを /data として使います。
+          #
+          # dpool ではなく rpool に置く理由:
+          #   dpool の HDD (ST4000DM004) は SMR です。チャンクの定期オートセーブが
+          #   write(2) で 60 秒以上ブロックし、Minecraft の ServerHangWatchdog が
+          #   「サーバーがハングした」と判断して落とすのを 1 日に 7 回起こしました。
+          #   スレッドダンプはいずれも UnixFileDispatcherImpl.write0 で止まっており、
+          #   mod ではなく純粋な I/O 待ちでした。ZFS は blk-cgroup を通らないため
+          #   IOWeight でも救えず (modules/resource-priority.nix 参照)、
+          #   NVMe に載せる以外に手がありません。
+          #
+          #   rpool は single vdev で冗長性が無いので、ワールドという
+          #   再生成できないデータをここに置くには複製が必須です。
+          #   modules/replication.nix の syncoid が dpool/backup/minecraft へ
+          #   日次で送っています。片方だけ変えないこと。
+          #
+          # 独立したデータセットにしておくと、ワールドだけをスナップショット・
+          # ロールバックできます (modpack 更新で壊れたときの巻き戻しが容易)。
+          #
+          # recordsize は既定の 128K のまま。region ファイルは大きく、
+          # 小さくしてもメタデータが増えるだけで得がありません。
+          # (zfs send/recv はファイルごとの record size を保持するため、
+          #  そもそも移行済みのファイルには変更が遡及しません)
+          "srv/minecraft" = fsDataset "/srv/minecraft" ({ atime = "off"; } // snapshotted);
+
           "tmp"     = fsDataset "/tmp"     ({ sync = "disabled"; } // notSnapshotted);
         } // lib.optionalAttrs onRpool { "nix" = nixDataset; };
       };
@@ -298,20 +336,20 @@ in
           "home" = fsDataset "/home" snapshotted;
           "srv"  = fsDataset "/srv"  snapshotted;
 
-          # Minecraft (FTB Evolution) のワールドと mod。
-          # modules/ftb-evolution.nix のコンテナがここを /data として使います。
-          #
-          # 独立したデータセットにしておくと、ワールドだけをスナップショット・
-          # ロールバックできます (modpack 更新で壊れたときの巻き戻しが容易)。
-          # recordsize は既定の 128K のまま。region ファイルは大きく、
-          # 小さくしてもメタデータが増えるだけで得がありません。
-          "srv/minecraft" = fsDataset "/srv/minecraft" snapshotted;
+          # Minecraft のワールドはここではなく rpool 側にあります。
+          # HDD が SMR で I/O が間に合わず、サーバーが watchdog に落とされて
+          # いたためです (経緯は rpool の srv/minecraft のコメント参照)。
+          # dpool は複製先 (下の backup) としてだけ関わります。
 
           # rpool の複製先 (modules/replication.nix)。
           #
           # rpool は single vdev で冗長性が無いため、SSD が死ぬとシステムが
           # 丸ごと消えます。ここへ定期的に zfs send しておけば、
           # ディスク交換後に受信側から巻き戻すだけで復旧できます。
+          #
+          # システム (root / var-lib) だけでなく Minecraft のワールドも
+          # ここへ送っています。ワールドは再生成できない唯一のデータで、
+          # rpool 側にあるためこの複製が最後の砦になります。
           #
           # マウントしない (mountpoint = "none")。受信したデータセットが
           # 元の / や /var を上書きマウントしてしまう事故を防ぐためです。

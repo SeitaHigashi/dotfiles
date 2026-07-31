@@ -5,18 +5,30 @@
 #
 # 何をしているか:
 #   itzg/minecraft-server イメージを rootful podman で常駐させ、
-#   ワールドと mod 一式を dpool (HDD mirror) 上の /srv/minecraft に置きます。
+#   ワールドと mod 一式を rpool (NVMe) 上の /srv/minecraft に置きます。
 #   modpack 本体はコンテナ初回起動時に FTB の API から自動ダウンロードされます
 #   (TYPE=FTBA + FTB_MODPACK_ID)。手動で ZIP を配置する必要はありません。
 #
-# データを dpool に置く理由:
-#   ワールドは再生成できない唯一のデータです。rpool は single vdev で
-#   冗長性が無いため (disko/default.nix 参照)、SSD が死ぬと消えます。
-#   dpool は HDD ×2 の mirror なので片方が死んでも生き残ります。
-#   /srv 配下は com.sun:auto-snapshot=true なので自動スナップショットも効きます。
+# データを rpool (SSD) に置く理由:
+#   かつては dpool (HDD mirror) に置いていましたが、HDD が SMR のため
+#   チャンクの定期オートセーブが write(2) で 60 秒以上返らず、Minecraft の
+#   ServerHangWatchdog がサーバーを落とすのを 1 日 7 回起こしました。
+#   クラッシュレポートのスレッドダンプはいずれも
+#     "Server thread" RUNNABLE
+#       at sun.nio.ch.UnixFileDispatcherImpl.write0(Native Method)
+#       ... MinecraftServer.saveAllChunks / tickServer
+#   で、mod ではなく純粋な I/O 待ちでした。
+#   ZFS は blk-cgroup を通らず IOWeight が効かないため
+#   (modules/resource-priority.nix 参照)、NVMe に載せる以外に手がありません。
+#
+#   ワールドは再生成できない唯一のデータですが、rpool は single vdev で
+#   冗長性がありません。そこを modules/replication.nix の syncoid が
+#   dpool/backup/minecraft への日次複製で埋めています。
+#   /srv/minecraft は com.sun:auto-snapshot=true なので、15 分刻みの
+#   自動スナップショットも rpool 側に残ります。
 #
 # 注意:
-#   コンテナの状態 (/var/lib/containers) は rpool 側に残りますが、
+#   コンテナの状態 (/var/lib/containers) も rpool 側にありますが、
 #   イメージは再取得できるので複製対象外で構いません。
 ##############################################################################
 
@@ -76,7 +88,7 @@ in
 
   ############################################################################
   # データディレクトリ
-  #   dpool/srv/minecraft (disko/default.nix) が /srv/minecraft にマウントされ、
+  #   rpool/srv/minecraft (disko/default.nix) が /srv/minecraft にマウントされ、
   #   その中身の所有者をここで整えます。
   #   itzg イメージは既定で uid/gid 1000 として動くのでそれに合わせます。
   ############################################################################
@@ -162,7 +174,20 @@ in
   #   ログ      : journalctl -u podman-ftb-evolution -f
   #   コンソール: podman exec -i ftb-evolution rcon-cli
   #   停止      : systemctl stop podman-ftb-evolution
-  #   世代確認  : zfs list -t snapshot -r dpool/srv/minecraft
+  #   世代確認  : zfs list -t snapshot -r rpool/srv/minecraft
+  #   複製確認  : zfs list -t snapshot -r dpool/backup/minecraft
+  #
+  # バックアップ:
+  #   modpack 同梱の FTB Backups 3 は無効化してあります。
+  #   1.5 GB の zip を 2 時間ごとに作り、ZFS スナップショットと役割が
+  #   完全に重複したうえ、書き込みの大半を占めていたためです。
+  #   設定は data/world/serverconfig/ftbbackups3-server.snbt の auto: false。
+  #   (config/ 側ではなく world/serverconfig/ 側に置くこと。config/ は
+  #    modpack 更新で上書きされます)
+  #   復旧は ZFS 側で行います:
+  #     zfs list -t snapshot -r rpool/srv/minecraft
+  #     zfs rollback rpool/srv/minecraft@<スナップショット名>
+  #   SSD ごと失った場合は dpool/backup/minecraft から受信し直します。
   #
   # modpack を更新したいときは上の ftbModpackVersionId を書き換えて
   # nixos-rebuild switch してください。ワールドは /srv/minecraft/data に

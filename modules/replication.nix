@@ -54,6 +54,24 @@
         target = "dpool/backup/var-lib";
         recursive = false;
       };
+
+      # /srv/minecraft — Minecraft のワールドと mod。
+      #
+      # 他の 2 つと性格が違います。root と var/lib は「flake から作り直せるが
+      # 戻せると速い」ものですが、ワールドはどこからも再生成できません。
+      # HDD が SMR で I/O が間に合わず rpool へ移したので
+      # (disko/default.nix 参照)、この複製が唯一の冗長性です。
+      #
+      # 日次で足りる理由: rpool 側に autoSnapshot が 15 分刻みで残るため、
+      # modpack 更新の事故やワールドの巻き戻しはそちらで済みます。
+      # ここが効くのは SSD が物理的に死んだときだけで、そのとき失うのは
+      # 最大 1 日ぶんです。短くしたくなったら interval を全体で上げるのではなく
+      # (root と var/lib まで巻き添えになります)、この項目に
+      # interval = "hourly"; を足してください。
+      "rpool/srv/minecraft" = {
+        target = "dpool/backup/minecraft";
+        recursive = false;
+      };
     };
   };
 

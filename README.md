@@ -76,8 +76,15 @@ HDD ×2 (同容量)
 | `/tmp` | `rpool/tmp` (`sync=disabled`) | SSD |
 | `/home` | `dpool/home` | HDD mirror |
 | `/srv` | `dpool/srv` | HDD mirror |
+| `/srv/minecraft` | `rpool/srv/minecraft` | SSD（下記参照） |
 | `/nix` | `dpool/nix` または `rpool/nix` | `nixPool` 次第 |
 | `/boot` | vfat パーティション | SSD |
+
+- **`/srv/minecraft` だけ SSD 側です。** HDD (`ST4000DM004`) が SMR で、Minecraft の
+  オートセーブが `write(2)` で 60 秒以上ブロックし、サーバーが自分の watchdog に
+  落とされていたためです（[8 章の障害事例](#障害事例-minecraft-が-60-秒の-tick-で再起動を繰り返す)参照）。
+  rpool は冗長性が無いので、`modules/replication.nix` の syncoid が
+  `dpool/backup/minecraft` へ日次で複製しています。
 
 - **読み込みキャッシュは ARC（RAM）だけです**。SSD を使う二次キャッシュ（L2ARC / cache vdev）は
   **使いません**。以前は part5 を dpool の cache に充てていましたが、実運用で起動不能障害の
@@ -316,7 +323,27 @@ zpool status dpool                       # resilver の進捗
 - dpool の `cache` は自動的に切り離されるだけでデータは無傷です。
 - SSD 交換後は `machine.nix` の `ssd` を更新し、**同じ flake で再インストール**すれば復帰します。
   dpool は消したくないので `--mode destroy,format,mount` は使わず、rpool だけ作り直してください。
-- **これが「rpool にはバックアップ必須のデータを置かない」理由です。** `/etc/nixos` は git で別管理してください。
+- **`/etc/nixos` は git で別管理してください。** rpool の中身は flake から作り直せるのが原則です。
+
+**唯一の例外が `/srv/minecraft`（Minecraft のワールド）です。** flake からは再生成できず、
+かつ SMR HDD の I/O 問題で rpool に置かざるを得ませんでした。これを守るために
+`modules/replication.nix` の syncoid が `dpool/backup/minecraft` へ日次複製しています。
+rpool を作り直したあとは、受信側から戻します:
+
+```bash
+zfs list -t snapshot -r dpool/backup/minecraft          # 最新の世代を確認
+zfs send dpool/backup/minecraft@<最新> | zfs recv -u rpool/srv/minecraft
+
+# recv は親 (rpool) のプロパティを継承するので、必ず設定し直すこと。
+# com.sun:auto-snapshot を忘れると以後スナップショットも複製も止まります。
+zfs set mountpoint=legacy rpool/srv/minecraft
+zfs set com.sun:auto-snapshot=true rpool/srv/minecraft
+zfs set atime=off rpool/srv/minecraft
+```
+
+失われるのは最後の複製以降（最大 1 日ぶん）です。もっと短くしたい場合は
+`services.syncoid.commands."rpool/srv/minecraft".interval` を個別に設定してください
+（`services.syncoid.interval` を変えると `rpool/root` と `rpool/var/lib` も巻き添えになります）。
 
 ### バックアップ
 
@@ -440,6 +467,60 @@ sudo journalctl -f -k | grep -i nvme
 それでも再現する場合はドライブ自体の限界なので、**交換が唯一の対策**です。
 rpool は single vdev で冗長性がないため、この SSD が死ぬとシステムは飛びます
 （`/home` と `/srv` は HDD ミラーの dpool に残ります）。
+
+### 障害事例: Minecraft が 60 秒の tick で再起動を繰り返す
+
+**症状**: プレイヤーから見ると「接続がタイムアウトする」。実際にはサーバーが落ちて
+`Restart=always` で上がり直しています。1 日に 7 回起きていました。
+
+```
+[Server Watchdog/ERROR] A single server tick took 60.00 seconds (should be max 0.05)
+[Server Watchdog/ERROR] Considering it to be crashed, server will forcibly shutdown.
+systemd[1]: podman-ftb-evolution.service: Main process exited, code=exited, status=1/FAILURE
+```
+
+これは systemd や podman のタイムアウトではなく、**Minecraft 自身の ServerHangWatchdog**
+です（`TimeoutStartSec=infinity` なので systemd 側は無関係）。
+
+**切り分け**: クラッシュレポートのスレッドダンプで `"Server thread"` がどこにいるかを見ます。
+
+```bash
+journalctl -u podman-ftb-evolution --since "2 days ago" | grep -a -A30 '"Server thread" prio'
+```
+
+```
+"Server thread" RUNNABLE
+  at sun.nio.ch.UnixFileDispatcherImpl.write0(Native Method)   ← 生の write(2) で止まっている
+  at net.minecraft.nbt.NbtIo.writeCompressed
+  at MinecraftServer.saveAllChunks / saveEverything / tickServer
+```
+
+`write0` にいれば mod ではなく **I/O 待ち**で確定です。mod が原因なら、そこに
+mod のクラス名が出ます。
+
+**原因**: dpool の HDD (`ST4000DM004`) が **SMR** でした。持続的なランダム上書きで
+内部の CMR キャッシュが溢れると応答が数十秒級になり、ZFS の書き込みスロットル
+(`zfs_dirty_data_max`) が `write(2)` を止めます。裏付けになった数字:
+
+```bash
+cat /proc/pressure/io     # full avg300=43% — マシン全体が I/O で 4 割止まっていた
+zpool status -x           # all pools are healthy — ディスク故障ではない
+```
+
+同じ 1.5 GB のバックアップ所要時間が 68 秒 → 92 秒 → 109 秒 → **239 秒** と単調に
+劣化していたのが決定的でした。SMR キャッシュ枯渇の典型です。
+
+**対策**: ワールドを rpool（NVMe）へ移し、`modules/replication.nix` の syncoid で
+dpool へ日次複製する構成にしました。**`modules/resource-priority.nix` では直せません** —
+ZFS は blk-cgroup を通らないため `IOWeight` が効かず、CPU とメモリの重みは
+I/O 競合に対して無力だからです。
+
+同時に modpack 同梱の FTB Backups 3 を無効化しています（1.5 GB の zip を 2 時間ごとに
+同じプールへ書いており、ZFS スナップショットと役割が完全に重複していました）。
+
+**SSD 寿命への影響**: 990 PRO 1TB の TBW は 600 TB。ワールドの書き込みは
+アイドル時 4 MB/時（hourly スナップショットの差分で実測）、ホスト全体でも 13 GiB/日 で、
+100 年単位の計算になります。寿命を理由にためらう必要はありません。
 
 ### クラッシュ後に原因を調べる
 
