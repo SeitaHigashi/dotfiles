@@ -127,6 +127,17 @@ in
       # 停止時にワールドを保存しきる余裕を持たせる。
       # 既定の 10 秒だと SIGKILL でチャンクが失われることがあります。
       "--stop-timeout=120"
+
+      # cgroup を machine.slice ではなく専用スライスに置く。
+      #
+      # rootful podman はコンテナを podman-*.service の cgroup の下ではなく
+      # machine.slice 直下の libpod-<id>.scope に移します。つまり systemd
+      # ユニット側に CPUWeight を書いても JVM には一切効きません
+      # (実測: ユニット cpu.weight=1000 / コンテナ cpu.weight=100)。
+      # scope 名はコンテナ ID なので nix から名指しできず、代わりに
+      # 親スライスを指定して、そのスライスに重みを付けています。
+      # 値は modules/resource-priority.nix の minecraft.slice を参照。
+      "--cgroup-parent=minecraft.slice"
     ];
 
     autoStart = true;
