@@ -28,6 +28,13 @@ let
   # で "name": "FTB Evolution" が返ることを確認できます。
   ftbModpackId = "125";
 
+  # 上の modpack のバージョン ID。
+  #   curl https://api.feed-the-beast.com/v1/modpacks/public/modpack/125/100442
+  # で "name": "1.40.1" / "type": "release" が返ります
+  # (MC 1.21.1 + NeoForge 21.1.243 + Java 21 = 下のイメージタグと一致)。
+  # 新しい版の ID は modpack/125 のレスポンス中の "versions" から拾えます。
+  ftbModpackVersionId = "100442";
+
   # サーバーに渡すヒープサイズ。
   # machine.nix の arcMaxBytes (ZFS ARC 上限 = 16 GiB) と足して
   # 物理 RAM を超えないこと。超えると OOM killer が ZFS ごと巻き込みます。
@@ -96,11 +103,14 @@ in
       EULA = "TRUE";
 
       # FTB App の API から modpack を取得する。
-      # FTB_MODPACK_VERSION_ID を指定しなければ最新版が入ります。
-      # バージョンを固定したい場合は下のコメントを外して ID を書いてください。
+      #
+      # VERSION_ID は必ず固定しておくこと。未指定だとコンテナが起動する
+      # たびに最新版へ勝手に上がります。このユニットは Restart=always なので、
+      # サーバーがクラッシュして再起動した拍子に modpack がメジャー更新され、
+      # プレイヤーのクライアント側 mod とバージョンがずれる事故になります。
       TYPE = "FTBA";
       FTB_MODPACK_ID = ftbModpackId;
-      # FTB_MODPACK_VERSION_ID = "";
+      FTB_MODPACK_VERSION_ID = ftbModpackVersionId;
 
       # ヒープ。INIT/MAX を揃えて GC の伸縮によるラグを避ける。
       INIT_MEMORY = memory;
@@ -143,9 +153,15 @@ in
   #   停止      : systemctl stop podman-ftb-evolution
   #   世代確認  : zfs list -t snapshot -r dpool/srv/minecraft
   #
-  # modpack を更新したいときは上の FTB_MODPACK_VERSION_ID を書き換えて
+  # modpack を更新したいときは上の ftbModpackVersionId を書き換えて
   # nixos-rebuild switch してください。ワールドは /srv/minecraft/data に
-  # 残るので引き継がれますが、更新前にスナップショットを取ることを推奨します:
+  # 残るので引き継がれますが、更新前にスナップショットを取ること:
   #   zfs snapshot dpool/srv/minecraft@before-update
+  #
+  # コンテナイメージ (itzg) の側は自動更新されません。oci-containers が
+  # 生成する ExecStartPre は podman rm -f だけで pull を含まないため、
+  # 一度取得したタグは再起動でも rebuild でも据え置きです。上げたいときは:
+  #   podman pull docker.io/itzg/minecraft-server:java21
+  #   systemctl restart podman-ftb-evolution
   ############################################################################
 }
