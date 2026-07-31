@@ -224,6 +224,28 @@ in
           #   一致させる必要はありません。
           "var/lib/victoriametrics" =
             fsDataset "/var/lib/private/victoriametrics" ({ recordsize = "16K"; } // notSnapshotted);
+          # LLM のモデル置き場 (modules/ollama.nix)。
+          #
+          # 独立させる理由は VictoriaMetrics と同じ 2 点です。
+          #   1. スナップショットを切りたい。GGUF は 1 ファイル数 GiB あり、
+          #      失っても ollama pull で取り直せます。
+          #   2. syncoid の複製対象から外れる (rpool/var/lib は recursive = false)。
+          #      HDD の dpool に数十 GiB のモデルを複製する意味はありません。
+          #
+          # recordsize=1M: 推論時は巨大ファイルの連続読み出しが主で、
+          #   128K だとメタデータと I/O 回数が無駄に増えます。
+          # compression=off: 量子化済みの GGUF はほぼ非圧縮データで、
+          #   zstd を通しても縮まず CPU を捨てるだけです。
+          #
+          # マウント先が /var/lib/private/ollama なのは VictoriaMetrics と
+          # まったく同じ事情です。ollama.service は DynamicUser=true で動くため
+          # (25.05 の services.ollama は User= を指定しても DynamicUser を
+          #  外しません)、実体は /var/lib/private/ollama に置かれます。
+          # /var/lib/ollama をマウントポイントにすると、systemd が実体を
+          # private 配下へ rename しようとして EBUSY で起動に失敗します。
+          "var/lib/ollama" =
+            fsDataset "/var/lib/private/ollama" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
+
           "tmp"     = fsDataset "/tmp"     ({ sync = "disabled"; } // notSnapshotted);
         } // lib.optionalAttrs onRpool { "nix" = nixDataset; };
       };

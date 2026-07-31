@@ -38,12 +38,29 @@
   # 全面的に allowUnfree = true にはせず、NVIDIA 関連だけを通します。
   # (うっかり別の非フリーパッケージが混入するのを防ぐため)
   ############################################################################
-  nixpkgs.config.allowUnfreePredicate = pkg:
-    builtins.elem (lib.getName pkg) [
+  # CUDA ランタイム (ollama-cuda が引く cuda_cudart / libcublas / ...) も
+  # NVIDIA の非フリーライセンスです。個数が多く名前も版ごとに増減するため、
+  # 1 つずつ列挙せず接頭辞で通します。それでも allowUnfree = true より
+  # ずっと狭い許可です。
+  #
+  # ※ nixpkgs.config.cudaSupport = true は設定しないこと。
+  #   nixpkgs 全体が CUDA 付きで再ビルドになり、バイナリキャッシュが
+  #   一切効かなくなります。CUDA が要るパッケージだけ
+  #   (modules/ollama.nix の pkgs.ollama-cuda) を名指しで使います。
+  nixpkgs.config.allowUnfreePredicate =
+    pkg:
+    let
+      name = lib.getName pkg;
+    in
+    builtins.elem name [
       "nvidia-x11"
       "nvidia-settings"
       "nvidia-persistenced"
-    ];
+    ]
+    || lib.hasPrefix "cuda" name      # cuda_cudart, cuda_cccl, cuda_nvcc, ...
+    || lib.hasPrefix "libcu" name     # libcublas, libcurand, libcusparse, ...
+    || lib.hasPrefix "libnv" name     # libnvjitlink, libnvidia-container, ...
+    || builtins.elem name [ "cudnn" "nccl" ];
 
   ############################################################################
   # ドライバ
@@ -57,11 +74,26 @@
   hardware.graphics.enable = true;
 
   hardware.nvidia = {
-    # production 系列を使う。
-    # latest ではなく production にするのは、カーネル更新との組み合わせで
-    # ビルドが壊れる頻度が明らかに低いためです。Turing と Ada の両方を
-    # 1 つのドライバでカバーできます。
-    package = config.boot.kernelPackages.nvidiaPackages.production;
+    # beta (575.51.02) を使っています。
+    #
+    # 本来の方針は production (570.195.03) でした。カーネル更新との
+    # 組み合わせでビルドが壊れる頻度が明らかに低いためです。beta にしたのは
+    # modules/ollama.nix が unstable の ollama-cuda を使い、それが
+    # CUDA 12.9 を引くからです。25.05 の production/latest/stable はいずれも
+    # 570 系 (CUDA 12.8 相当) で、CUDA 12.9 のユーザー空間ライブラリとは
+    # バージョンが揃いません。
+    #
+    # CUDA の minor version compatibility があるので 570 のままでも動く公算は
+    # 高いのですが、12.9 で追加された API を使われた時点で実行時エラーになります。
+    # 推論が主目的のホストなので、そこを賭けずに揃えました。
+    #
+    # 代償: beta はカーネル更新で production より壊れやすい系列です。
+    # rebuild で nvidia のビルドが失敗したら、まずここを production に戻し、
+    # 合わせて modules/ollama.nix の package を stable の pkgs.ollama-cuda に
+    # 戻してください (CUDA 12.8 側で揃います)。
+    #
+    # Turing (1660 SUPER) と Ampere (3060 Ti) は 1 つのドライバでカバーされます。
+    package = config.boot.kernelPackages.nvidiaPackages.beta;
 
     # オープンカーネルモジュールは使わない。
     # Turing (1660 SUPER) は対応世代の境界にあたり、GeForce Turing での
@@ -94,5 +126,13 @@
   #
   # ドライバを入れた直後は再起動が必要です (カーネルモジュールのため)。
   # nixos-rebuild switch だけでは nvidia-smi が動かないことがあります。
+  #
+  # バージョンを変えた時 (570 → 575 など) は特に注意してください。switch 後
+  # 再起動するまで、動いているカーネルモジュールは旧版のまま、nvidia-smi は
+  # 新版という食い違いが起きます。この間は
+  #   Failed to initialize NVML: Driver/library version mismatch
+  # となり、nvidia-gpu-exporter も ollama も GPU を掴めません
+  # (ollama は GPU が無いものとして CPU 推論に落ちます)。
+  # 再起動すれば解消します。
   ############################################################################
 }
