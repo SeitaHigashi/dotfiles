@@ -50,6 +50,7 @@
         ./modules/ftb-evolution.nix    # Minecraft (FTB Evolution) を podman で
         ./modules/gpu.nix              # NVIDIA ドライバ (計算用途 + 監視のため)
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
+        ./modules/zfs-snapshot-metrics.nix # スナップショット / 複製状況のメトリクス
         ./modules/ollama.nix           # ローカル LLM (Ollama + Open WebUI)
         ./modules/resource-priority.nix # サービス間の CPU / メモリ優先度
       ];

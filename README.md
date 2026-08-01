@@ -304,6 +304,28 @@ cp /home/user/.zfs/snapshot/zfs-auto-snap_daily-2026-07-26-0000/foo.txt ~/
 zfs rollback dpool/home@zfs-auto-snap_daily-2026-07-26-0000
 ```
 
+#### 状況を GUI で見る
+
+Grafana の「ZFS スナップショットと複製」(uid `zfs-replication`) にまとめてあります。
+データセット別の世代数・最新/最古スナップショットの時刻・スナップショットが占める容量に加えて、
+**複製遅延** — 複製元 `rpool/X` と複製先 `dpool/backup/X` の最新スナップショット時刻の差 — が見えます。
+これが「いま SSD が死んだら何時間ぶん失うか」そのものです。
+
+メトリクスは `modules/zfs-snapshot-metrics.nix` の systemd タイマーが 5 分ごとに `zfs list` を叩き、
+node_exporter の textfile collector 用ディレクトリへ `.prom` を書く形で供給しています
+(専用の exporter は定番と呼べるものが無く、nixpkgs にも入っていないため)。
+
+syncoid ユニットの稼働状態とタイマーの発火は node_exporter の systemd コレクタ由来で、
+上記の textfile とは別経路です。**片方だけ壊れても気づけるよう、あえて両方を並べています** —
+ユニットが成功で終わっていても実際には何も転送していない、という状態は複製遅延でしか捕まりません。
+
+```bash
+# 収集が動いているか
+systemctl list-timers zfs-snapshot-metrics
+cat /var/lib/prometheus-node-exporter-text-files/zfs-snapshots.prom
+curl -s localhost:9100/metrics | grep '^zfs_snapshot'
+```
+
 ### HDD 故障時の交換
 
 ```bash

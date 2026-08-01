@@ -161,6 +161,12 @@ in
     #   systemd   — ユニットの状態。podman-ftb-evolution が落ちたことに気づける。
     #   processes — プロセス数と状態。Ollama がゾンビを積んでいないか等。
     enabledCollectors = [ "zfs" "systemd" "processes" ];
+
+    # textfile collector の読み取り先。
+    # 中身は modules/zfs-snapshot-metrics.nix のタイマーが 5 分ごとに書きます。
+    # (textfile collector 自体は既定で有効ですが、ディレクトリを指定しないと
+    #  何も読みません。パスは向こうの textfileDir と対になっています)
+    extraFlags = [ "--collector.textfile.directory=/var/lib/prometheus-node-exporter-text-files" ];
   };
 
   services.prometheus.exporters.smartctl = {
@@ -348,6 +354,8 @@ in
       #   10-node-exporter-full  Grafana.com ID 1860
       #   20-cadvisor            Grafana.com ID 14282
       #   30-nvidia-gpu          Grafana.com ID 14574
+      #   40-zfs-replication     自作。スナップショットの世代と syncoid の複製遅延
+      #                          (メトリクスの出所は modules/zfs-snapshot-metrics.nix)
       #
       # コミュニティ製の 3 つは取り込み時に手を入れてあります:
       #   - __inputs / __requires を削除 (これが残っていると、provisioning
