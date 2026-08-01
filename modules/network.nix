@@ -51,8 +51,19 @@ in
     };
   };
 
-  # resolv.conf にも同じ DNS を書く。
-  # systemd-resolved を使わない構成なので、これが無いと名前解決できません。
+  # 上流 DNS。これが無いと名前解決できません。
+  #
+  # 実際に引くのは systemd-resolved です。上で systemd.network.enable = true に
+  # すると nixpkgs 側 (nixos/modules/system/boot/networkd.nix) が
+  # services.resolved.enable = mkDefault true を立てるため、静的 IP のときは
+  # resolved が必ず有効になります。したがって /etc/resolv.conf の中身は
+  # ここの値ではなく resolved の stub (127.0.0.53) で、この値は resolved の
+  # Global DNS として使われます (resolvectl status で確認できます)。
+  #
+  # これは Tailscale の MagicDNS にとって都合が良い状態です。tailscaled は
+  # resolved に対して tail*.ts.net 宛だけを 100.100.100.100 へ振り分ける
+  # split DNS を登録します。resolved を切ると
+  # modules/reverse-proxy.nix の FQDN が引けなくなります。
   networking.nameservers = lib.mkIf static m.nameservers;
 
   ############################################################################
