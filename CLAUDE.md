@@ -119,6 +119,16 @@ JSON は git が唯一の正。編集手順は UI で "Save as..." → JSON を�
   (open-webui は 0.6.x の MIT から独自の Open WebUI License に変更)。
 - NVIDIA ドライバのバージョンを変えたら再起動が必要。switch だけだと
   `Failed to initialize NVML: Driver/library version mismatch` になります。
+- **`m.hostName` や `tailnetSuffix` を変えたら `sudo systemctl restart tailscale-serve` を手で叩く**。
+  `tailscale-serve.service` の ExecStart には `--set-path` とポート番号しか埋まっておらず fqdn が
+  現れないため、ホスト名を変えてもユニットの内容が変化せず switch が再起動対象と判定しません。
+  実機は `/var/lib/tailscale` の state に残った旧 FQDN のまま Serve し続けます
+  (`tailscale serve status` の表示が旧名かどうかで見分けられます)。
+  ホスト名変更ではこのほかに、(1) `networking.hostId` は据え置く (ZFS のプール識別用で hostName とは別物)、
+  (2) 事前に Tailscale admin console で旧デバイスをリネームまたは削除する
+  (放置すると新名に `-1` が付き fqdn とズレて証明書取得が失敗)、
+  (3) 改名を含む最初の switch だけ `--flake /etc/nixos#<新ホスト名>` と明示が要る
+  (`nixosConfigurations` の attr 名が変わるため)、の 3 点に注意。
 - 秘密情報の仕組み (sops-nix / agenix) はまだありません。Grafana の admin パスワードは
   `/var/lib/grafana/admin-password` を Grafana の `$__file{}` で読む形で nix store と git の外に置いています。
   新しい秘密情報も nix 式に直書きしないこと。

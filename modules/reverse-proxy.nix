@@ -101,6 +101,16 @@ in
   #
   # RemainAfterExit = true にしてあるので、nixos-rebuild switch でユニットの
   # 内容が変わったときに再実行され、変更が反映されます。
+  #
+  # ★ 逆に言うと「ユニットの内容が変わらない変更」は反映されません ★
+  #   下の serveCommand が埋め込むのは --set-path とポート番号だけで、fqdn は
+  #   ここに現れません (Grafana の root_url とコメントにしか使っていない)。
+  #   そのため m.hostName や tailnetSuffix を変えても ExecStart の文字列は
+  #   1 文字も変わらず、switch は再起動対象と判定しません。実機の serve は
+  #   /var/lib/tailscale の state に残った旧 FQDN のまま動き続けます。
+  #   ホスト名か tailnet を変えたら手で明示的に:
+  #     sudo systemctl restart tailscale-serve
+  #   (2026-08-01 の seita-nix-baremetal → seita-nixos-baremetal 改名で遭遇)
   ############################################################################
   systemd.services.tailscale-serve = {
     description = "Apply declarative Tailscale Serve configuration";
