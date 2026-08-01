@@ -56,6 +56,12 @@
       "nvidia-x11"
       "nvidia-settings"
       "nvidia-persistenced"
+
+      # NVIDIA とは無関係ですが、ここに書くしかありません。
+      # nixpkgs.config.allowUnfreePredicate は関数なのでモジュール間で
+      # マージできず、2 箇所で定義すると衝突エラーになります。
+      # n8n は Sustainable Use License (再配布不可) で非フリー扱いです。
+      "n8n"
     ]
     || lib.hasPrefix "cuda" name      # cuda_cudart, cuda_cccl, cuda_nvcc, ...
     || lib.hasPrefix "libcu" name     # libcublas, libcurand, libcusparse, ...

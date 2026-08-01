@@ -35,6 +35,7 @@ let
     nvidia          = 9835;
     cadvisor        = 8081;   # 既定の 8080 は将来の Web アプリと衝突しやすいのでずらす
     minecraft       = 9150;
+    n8n             = 5678;   # modules/n8n.nix と対。Web UI と /metrics が同じポート
   };
 
   # Grafana の admin パスワードを置くファイル。
@@ -127,13 +128,16 @@ in
           static_configs = [{ targets = [ "127.0.0.1:${toString ports.minecraft}" ]; }];
         }
 
+        {
+          # modules/n8n.nix で N8N_METRICS=true にしているのが前提。
+          # (2.x は settings の JSON ではなく環境変数しか読みません)
+          # Web UI と同じポートの /metrics に出ます。
+          job_name = "n8n";
+          static_configs = [{ targets = [ "127.0.0.1:${toString ports.n8n}" ]; }];
+        }
+
         # 将来ここに足すもの (本体を導入したら有効化してください):
         #
-        # {
-        #   job_name = "n8n";
-        #   # services.n8n の settings で N8N_METRICS=true が必要です。
-        #   static_configs = [{ targets = [ "127.0.0.1:5678" ]; }];
-        # }
         # {
         #   job_name = "ollama";
         #   # Ollama 自体は Prometheus 形式のメトリクスを吐きません。

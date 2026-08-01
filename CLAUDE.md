@@ -54,17 +54,20 @@ nix flake update
 | `modules/gpu.nix` | NVIDIA プロプライエタリドライバ。`allowUnfreePredicate` で NVIDIA/CUDA だけを許可 |
 | `modules/monitoring.nix` | VictoriaMetrics + Grafana + exporter 群 |
 | `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui |
+| `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
 | `modules/resource-priority.nix` | サービス間の CPU / メモリ優先度 (cgroup v2)。重みは相対値なのでここに集約 |
 
 ### ネットワーク境界
 
 exporter と VictoriaMetrics は `127.0.0.1` のみ。Grafana・Ollama・Open WebUI は
 `networking.firewall.interfaces."tailscale0"` で tailnet からのみ到達可能。
-Minecraft (25565) だけが LAN に開いており、podman の publish は DNAT を通って
-NixOS firewall で絞りきれないため、待ち受けアドレス自体を LAN の静的 IP に固定しています。
+LAN に開いているのは Minecraft (25565) と n8n (5678) だけです。Minecraft は podman の
+publish が DNAT を通って NixOS firewall で絞りきれないため、待ち受けアドレス自体を
+LAN の静的 IP に固定しています。n8n は平文 HTTP なので LAN の外へは出さないこと。
 
 ポート: VictoriaMetrics 8428 / Grafana 3000 / node 9100 / smartctl 9633 / nvidia-gpu 9835 /
-cadvisor 8081 / minecraft-exporter 9150 / ollama・open-webui は `modules/ollama.nix` の `ports` 参照。
+cadvisor 8081 / minecraft-exporter 9150 / n8n 5678 (Web UI と `/metrics` が同じポート) /
+ollama・open-webui は `modules/ollama.nix` の `ports` 参照。
 
 ### Grafana ダッシュボード
 
@@ -86,6 +89,9 @@ JSON は git が唯一の正。編集手順は UI で "Save as..." → JSON を�
   conmon がコンテナを `machine.slice` 直下の `libpod-<id>.scope` へ移すためです。
   `--cgroup-parent` で専用スライスを与え、`modules/resource-priority.nix` の
   `systemd.slices` 側に重みを書きます。`IOWeight` は ZFS が blk-cgroup を通らないため無効です。
+- **`nixpkgs.config.allowUnfreePredicate` は `modules/gpu.nix` の 1 箇所だけ**。関数なのでモジュール間で
+  マージできず、2 箇所で定義すると衝突します。非フリーなパッケージ (n8n など) を足すときは
+  gpu.nix のリストに追記してください。
 - NVIDIA ドライバのバージョンを変えたら再起動が必要。switch だけだと
   `Failed to initialize NVML: Driver/library version mismatch` になります。
 - 秘密情報の仕組み (sops-nix / agenix) はまだありません。Grafana の admin パスワードは
