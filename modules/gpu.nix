@@ -57,11 +57,19 @@
       "nvidia-settings"
       "nvidia-persistenced"
 
-      # NVIDIA とは無関係ですが、ここに書くしかありません。
+      # ここから下は NVIDIA とは無関係ですが、ここに書くしかありません。
       # nixpkgs.config.allowUnfreePredicate は関数なのでモジュール間で
       # マージできず、2 箇所で定義すると衝突エラーになります。
+
       # n8n は Sustainable Use License (再配布不可) で非フリー扱いです。
       "n8n"
+
+      # Open WebUI は 0.6.x では MIT でしたが、独自の Open WebUI License に
+      # 変わり非フリー扱いになりました (ブランド表示の除去や一定規模を超える
+      # 利用に制限がかかる条項が入っています)。modules/ollama.nix で
+      # unstable 版 (0.11.0) を使うためにここでの許可が要ります。
+      # stable の 0.6.9 に戻すならこの行も消せます。
+      "open-webui"
     ]
     || lib.hasPrefix "cuda" name      # cuda_cudart, cuda_cccl, cuda_nvcc, ...
     || lib.hasPrefix "libcu" name     # libcublas, libcurand, libcusparse, ...

@@ -51,9 +51,9 @@ nix flake update
 | `modules/network.nix` | `m.staticAddress` が非 null なら systemd-networkd + 静的 IP、null なら NetworkManager + DHCP |
 | `modules/replication.nix` | syncoid で `rpool/root`・`rpool/var/lib` → `dpool/backup/*` へ日次複製 (rpool は single vdev で冗長性が無いため) |
 | `modules/ftb-evolution.nix` | podman で FTB Evolution サーバー。データは `/srv/minecraft` (HDD mirror) |
-| `modules/gpu.nix` | NVIDIA プロプライエタリドライバ。`allowUnfreePredicate` で NVIDIA/CUDA だけを許可 |
+| `modules/gpu.nix` | NVIDIA プロプライエタリドライバ。`allowUnfreePredicate` の唯一の定義場所 (NVIDIA/CUDA + n8n + open-webui) |
 | `modules/monitoring.nix` | VictoriaMetrics + Grafana + exporter 群 |
-| `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui |
+| `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui。どちらも unstable 追従 (open-webui は `package` オプションで指定、overlay 不要) |
 | `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
 | `modules/reverse-proxy.nix` | Tailscale Serve で HTTP サービスを 1 つの HTTPS 入口に集約。振り分け表 (`routes`) と、前段プロキシに追随させる各サービスの URL 設定をここに集約 |
 | `modules/resource-priority.nix` | サービス間の CPU / メモリ優先度 (cgroup v2)。重みは相対値なのでここに集約 |
@@ -114,8 +114,9 @@ JSON は git が唯一の正。編集手順は UI で "Save as..." → JSON を�
   `--cgroup-parent` で専用スライスを与え、`modules/resource-priority.nix` の
   `systemd.slices` 側に重みを書きます。`IOWeight` は ZFS が blk-cgroup を通らないため無効です。
 - **`nixpkgs.config.allowUnfreePredicate` は `modules/gpu.nix` の 1 箇所だけ**。関数なのでモジュール間で
-  マージできず、2 箇所で定義すると衝突します。非フリーなパッケージ (n8n など) を足すときは
-  gpu.nix のリストに追記してください。
+  マージできず、2 箇所で定義すると衝突します。非フリーなパッケージ (n8n, open-webui) を足すときは
+  gpu.nix のリストに追記してください。**stable では free でも unstable で非フリーに変わることがあります**
+  (open-webui は 0.6.x の MIT から独自の Open WebUI License に変更)。
 - NVIDIA ドライバのバージョンを変えたら再起動が必要。switch だけだと
   `Failed to initialize NVML: Driver/library version mismatch` になります。
 - 秘密情報の仕組み (sops-nix / agenix) はまだありません。Grafana の admin パスワードは

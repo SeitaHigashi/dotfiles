@@ -147,11 +147,69 @@ in
   ############################################################################
   services.open-webui = {
     enable = true;
+
+    ##########################################################################
+    # unstable 追従。
+    #
+    # なぜ unstable か:
+    #   25.05 の open-webui は 0.6.9 で、unstable は 0.11.0 です。
+    #   Ollama 本体を unstable に寄せている以上、UI 側も同世代に
+    #   揃えておかないと新しいモデルや API の扱いで齟齬が出ます。
+    #   Python アプリでカーネル・カーネルモジュール・systemd・glibc の
+    #   いずれにも関わらない「葉」なので、この差し替えは安全です。
+    #
+    # n8n と違い overlay は不要です。services.open-webui には package
+    # オプションがあるため、ここで名指しするだけで済みます。
+    #
+    # ※ 0.11.0 は非フリーです。0.6.x の MIT から独自の
+    #   Open WebUI License に変わりました。許可は modules/gpu.nix の
+    #   allowUnfreePredicate に書いています (nixpkgs.config は 1 箇所
+    #   からしか定義できないため、ここには書けません)。
+    #
+    # ※ NixOS モジュールは 25.05 のものを使い続けます。unstable 側の
+    #   モジュールは DATA_DIR を "." から "${stateDir}/data" に変え、
+    #   既存データを移す preStart を持っていますが、こちらはパッケージ
+    #   だけを差し替えるのでその配置変更は適用されません。データは
+    #   従来どおり StateDirectory の直下に置かれます。中途半端に
+    #   unstable 側のモジュールを真似しないこと。
+    #
+    # ※ 0.6.9 からは alembic のリビジョンが 16 -> 55 に進みます。
+    #   起動時に自動適用され、ダウングレードは想定されていません。
+    #   パッケージを戻すだけでは切り戻せず、rpool/var/lib の
+    #   スナップショットからのロールバックが要ります。
+    ##########################################################################
+    package = pkgs.unstable.open-webui;
+
     host = "0.0.0.0";
     port = ports.openWebui;
     openFirewall = false; # 下のファイアウォール設定でまとめて開けます
 
     environment = {
+      ########################################################################
+      # データとキャッシュの置き場を絶対パスにする
+      #
+      # ★ これが無いと 0.11.0 は起動できません ★
+      #   25.05 のモジュールはこの 4 つを "." (相対パス) で渡しますが、
+      #   open-webui は 0.6.18 以降これを正しく扱えません。実際に踏んだ症状は
+      #   起動時の `sqlite3.OperationalError: no such table: config` で、
+      #   alembic のマイグレーションは 55 個すべて成功しているのに、
+      #   アプリ本体はそれとは別の空 DB を掴んでいる、という状態になります。
+      #   (既存データがある場合は「アカウントを作成してください」と言われる
+      #    形で現れます — nixpkgs issue #430433 と同じ)
+      #
+      #   nixpkgs では PR #431395 でモジュール側が絶対パスに直されましたが、
+      #   25.05 には入っていません。ここは module の environment が
+      #   `// cfg.environment` で後勝ちになるので、モジュールを差し替えずに
+      #   上書きできます。値は unstable のモジュールと同じにしてあります。
+      #
+      #   stateDir は /var/lib/open-webui で、DynamicUser のため実体は
+      #   /var/lib/private/open-webui です (symlink 経由で解決されます)。
+      ########################################################################
+      STATIC_DIR = "${config.services.open-webui.stateDir}/static";
+      DATA_DIR = "${config.services.open-webui.stateDir}/data";
+      HF_HOME = "${config.services.open-webui.stateDir}/hf_home";
+      SENTENCE_TRANSFORMERS_HOME = "${config.services.open-webui.stateDir}/transformers_home";
+
       OLLAMA_BASE_URL = "http://127.0.0.1:${toString ports.ollama}";
 
       # 初回アクセスで作った管理者アカウントが必須になる。
