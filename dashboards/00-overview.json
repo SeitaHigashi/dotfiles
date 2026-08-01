@@ -253,8 +253,8 @@
     },
     {
       "type": "timeseries",
-      "title": "コンテナ別 CPU",
-      "description": "cAdvisor から。Minecraft と将来の n8n の取り分を直接比較できます。",
+      "title": "ワークロード別 CPU",
+      "description": "cAdvisor から (1 コア分 = 100%)。cAdvisor は podman のコンテナ名を取れないため (name ラベルが付かない)、cgroup パスで見ています。Minecraft は専用の minecraft.slice、それ以外の podman コンテナは machine.slice、常駐サービスは system.slice 直下です。",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -268,8 +268,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))",
-          "legendFormat": "{{name}}"
+          "expr": "sum by (id) (rate(container_cpu_usage_seconds_total{id=~\"/minecraft.slice|/machine.slice|/system.slice/(ollama|open-webui|n8n|grafana|victoriametrics|tailscaled)\\\\.service\"}[5m]))",
+          "legendFormat": "{{id}}"
         }
       ],
       "fieldConfig": {

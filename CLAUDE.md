@@ -100,6 +100,13 @@ JSON は git が唯一の正。編集手順は UI で "Save as..." → JSON を�
 エクスポートした JSON からは `__inputs` / `__requires` を削除すること。
 データソース UID は `victoriametrics` に固定されており、変えると全ダッシュボードが "No data" になります。
 
+コミュニティ製のものは、この機体で原理的にデータが出ないパネルを削って取り込んでいます
+(詳細と理由は `modules/monitoring.nix` のコメント)。要点は 2 つ:
+**cAdvisor は podman のコンテナ名を取れない**ので `name` ラベルは存在せず、集計キーは cgroup パス (`id`) です
+(Minecraft は `/minecraft.slice`、その他の podman コンテナは `/machine.slice`、常駐サービスは `/system.slice/<unit>`)。
+**NVIDIA は MIG / XID / PCIe スループット / energy カウンタ / プロセス一覧が出ません** —
+データセンター GPU か新しい exporter の機能のためです。
+
 ### Grafana MCP
 
 Claude Code から Grafana を読むために `mcp-grafana` (Grafana Labs 公式、unstable 由来) を入れてあります。

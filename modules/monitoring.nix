@@ -356,8 +356,8 @@ in
       # 収録物 (uid はファイル内で固定):
       #   00-overview            自作。Minecraft・CPU・メモリ・ZFS・GPU を 1 画面に
       #   10-node-exporter-full  Grafana.com ID 1860
-      #   20-cadvisor            Grafana.com ID 14282
-      #   30-nvidia-gpu          Grafana.com ID 14574
+      #   20-cadvisor            Grafana.com ID 14282 (cgroup 単位に作り替え済み。下記)
+      #   30-nvidia-gpu          Grafana.com ID 14574 (空パネルを削除済み。下記)
       #   40-zfs-replication     自作。スナップショットの世代と syncoid の複製遅延
       #                          (メトリクスの出所は modules/zfs-snapshot-metrics.nix)
       #
@@ -365,6 +365,23 @@ in
       #   - __inputs / __requires を削除 (これが残っていると、provisioning
       #     しても「インポートしてください」と言われて表示できません)
       #   - データソース参照を uid "victoriametrics" に固定
+      #
+      # さらに、この機体では原理的にデータが出ないパネルを外してあります
+      # (放置すると "No data" が画面に混ざり、本当の異常が埋もれるため):
+      #   20-cadvisor  cAdvisor は podman のコンテナ名を取れず name ラベルが
+      #                付きません (docker/containerd の API 前提のため)。
+      #                キーを name から cgroup パス (id) に置き換え、
+      #                ネットワークの 2 枚は削除しました — cAdvisor が
+      #                network 系を出すのはルート cgroup "/" だけで、
+      #                コンテナ単位には分かれないためです。
+      #   30-nvidia    MIG・NVSwitch (fabric)・XID・PCIe スループット・
+      #                energy カウンタ・compute app のプロセス一覧を削除。
+      #                いずれもデータセンター GPU か、より新しい exporter
+      #                (nvidia_gpu_exporter は 1.3.1) の機能で、
+      #                GTX 1660 SUPER / RTX 3060 Ti では出ません。
+      #                throttle 系と ECC 系は残しています — クエリが
+      #                clocks_event_reasons_* / ecc_..._sram_* に
+      #                フォールバックする作りで、実データが返るためです。
       ########################################################################
       dashboards.settings.providers = [
         {

@@ -21,7 +21,10 @@
   "panels": [
     {
       "collapsed": false,
-      "datasource": "victoriametrics",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -38,7 +41,10 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "victoriametrics",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -83,10 +89,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{instance=~\"$host\",name=~\"$container\",name=~\".+\"}[5m])) by (name) *100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{instance=~\"$host\",id=~\"$container\"}[5m])) by (id) *100",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
@@ -135,7 +141,10 @@
     },
     {
       "collapsed": false,
-      "datasource": "victoriametrics",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -152,7 +161,10 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "victoriametrics",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -197,10 +209,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(container_memory_rss{instance=~\"$host\",name=~\"$container\",name=~\".+\"}) by (name)",
+          "expr": "sum(container_memory_rss{instance=~\"$host\",id=~\"$container\"}) by (id)",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
@@ -252,7 +264,10 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "victoriametrics",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -297,10 +312,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(container_memory_cache{instance=~\"$host\",name=~\"$container\",name=~\".+\"}) by (name)",
+          "expr": "sum(container_memory_cache{instance=~\"$host\",id=~\"$container\"}) by (id)",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
@@ -349,223 +364,10 @@
     },
     {
       "collapsed": false,
-      "datasource": "victoriametrics",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 17
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
       },
-      "id": 2,
-      "panels": [],
-      "title": "Network",
-      "type": "row"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "victoriametrics",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "fill": 1,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 18
-      },
-      "hiddenSeries": false,
-      "id": 4,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideEmpty": false,
-        "hideZero": false,
-        "max": true,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "sideWidth": null,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "nullPointMode": "null",
-      "options": {
-        "alertThreshold": true
-      },
-      "percentage": false,
-      "pluginVersion": "7.4.5",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(rate(container_network_receive_bytes_total{instance=~\"$host\",name=~\"$container\",name=~\".+\"}[5m])) by (name)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "{{name}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Received Network Traffic",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "$$hashKey": "object:674",
-          "format": "Bps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "$$hashKey": "object:675",
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "victoriametrics",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "fill": 1,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 18
-      },
-      "hiddenSeries": false,
-      "id": 6,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "max": true,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "nullPointMode": "null",
-      "options": {
-        "alertThreshold": true
-      },
-      "percentage": false,
-      "pluginVersion": "7.4.5",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(rate(container_network_transmit_bytes_total{instance=~\"$host\",name=~\"$container\",name=~\".+\"}[5m])) by (name)",
-          "interval": "",
-          "legendFormat": "{{name}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Sent Network Traffic",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "$$hashKey": "object:832",
-          "format": "Bps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "$$hashKey": "object:833",
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "collapsed": false,
-      "datasource": "victoriametrics",
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -578,7 +380,10 @@
       "type": "row"
     },
     {
-      "datasource": "victoriametrics",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -656,30 +461,26 @@
       "pluginVersion": "7.4.5",
       "targets": [
         {
-          "expr": "(time() - container_start_time_seconds{instance=~\"$host\",name=~\"$container\",name=~\".+\"})/86400",
+          "expr": "(time() - container_start_time_seconds{instance=~\"$host\",id=~\"$container\"})/86400",
           "format": "table",
           "instant": true,
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Containers Info",
+      "title": "cgroup 一覧 (稼働日数)",
       "transformations": [
         {
           "id": "filterFieldsByName",
           "options": {
             "include": {
               "names": [
-                "container_label_com_docker_compose_project",
-                "container_label_com_docker_compose_project_working_dir",
-                "image",
+                "id",
                 "instance",
-                "name",
-                "Value",
-                "container_label_com_docker_compose_service"
+                "Value"
               ]
             }
           }
@@ -690,13 +491,9 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "Value": "Running",
-              "container_label_com_docker_compose_project": "Label",
-              "container_label_com_docker_compose_project_working_dir": "Working dir",
-              "container_label_com_docker_compose_service": "Service",
-              "image": "Registry Image",
+              "id": "cgroup",
               "instance": "Instance",
-              "name": "Name"
+              "Value": "稼働日数"
             }
           }
         }
@@ -715,7 +512,10 @@
       {
         "allValue": ".*",
         "current": {},
-        "datasource": "victoriametrics",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
         "definition": "label_values({__name__=~\"container.*\"},instance)",
         "description": null,
         "error": null,
@@ -742,18 +542,21 @@
       {
         "allValue": ".*",
         "current": {},
-        "datasource": "victoriametrics",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
         "definition": "label_values({__name__=~\"container.*\", instance=~\"$host\"},name)",
         "description": null,
         "error": null,
         "hide": 0,
         "includeAll": true,
-        "label": "Container",
+        "label": "cgroup",
         "multi": false,
         "name": "container",
         "options": [],
         "query": {
-          "query": "label_values({__name__=~\"container.*\", instance=~\"$host\"},name)",
+          "query": "label_values({__name__=~\"container.*\", instance=~\"$host\"},id)",
           "refId": "Prometheus-container-Variable-Query"
         },
         "refresh": 1,
@@ -774,8 +577,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "cAdvisor (podman containers)",
+  "title": "cgroup 別リソース (systemd ユニット / podman スライス)",
   "uid": "cadvisor",
   "version": 1,
-  "description": "Simple exporter for cadvisor only"
+  "description": "cAdvisor は podman のコンテナ名を取れない (name ラベルが付かない) ため、cgroup パス (id) 単位で見ます。Minecraft コンテナは /minecraft.slice、その他の podman コンテナは /machine.slice、常駐サービスは /system.slice/<unit> です。"
 }
