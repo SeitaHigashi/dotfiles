@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 何のリポジトリか
 
-単一ベアメタルサーバー (`seita-nix-baremetal`) の NixOS 構成。SSD×1 + HDD×2 mirror の ZFS 上で動き、
+単一ベアメタルサーバー (`seita-nixos-baremetal`) の NixOS 構成。SSD×1 + HDD×2 mirror の ZFS 上で動き、
 ディスクレイアウトは disko で宣言的に管理されます。ホームサーバー用途として Minecraft サーバー、
 監視スタック、ローカル LLM が同居しています。詳細な設計意図と障害事例は [README.md](README.md) にあります。
 
@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 sudo nixos-rebuild switch --flake /etc/nixos
 
 # ディスクを触らない構文/評価チェック — 変更後は必ずこれを通す
-nix eval --raw .#nixosConfigurations.seita-nix-baremetal.config.system.build.toplevel.drvPath
+nix eval --raw .#nixosConfigurations.seita-nixos-baremetal.config.system.build.toplevel.drvPath
 
 # ビルドだけして切り替えない (result シンボリックリンクができる)
 nixos-rebuild build --flake /etc/nixos

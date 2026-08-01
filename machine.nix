@@ -1,7 +1,7 @@
 # scripts/install.sh が scripts/disks.env から自動生成しました。
 # 生成日時: 2026-07-30T12:48:49+00:00
 {
-  hostName = "seita-nix-baremetal";
+  hostName = "seita-nixos-baremetal";
   hostId = "8883f53a";
 
   ssd  = "/dev/disk/by-id/nvme-Samsung_SSD_990_PRO_1TB_S7HDNJ0Y914245A";
