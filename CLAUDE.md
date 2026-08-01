@@ -100,6 +100,22 @@ JSON は git が唯一の正。編集手順は UI で "Save as..." → JSON を�
 エクスポートした JSON からは `__inputs` / `__requires` を削除すること。
 データソース UID は `victoriametrics` に固定されており、変えると全ダッシュボードが "No data" になります。
 
+### Grafana MCP
+
+Claude Code から Grafana を読むために `mcp-grafana` (Grafana Labs 公式、unstable 由来) を入れてあります。
+パッケージだけが `modules/unstable.nix` にあり、**起動設定は git 管理外の `~/.claude.json`** です
+(MCP クライアントの設定であって NixOS の構成ではないため)。中身:
+
+- 接続先は `http://127.0.0.1:3000` — Tailscale Serve の `/grafana/` は経由しません。
+  同一ホストからなので TLS もサブパスの prefix 剥がしも通す理由がなく、`root_url` に引きずられる余地も消えます。
+- 認証は Viewer ロールのサービスアカウント (`claude-mcp`) のトークン。
+  `GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE` で `~/.config/grafana-mcp-token` を読ませており、
+  admin パスワードと同じく nix store と git の外に置いています。
+  **`/var/lib/grafana/` の下には置けません** — このディレクトリは grafana 専用の 0700 で、
+  MCP を起動する側のユーザー (`seita`) が辿れないためです (実機で `Permission denied` を確認)。
+- `--disable-write` 付き。ダッシュボードの正は `dashboards/*.json` (git) のままで、MCP からは書けません。
+  `allowUiUpdates = false` なので、そもそも API 経由でも provisioning 済みのものは更新できません。
+
 ## 触るときの注意
 
 - **`special` vdev を SSD 1台で dpool に足さない** — SSD が死ぬと HDD ミラーごと全損します。

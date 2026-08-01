@@ -29,6 +29,15 @@ let
   # ここに書いたものが unstable から来ます。
   unstablePackages = with pkgs.unstable; [
     neovim
+
+    # Grafana Labs 公式の MCP サーバー。Claude Code から Grafana の
+    # ダッシュボードやアラート、VictoriaMetrics への PromQL を読むために使います。
+    # stable 25.05 には無いパッケージなので unstable から。
+    #
+    # 起動設定 (URL とトークンのファイルパス、--disable-write) は
+    # このリポジトリではなく ~/.claude.json 側にあります — MCP クライアントの
+    # 設定であって NixOS の構成ではないためです。詳細は CLAUDE.md を参照。
+    mcp-grafana
   ];
 in
 {
