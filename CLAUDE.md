@@ -60,12 +60,16 @@ nix flake update
 
 ### ネットワーク境界
 
-exporter と VictoriaMetrics は `127.0.0.1` のみ。Grafana・Ollama・Open WebUI は
-`networking.firewall.interfaces."tailscale0"` で tailnet からのみ到達可能。
+exporter と VictoriaMetrics は `127.0.0.1` のみ。
 
-HTTP のサービスは `modules/reverse-proxy.nix` の Tailscale Serve 経由でも到達できます
-(TLS 終端は tailscaled、証明書は MagicDNS 名に対して自動取得)。nginx + ACME を採らないのは、
-証明書の秘密情報を置く仕組みがまだ無いためです。
+HTTP のサービスへの到達経路は `modules/reverse-proxy.nix` の Tailscale Serve に
+一本化してあります (TLS 終端は tailscaled、証明書は MagicDNS 名に対して自動取得)。
+nginx + ACME を採らないのは、証明書の秘密情報を置く仕組みがまだ無いためです。
+tailscale0 で開いているのは **443 / 8443 / 11434 の 3 つだけ**で、Grafana の 3000 と
+Open WebUI の 8080 は tailnet からも直接叩けません (切り分けには `ssh -L` を使う)。
+
+Ollama の 11434 だけ直接開けてあります — ollama CLI や `OLLAMA_HOST` を使う
+クライアントはベース URL にパスを含められず `/ollama/` では繋がらないためです。
 
 **`--set-path` は prefix を剥がしてからバックエンドへ渡します。** サブパスに置くアプリには
 「ルートで待ち受けつつ、生成する URL にだけ prefix を付ける」設定が要ります
@@ -77,13 +81,17 @@ HTTP のサービスは `modules/reverse-proxy.nix` の Tailscale Serve 経由�
 - **n8n は別ポート (8443) のルート、`N8N_PATH` は設定しない** — `N8N_PATH` は
   フロントの `window.BASE_PATH` を書き換えるだけでバックエンドの待ち受けを動かさず、
   LAN からの直接アクセス (`http://<LAN IP>:5678/`) が白画面になります。
+
 LAN に開いているのは Minecraft (25565) と n8n (5678) だけです。Minecraft は podman の
 publish が DNAT を通って NixOS firewall で絞りきれないため、待ち受けアドレス自体を
 LAN の静的 IP に固定しています。n8n は平文 HTTP なので LAN の外へは出さないこと。
 
-ポート: VictoriaMetrics 8428 / Grafana 3000 / node 9100 / smartctl 9633 / nvidia-gpu 9835 /
+ポート (待ち受け側。ファイアウォールで開いているかは上記のとおり別問題):
+VictoriaMetrics 8428 / Grafana 3000 / node 9100 / smartctl 9633 / nvidia-gpu 9835 /
 cadvisor 8081 / minecraft-exporter 9150 / n8n 5678 (Web UI と `/metrics` が同じポート) /
 ollama・open-webui は `modules/ollama.nix` の `ports` 参照。
+Tailscale Serve の待ち受けは 443 (Open WebUI `/`、Grafana `/grafana/`、Ollama `/ollama/`)
+と 8443 (n8n `/`)。
 
 ### Grafana ダッシュボード
 

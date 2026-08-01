@@ -173,16 +173,24 @@ in
   ############################################################################
   # 公開範囲
   #
-  # Grafana と同じく tailscale0 からのみ。LAN には出しません。
+  # tailscale0 からのみ。LAN には出しません。
   # 特に Ollama の API は無認証なので、LAN に晒すと同じネットワークの
   # 誰でもモデルの実行と削除ができます。
+  #
+  # Open WebUI (8080) はここでは開けません。到達経路は
+  # modules/reverse-proxy.nix の Tailscale Serve (tailnet の 443 のルート) に
+  # 一本化してあります。
+  #
+  # 一方 Ollama の 11434 は直接開けたままにしています。ollama CLI や
+  # OLLAMA_HOST を使うクライアントはベース URL にパスを含められず、
+  # https://<fqdn>/ollama/ では接続できないためです。tailnet 限定なので
+  # 公開範囲は Serve 経由と変わりません。
   #
   # LAN からも叩く必要が出たら networking.firewall.allowedTCPPorts に
   # 足すことになりますが、その前に本当に必要か検討してください。
   ############################################################################
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     ports.ollama
-    ports.openWebui
   ];
 
   # ollama CLI をシステムに入れておく (ollama list / ps / pull 用)。
