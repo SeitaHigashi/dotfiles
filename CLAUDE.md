@@ -55,12 +55,28 @@ nix flake update
 | `modules/monitoring.nix` | VictoriaMetrics + Grafana + exporter 群 |
 | `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui |
 | `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
+| `modules/reverse-proxy.nix` | Tailscale Serve で HTTP サービスを 1 つの HTTPS 入口に集約。振り分け表 (`routes`) と、前段プロキシに追随させる各サービスの URL 設定をここに集約 |
 | `modules/resource-priority.nix` | サービス間の CPU / メモリ優先度 (cgroup v2)。重みは相対値なのでここに集約 |
 
 ### ネットワーク境界
 
 exporter と VictoriaMetrics は `127.0.0.1` のみ。Grafana・Ollama・Open WebUI は
 `networking.firewall.interfaces."tailscale0"` で tailnet からのみ到達可能。
+
+HTTP のサービスは `modules/reverse-proxy.nix` の Tailscale Serve 経由でも到達できます
+(TLS 終端は tailscaled、証明書は MagicDNS 名に対して自動取得)。nginx + ACME を採らないのは、
+証明書の秘密情報を置く仕組みがまだ無いためです。
+
+**`--set-path` は prefix を剥がしてからバックエンドへ渡します。** サブパスに置くアプリには
+「ルートで待ち受けつつ、生成する URL にだけ prefix を付ける」設定が要ります
+(Grafana なら `root_url` を絶対 URL にしたうえで `serve_from_sub_path = false`。
+ここを true にすると無限リダイレクトになります)。この非対称が原因で:
+
+- **Open WebUI は必ずルート** — サブパス非対応 (0.6.9 の `open_webui/main.py` の
+  `FastAPI(...)` に `root_path` が無い)。
+- **n8n は別ポート (8443) のルート、`N8N_PATH` は設定しない** — `N8N_PATH` は
+  フロントの `window.BASE_PATH` を書き換えるだけでバックエンドの待ち受けを動かさず、
+  LAN からの直接アクセス (`http://<LAN IP>:5678/`) が白画面になります。
 LAN に開いているのは Minecraft (25565) と n8n (5678) だけです。Minecraft は podman の
 publish が DNAT を通って NixOS firewall で絞りきれないため、待ち受けアドレス自体を
 LAN の静的 IP に固定しています。n8n は平文 HTTP なので LAN の外へは出さないこと。
