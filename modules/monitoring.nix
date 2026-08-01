@@ -355,7 +355,7 @@ in
       #
       # 収録物 (uid はファイル内で固定):
       #   00-overview            自作。Minecraft・CPU・メモリ・ZFS・GPU を 1 画面に
-      #   10-node-exporter-full  Grafana.com ID 1860
+      #   10-node-exporter-full  Grafana.com ID 1860 (空パネルを削除済み。下記)
       #   20-cadvisor            Grafana.com ID 14282 (cgroup 単位に作り替え済み。下記)
       #   30-nvidia-gpu          Grafana.com ID 14574 (空パネルを削除済み。下記)
       #   40-zfs-replication     自作。スナップショットの世代と syncoid の複製遅延
@@ -368,6 +368,18 @@ in
       #
       # さらに、この機体では原理的にデータが出ないパネルを外してあります
       # (放置すると "No data" が画面に混ざり、本当の異常が埋もれるため):
+      #   10-node      IRQ Detail (interrupts コレクタが無効) /
+      #                Power Supply (電源は AC 直結でバッテリが無い) /
+      #                Hardware Fan Speed (hwmon にファンのセンサが出ない) /
+      #                TCP Stat Persistent・Transient・Socket Queue
+      #                (tcpstat コレクタが無効) の 6 枚を削除。
+      #                加えて hwmon の crit_alarm / crit_hyst と
+      #                node_netstat_Tcp_MaxConn の系列を落とし、
+      #                Network Operational Status は operstate ラベルの
+      #                絞り込みを外しました (この版の node_exporter は
+      #                node_network_up に operstate を付けません)。
+      #                CPU パネルの guest 系列は `> 0` で意図的に隠れる
+      #                作りなので残してあります。
       #   20-cadvisor  cAdvisor は podman のコンテナ名を取れず name ラベルが
       #                付きません (docker/containerd の API 前提のため)。
       #                キーを name から cgroup パス (id) に置き換え、
