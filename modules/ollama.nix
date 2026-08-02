@@ -54,6 +54,18 @@ in
     # そのためです (modules/gpu.nix)。片方を戻すなら両方戻してください。
     package = pkgs.unstable.ollama-cuda;
 
+    # **これが無いと package の指定が無意味になります。**
+    #   nixos/modules/services/misc/ollama.nix は ExecStart に cfg.package を
+    #   そのまま使わず、
+    #     ollamaPackage = cfg.package.override { inherit (cfg) acceleration; };
+    #   と書き戻します。acceleration の既定値は null なので、ollama-cuda を
+    #   渡しても override で CUDA 無効のビルドに差し替えられてしまいます。
+    #   実機で踏みました: config.services.ollama.package は CUDA 版を返すのに
+    #   ユニットの ExecStart は CPU 版を指しており、lib/ollama/ に
+    #   libggml-cuda.so が無いため GPU が 1 枚も検出されず (inference compute が
+    #   cpu だけ)、全推論が CPU に落ちていました。
+    acceleration = "cuda";
+
     # user / group は既定 (null) のまま = DynamicUser で動かします。
     #
     # 静的ユーザーにしても解決しない点に注意してください。25.05 の
