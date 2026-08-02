@@ -10,12 +10,24 @@
 # このホストの制約 (modules/gpu.nix も参照):
 #     GPU 0  GTX 1660 SUPER  6 GiB  sm_75  PCIe x4
 #     GPU 1  RTX 3060 Ti     8 GiB  sm_86  PCIe x8
-#   合計 VRAM 14 GiB。CPU は Ryzen 3 3300X (4C/8T)。
-#   RAM 46 GiB のうち ZFS ARC に 16 GiB、Minecraft のヒープに 8 GiB を
-#   既に割り当てているため、CPU オフロードに使える余地は 20 GiB 程度です。
+#   合計 VRAM 14 GiB (ollama から見える実効値は 13.3 GiB)。
+#   CPU は Ryzen 3 3300X (4C/8T)。RAM 46 GiB のうち ZFS ARC に 16 GiB、
+#   Minecraft のヒープに 8 GiB を既に割り当てているため、CPU オフロードに
+#   使える余地は 20 GiB 程度です。
 #
-#   現実的な上限は 14B の Q4 量子化まで。32B クラスは VRAM に収まらず
-#   CPU にあふれて数 tok/s になり、実用になりません。
+#   **選定の基準はパラメータ数ではなく「総サイズが VRAM に収まるか」です。**
+#   あふれた分は CPU に落ち、特にプロンプト処理が桁で遅くなります。
+#   2026-08-02 に実測した値 (同一プロンプト、日本語の要約 + JSON 強制):
+#
+#     gemma4:12b   7.6GB  収まる    プロンプト 177.9 tok/s  生成 35.0 tok/s
+#     qwen3:14b      9GB  収まる    プロンプト 130.6 tok/s  生成 35.0 tok/s
+#     gemma4:26b    18GB  収まらない プロンプト  18.8 tok/s  生成 26.0 tok/s
+#
+#   gemma4:26b は MoE (アクティブ 4B) ですが、**アクティブ数が小さくても
+#   総サイズが収まらなければ遅くなります**。長い入力を読ませる用途では
+#   プロンプト処理の差がそのまま所要時間になるため致命的です。
+#   (CPU only で動かすと逆に MoE が有利になり順位が入れ替わります。
+#    GPU が効いているかを確認せずにモデルを選ばないこと。)
 #
 # コンテナではなくネイティブの systemd サービスにしています。
 # podman 側に GPU パススルー (CDI / nvidia-container-toolkit) を用意するより
