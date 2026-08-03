@@ -68,8 +68,12 @@ nginx + ACME を採らないのは、証明書の秘密情報を置く仕組み�
 tailscale0 で開いているのは **443 / 8443 / 11434 の 3 つだけ**で、Grafana の 3000 と
 Open WebUI の 8080 は tailnet からも直接叩けません (切り分けには `ssh -L` を使う)。
 
-Ollama の 11434 だけ直接開けてあります — ollama CLI や `OLLAMA_HOST` を使う
-クライアントはベース URL にパスを含められず `/ollama/` では繋がらないためです。
+**Ollama だけは Serve を通さず 11434 直結です。** 理由は 2 つ。ollama CLI や
+`OLLAMA_HOST` を使うクライアントはベース URL にパスを含められないこと、そして
+**`/ollama` にマウントすると Open WebUI が壊れる**こと — Open WebUI 自身が
+`/ollama/*` を Ollama へのプロキシに使っており、Serve のマウントが
+それを横取りして管理画面の Connections が固まります (詳細は
+`modules/reverse-proxy.nix` の routes のコメント)。
 
 **`--set-path` は prefix を剥がしてからバックエンドへ渡します。** サブパスに置くアプリには
 「ルートで待ち受けつつ、生成する URL にだけ prefix を付ける」設定が要ります
@@ -90,8 +94,8 @@ LAN の静的 IP に固定しています。n8n は平文 HTTP なので LAN の
 VictoriaMetrics 8428 / Grafana 3000 / node 9100 / smartctl 9633 / nvidia-gpu 9835 /
 cadvisor 8081 / minecraft-exporter 9150 / n8n 5678 (Web UI と `/metrics` が同じポート) /
 ollama・open-webui は `modules/ollama.nix` の `ports` 参照。
-Tailscale Serve の待ち受けは 443 (Open WebUI `/`、Grafana `/grafana/`、Ollama `/ollama/`)
-と 8443 (n8n `/`)。
+Tailscale Serve の待ち受けは 443 (Open WebUI `/`、Grafana `/grafana/`) と 8443 (n8n `/`)。
+Ollama は Serve に載せていません (上記)。
 
 ### Grafana ダッシュボード
 

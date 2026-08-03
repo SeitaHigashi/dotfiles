@@ -66,12 +66,25 @@ let
   #   別ポートへ逃がし、N8N_PATH を設定しない形にしています。これで
   #   http://<LAN IP>:5678/ と https://<fqdn>:8443/ の両方が素直に動きます。
   #
-  # Ollama は API のパスが絶対なので、前段で prefix を剥がすだけで足ります。
+  # ★ Ollama を /ollama にマウントしてはいけません ★
+  #   Open WebUI が 443 のルートを占有しており、**Open WebUI 自身が
+  #   /ollama/* を Ollama へのプロキシとして使っています** (認証付き)。
+  #   ここに Serve のマウントを足すと、より長い prefix が優先されて
+  #   Open WebUI の /ollama/* が丸ごと横取りされます。症状は管理画面の
+  #   Settings > Connections が読み込み中のまま止まることで、devtools には
+  #     GET https://<fqdn>/ollama/config 404 (Not Found)
+  #   が出ます (Ollama 本体には /config が無いため)。実機で確認:
+  #   127.0.0.1:8080/ollama/config は 401 = 存在する、
+  #   127.0.0.1:11434/config は 404。2026-08-04 に遭遇して外しました。
+  #
+  #   外しても到達性は失われません。ollama CLI や OLLAMA_HOST を使う
+  #   クライアントはベース URL にパスを含められず、そもそも /ollama/ では
+  #   繋がらないため、Ollama の口は tailscale0 の 11434 直結
+  #   (modules/ollama.nix) が唯一の経路です。
   ############################################################################
   routes = [
     { path = null;       httpsPort = 443;  port = 8080;  note = "open-webui"; }
     { path = "/grafana"; httpsPort = 443;  port = 3000;  note = "grafana"; }
-    { path = "/ollama";  httpsPort = 443;  port = 11434; note = "ollama"; }
     { path = null;       httpsPort = 8443; port = 5678;  note = "n8n"; }
   ];
 
@@ -158,11 +171,10 @@ in
   #
   # なお各サービスの直接ポート (3000 / 8080 / 11434) は他モジュールで
   # tailscale0 に開いたままにしてあります。Serve 経由に移行しきったら
-  # modules/monitoring.nix と modules/ollama.nix の
+  # modules/monitoring.nix の
   # firewall.interfaces."tailscale0".allowedTCPPorts から外せます。
-  # ただし Ollama の 11434 は残すことを勧めます — ollama CLI や
-  # OLLAMA_HOST を使うクライアントはベース URL にパスを含められないため、
-  # https://<fqdn>/ollama/ では繋がりません。
+  # ただし Ollama の 11434 は外せません — Serve に Ollama のマウントは
+  # 無く (上の routes のコメント参照)、ここが唯一の到達経路です。
   ############################################################################
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = httpsPorts;
 
@@ -240,8 +252,8 @@ in
   #   アクセス先:
   #     ${baseUrl}/          Open WebUI
   #     ${baseUrl}/grafana/  Grafana
-  #     ${baseUrl}/ollama/   Ollama API
   #     ${n8nUrl}/           n8n  (LAN からは http://<LAN IP>:5678/ も従来どおり)
+  #     Ollama API は Serve を通しません: http://<tailscale IP>:11434/
   #
   #   全部剥がして元に戻す:
   #     flake.nix の modules から ./modules/reverse-proxy.nix を外して rebuild し、
