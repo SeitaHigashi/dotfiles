@@ -24,9 +24,16 @@
       url = "github:nix-community/disko/latest";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # 秘密情報 (Discord Bot Token 等) を git に暗号化したまま置くための agenix。
+    # 復号鍵はこのホスト自身の SSH ホスト鍵を流用する (secrets/secrets.nix 参照)。
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, disko, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, disko, agenix, ... }@inputs:
   let
     # 構成名をホスト名と一致させる。
     # nixos-rebuild は --flake に属性名を省略すると、実行中マシンの
@@ -39,6 +46,7 @@
       system = "x86_64-linux";
       specialArgs = { inherit inputs; };
       modules = [
+        agenix.nixosModules.default
         disko.nixosModules.disko
         ./disko                        # ディスク・プール・データセットの宣言
         ./hardware-configuration.nix   # nixos-generate-config --no-filesystems の出力
@@ -56,6 +64,7 @@
         ./modules/n8n.nix              # ワークフロー自動化 (unstable 追従)
         ./modules/reverse-proxy.nix    # Tailscale Serve で HTTP サービスを集約
         ./modules/resource-priority.nix # サービス間の CPU / メモリ優先度
+        ./modules/discord-bot.nix      # Discord Gateway ボット -> n8n webhook
       ];
     };
   };
