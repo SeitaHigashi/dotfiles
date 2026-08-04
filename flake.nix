@@ -51,6 +51,7 @@
         ./modules/gpu.nix              # NVIDIA ドライバ (計算用途 + 監視のため)
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
         ./modules/zfs-snapshot-metrics.nix # スナップショット / 複製状況のメトリクス
+        ./modules/alerting.nix         # Grafana のアラート (通知は n8n Webhook)
         ./modules/ollama.nix           # ローカル LLM (Ollama + Open WebUI)
         ./modules/n8n.nix              # ワークフロー自動化 (unstable 追従)
         ./modules/reverse-proxy.nix    # Tailscale Serve で HTTP サービスを集約
