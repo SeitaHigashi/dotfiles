@@ -30,6 +30,11 @@
 #   syncoid ユニット自体の状態は node_exporter の systemd コレクタが既に
 #   出しているので (node_systemd_unit_state{name="syncoid-rpool-*"})、
 #   ここでは重複して収集しません。
+#
+# ついでに拾っているもの:
+#   プールの健全性 (zfs_pool_health) もここで出しています。スナップショットとは
+#   別の関心事ですが、node_exporter がプールの状態を出さないうえ、
+#   root で zfs を叩くユニットをもう一つ増やす理由が無いためです。
 ##############################################################################
 
 let
@@ -97,6 +102,26 @@ let
         }
       ' "$work/datasets" "$work/usedby" "$work/snapshots" > "$work/out"
 
+      # プールの健全性。
+      #
+      # node_exporter の zfs コレクタは /proc/spl/kstat/zfs を読むだけなので、
+      # ARC と io の統計しか出しません。プールが DEGRADED や FAULTED に
+      # なってもメトリクスには一切現れず、気づく手段が無いため、ここで補います。
+      # スナップショットとは別の関心事ですが、既に root で zfs を叩いている
+      # このユニットに相乗りするのが一番安上がりです。
+      #
+      # 値は「異常かどうか」の 0/1 に潰しています。DEGRADED と FAULTED を
+      # 区別しても対処は「zpool status を見に行く」で同じであり、
+      # 文字列をラベルに入れると状態が変わるたびに系列が増えるためです。
+      {
+        echo "# HELP zfs_pool_health プールが ONLINE 以外なら 1 (要 zpool status)"
+        echo "# TYPE zfs_pool_health gauge"
+        zpool list -H -o name,health | while IFS=$'\t' read -r pool health; do
+          if [ "$health" = "ONLINE" ]; then bad=0; else bad=1; fi
+          echo "zfs_pool_health{pool=\"$pool\"} $bad"
+        done
+      } >> "$work/out"
+
       # 収集自体の死活。この値が古くなっていたら、以下の数字はすべて
       # 信用できません (タイマーが止まっている / zfs コマンドが失敗している)。
       {
@@ -161,7 +186,7 @@ in
   #
   #   systemctl start zfs-snapshot-metrics
   #   cat /var/lib/prometheus-node-exporter-text-files/zfs-snapshots.prom
-  #   curl -s localhost:9100/metrics | grep '^zfs_snapshot'
+  #   curl -s localhost:9100/metrics | grep -E '^zfs_(snapshot|pool)'
   #
   #   textfile collector が転んでいないか (0 なら正常):
   #     curl -s localhost:9100/metrics | grep node_textfile_scrape_error
