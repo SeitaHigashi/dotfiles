@@ -130,8 +130,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum by(uuid) (nvidia_smi_clocks_event_reasons_sw_power_cap{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_power_cap{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) * 0)) + (sum by(uuid) (nvidia_smi_clocks_event_reasons_sw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) * 0)) + (sum by(uuid) (nvidia_smi_clocks_event_reasons_hw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) * 0)) + (sum by(uuid) (nvidia_smi_clocks_event_reasons_hw_power_brake_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_power_brake_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) * 0))",
-          "legendFormat": "",
+          "expr": "((sum by(uuid) (nvidia_smi_clocks_event_reasons_sw_power_cap{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_power_cap{instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}) * 0)) + (sum by(uuid) (nvidia_smi_clocks_event_reasons_sw_thermal_slowdown{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_thermal_slowdown{instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}) * 0)) + (sum by(uuid) (nvidia_smi_clocks_event_reasons_hw_thermal_slowdown{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_thermal_slowdown{instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}) * 0)) + (sum by(uuid) (nvidia_smi_clocks_event_reasons_hw_power_brake_slowdown{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_power_brake_slowdown{instance=\"$node\", job=\"$job\"}) or (sum by(uuid) (nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}) * 0))) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -213,8 +213,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by(uuid) (nvidia_smi_ecc_errors_uncorrected_aggregate_total{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}) or sum by(uuid) ({__name__=~\"nvidia_smi_ecc_errors_uncorrected_aggregate_.+\", uuid=\"$gpu\", instance=\"$node\", job=\"$job\"})",
-          "legendFormat": "",
+          "expr": "(sum by(uuid) (nvidia_smi_ecc_errors_uncorrected_aggregate_total{instance=\"$node\", job=\"$job\"}) or sum by(uuid) ({__name__=~\"nvidia_smi_ecc_errors_uncorrected_aggregate_.+\", instance=\"$node\", job=\"$job\"})) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -382,9 +382,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_pstate{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_pstate{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -476,7 +476,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_gpu_info{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -614,9 +614,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "nvidia_smi_compute_mode{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_compute_mode{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A"
         }
@@ -682,9 +682,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_utilization_gpu_ratio{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_utilization_gpu_ratio{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "{{uuid}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -749,9 +749,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_power_draw_watts{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} / (nvidia_smi_enforced_power_limit_watts{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_power_limit_watts{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_power_default_limit_watts{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"})",
+          "expr": "(nvidia_smi_power_draw_watts{instance=\"$node\", job=\"$job\"} / (nvidia_smi_enforced_power_limit_watts{instance=\"$node\", job=\"$job\"} or nvidia_smi_power_limit_watts{instance=\"$node\", job=\"$job\"} or nvidia_smi_power_default_limit_watts{instance=\"$node\", job=\"$job\"})) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -816,9 +816,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_fan_speed_ratio{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_fan_speed_ratio{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -891,9 +891,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_temperature_gpu{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_temperature_gpu{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "{{uuid}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -958,9 +958,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_clocks_current_graphics_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} / nvidia_smi_clocks_max_graphics_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_clocks_current_graphics_clock_hz{instance=\"$node\", job=\"$job\"} / nvidia_smi_clocks_max_graphics_clock_hz{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1025,9 +1025,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_clocks_current_memory_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} / nvidia_smi_clocks_max_memory_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_clocks_current_memory_clock_hz{instance=\"$node\", job=\"$job\"} / nvidia_smi_clocks_max_memory_clock_hz{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1100,9 +1100,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_memory_used_bytes{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} / nvidia_smi_memory_total_bytes{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_memory_used_bytes{instance=\"$node\", job=\"$job\"} / nvidia_smi_memory_total_bytes{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1167,9 +1167,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_utilization_memory_ratio{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_utilization_memory_ratio{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1264,9 +1264,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_utilization_memory_ratio{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_utilization_memory_ratio{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "{{uuid}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1361,9 +1361,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_utilization_gpu_ratio{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_utilization_gpu_ratio{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1541,8 +1541,8 @@
         ]
       },
       "gridPos": {
-        "h": 6,
-        "w": 12,
+        "h": 8,
+        "w": 24,
         "x": 0,
         "y": 15
       },
@@ -1569,8 +1569,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_clocks_event_reasons_gpu_idle{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_gpu_idle{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "Idle",
+          "expr": "(nvidia_smi_clocks_event_reasons_gpu_idle{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_gpu_idle{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "Idle ({{name}})",
           "refId": "A"
         },
         {
@@ -1578,8 +1578,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_clocks_event_reasons_sw_power_cap{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_power_cap{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "SW Power Cap",
+          "expr": "(nvidia_smi_clocks_event_reasons_sw_power_cap{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_power_cap{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "SW Power Cap ({{name}})",
           "refId": "B"
         },
         {
@@ -1587,8 +1587,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_clocks_event_reasons_sw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "SW Thermal Slowdown",
+          "expr": "(nvidia_smi_clocks_event_reasons_sw_thermal_slowdown{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sw_thermal_slowdown{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "SW Thermal Slowdown ({{name}})",
           "refId": "C"
         },
         {
@@ -1596,8 +1596,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_clocks_event_reasons_hw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_thermal_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "HW Thermal Slowdown",
+          "expr": "(nvidia_smi_clocks_event_reasons_hw_thermal_slowdown{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_thermal_slowdown{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "HW Thermal Slowdown ({{name}})",
           "refId": "D"
         },
         {
@@ -1605,8 +1605,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_clocks_event_reasons_hw_power_brake_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_power_brake_slowdown{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "HW Power Brake",
+          "expr": "(nvidia_smi_clocks_event_reasons_hw_power_brake_slowdown{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_hw_power_brake_slowdown{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "HW Power Brake ({{name}})",
           "refId": "E"
         },
         {
@@ -1614,8 +1614,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_clocks_event_reasons_applications_clocks_setting{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_applications_clocks_setting{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "App Clocks Setting",
+          "expr": "(nvidia_smi_clocks_event_reasons_applications_clocks_setting{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_applications_clocks_setting{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "App Clocks Setting ({{name}})",
           "refId": "F"
         },
         {
@@ -1623,8 +1623,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_clocks_event_reasons_sync_boost{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sync_boost{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "Sync Boost",
+          "expr": "(nvidia_smi_clocks_event_reasons_sync_boost{instance=\"$node\", job=\"$job\"} or nvidia_smi_clocks_throttle_reasons_sync_boost{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "Sync Boost ({{name}})",
           "refId": "G"
         }
       ],
@@ -1745,10 +1745,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 15
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 23
       },
       "id": 39,
       "options": {
@@ -1773,8 +1773,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "nvidia_smi_pstate{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
-          "legendFormat": "P-State",
+          "expr": "(nvidia_smi_pstate{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1787,7 +1787,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 28
       },
       "id": 45,
       "panels": [],
@@ -1858,7 +1858,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 22
+        "y": 29
       },
       "id": 17,
       "options": {
@@ -1881,9 +1881,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_memory_used_bytes{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_memory_used_bytes{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "{{uuid}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -1959,7 +1959,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 22
+        "y": 29
       },
       "id": 15,
       "options": {
@@ -1982,9 +1982,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_temperature_gpu{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_temperature_gpu{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "{{uuid}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -2055,7 +2055,7 @@
         "h": 5,
         "w": 6,
         "x": 12,
-        "y": 22
+        "y": 29
       },
       "id": 8,
       "options": {
@@ -2078,9 +2078,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_power_draw_watts{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_power_draw_watts{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "{{uuid}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -2152,7 +2152,7 @@
         "h": 5,
         "w": 6,
         "x": 18,
-        "y": 22
+        "y": 29
       },
       "id": 9,
       "options": {
@@ -2175,9 +2175,9 @@
             "uid": "${datasource}"
           },
           "exemplar": true,
-          "expr": "nvidia_smi_fan_speed_ratio{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+          "expr": "(nvidia_smi_fan_speed_ratio{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
           "interval": "",
-          "legendFormat": "{{uuid}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -2190,7 +2190,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 34
       },
       "id": 46,
       "panels": [
@@ -2258,7 +2258,7 @@
             "h": 5,
             "w": 6,
             "x": 0,
-            "y": 28
+            "y": 35
           },
           "id": 12,
           "options": {
@@ -2281,10 +2281,10 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "nvidia_smi_clocks_current_graphics_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+              "expr": "(nvidia_smi_clocks_current_graphics_clock_hz{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "{{uuid}}",
+              "legendFormat": "{{name}}",
               "refId": "A"
             }
           ],
@@ -2355,7 +2355,7 @@
             "h": 5,
             "w": 6,
             "x": 6,
-            "y": 28
+            "y": 35
           },
           "id": 19,
           "options": {
@@ -2378,10 +2378,10 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "nvidia_smi_clocks_current_video_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+              "expr": "(nvidia_smi_clocks_current_video_clock_hz{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "{{uuid}}",
+              "legendFormat": "{{name}}",
               "refId": "A"
             }
           ],
@@ -2452,7 +2452,7 @@
             "h": 5,
             "w": 6,
             "x": 12,
-            "y": 28
+            "y": 35
           },
           "id": 24,
           "options": {
@@ -2475,10 +2475,10 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "nvidia_smi_clocks_current_sm_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+              "expr": "(nvidia_smi_clocks_current_sm_clock_hz{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "{{uuid}}",
+              "legendFormat": "{{name}}",
               "refId": "A"
             }
           ],
@@ -2549,7 +2549,7 @@
             "h": 5,
             "w": 6,
             "x": 18,
-            "y": 28
+            "y": 35
           },
           "id": 18,
           "options": {
@@ -2572,10 +2572,10 @@
                 "uid": "${datasource}"
               },
               "exemplar": true,
-              "expr": "nvidia_smi_clocks_current_memory_clock_hz{uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}",
+              "expr": "(nvidia_smi_clocks_current_memory_clock_hz{instance=\"$node\", job=\"$job\"}) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "{{uuid}}",
+              "legendFormat": "{{name}}",
               "refId": "A"
             }
           ],
@@ -2592,7 +2592,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 35
       },
       "id": 48,
       "panels": [
@@ -2632,7 +2632,7 @@
             "h": 8,
             "w": 18,
             "x": 6,
-            "y": 30
+            "y": 36
           },
           "id": 44,
           "options": {
@@ -2656,8 +2656,8 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "label_replace({__name__=~\"nvidia_smi_ecc_errors_uncorrected_.+\", uuid=\"$gpu\", instance=\"$node\", job=\"$job\"}, \"kind\", \"$1\", \"__name__\", \"nvidia_smi_ecc_errors_uncorrected_(.+)\")",
-              "legendFormat": "{{kind}}",
+              "expr": "(label_replace({__name__=~\"nvidia_smi_ecc_errors_uncorrected_.+\", instance=\"$node\", job=\"$job\"}, \"kind\", \"$1\", \"__name__\", \"nvidia_smi_ecc_errors_uncorrected_(.+)\")) * on(uuid) group_left(name) label_replace(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"name\", \"$1\", \"name\", \"NVIDIA GeForce (.+)\")",
+              "legendFormat": "{{name}} {{kind}}",
               "refId": "A"
             }
           ],
@@ -2703,7 +2703,7 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(nvidia_smi_index, job)",
-        "hide": 0,
+        "hide": 2,
         "includeAll": false,
         "label": "Job",
         "multi": false,
@@ -2728,7 +2728,7 @@
           "uid": "${datasource}"
         },
         "definition": "label_values(nvidia_smi_index{job=\"$job\"},instance)",
-        "hide": 0,
+        "hide": 2,
         "includeAll": false,
         "label": "Host",
         "multi": false,
@@ -2741,32 +2741,6 @@
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "current": {},
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "query_result(label_join(label_replace(label_join(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"ni\", \" #\", \"name\", \"index\"), \"us\", \"($1)\", \"uuid\", \"^(........).*\"), \"gpu_label\", \" \", \"ni\", \"us\"))",
-        "hide": 0,
-        "includeAll": false,
-        "label": "GPU",
-        "multi": false,
-        "name": "gpu",
-        "options": [],
-        "query": {
-          "query": "query_result(label_join(label_replace(label_join(nvidia_smi_gpu_info{instance=\"$node\", job=\"$job\"}, \"ni\", \" #\", \"name\", \"index\"), \"us\", \"($1)\", \"uuid\", \"^(........).*\"), \"gpu_label\", \" \", \"ni\", \"us\"))",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 1,
-        "regex": "/gpu_label=\"(?<text>[^\"]+)|uuid=\"(?<value>[^\"]+)/g",
-        "skipUrlSync": false,
-        "sort": 1,
         "tagValuesQuery": "",
         "tagsQuery": "",
         "type": "query",
