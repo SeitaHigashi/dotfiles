@@ -463,6 +463,67 @@
       }
     },
     {
+      "type": "gauge",
+      "title": "SSD 残寿命 (NVMe)",
+      "description": "NVMe の percentage_used (書き込み消耗度) を残り側に反転した値。100% が新品、0% で想定寿命に到達 (到達後すぐ壊れるわけではない)。HDD にはこのカウンタが無いため NVMe だけが出ます。available_spare (代替ブロック残) が閾値 10% を割ったときも交換のサインです。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 - smartctl_device_percentage_used",
+          "legendFormat": "{{device}} 寿命"
+        },
+        {
+          "refId": "B",
+          "expr": "smartctl_device_available_spare",
+          "legendFormat": "{{device}} 代替ブロック"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "row",
       "title": "GPU",
       "gridPos": {
