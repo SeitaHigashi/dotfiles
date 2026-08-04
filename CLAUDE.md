@@ -56,6 +56,7 @@ nix flake update
 | `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui。どちらも unstable 追従 (open-webui は `package` オプションで指定、overlay 不要) |
 | `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
 | `modules/reverse-proxy.nix` | Tailscale Serve で HTTP サービスを 1 つの HTTPS 入口に集約。振り分け表 (`routes`) と、前段プロキシに追随させる各サービスの URL 設定をここに集約 |
+| `modules/alerting.nix` | Grafana のアラートルール・通知先・通知ポリシー。provisioning なので UI からは編集不可、git が唯一の正 |
 | `modules/resource-priority.nix` | サービス間の CPU / メモリ優先度 (cgroup v2)。重みは相対値なのでここに集約 |
 
 ### ネットワーク境界
@@ -110,6 +111,28 @@ JSON は git が唯一の正。編集手順は UI で "Save as..." → JSON を�
 (Minecraft は `/minecraft.slice`、その他の podman コンテナは `/machine.slice`、常駐サービスは `/system.slice/<unit>`)。
 **NVIDIA は MIG / XID / PCIe スループット / energy カウンタ / プロセス一覧が出ません** —
 データセンター GPU か新しい exporter の機能のためです。
+
+### Grafana アラート
+
+`modules/alerting.nix` に provisioning で入れています (ダッシュボードと同じく **UI からは編集不可、git が唯一の正**)。
+ルールは `infra` / `services` / `backup` の 3 グループ。閾値を変えるときはこのファイルを直して rebuild します。
+
+- ルールはすべて「常に値が出る instant クエリ + threshold 式」の形に統一し、`mkRule` ヘルパーで畳んでいます。
+  異常時だけ系列が出る書き方 (`metric > 5` のような) にしないこと — 系列が消えると NoData になり、閾値の意味が変わります。
+- **`uid` は必ず明示**。省略すると再起動のたびに別ルール扱いになります。
+- `datasourceUid` は `victoriametrics` 固定 (ダッシュボードと同じ理由)。
+- **MetricsQL では正規表現の `\.` が使えません** — 二重引用符内のバックスラッシュを文字列エスケープとして
+  先に解釈して構文エラーになります。`[.]` と書きます。
+- ZFS プールの健全性 (`zfs_pool_health`) は node_exporter が出さないので
+  `modules/zfs-snapshot-metrics.nix` の textfile collector で補っています。
+- **ルールを消すときは `groups` から削るだけでは不十分**。provisioning から消えても Grafana の DB に残るため、
+  一時的に `deleteRules = [ { orgId = 1; uid = "..."; } ];` を書いて 1 回 switch し、消えてから外します。
+- **ルールごと削除しても復旧通知 (RESOLVED) は出ません** — 評価対象が消えるだけで Alerting → Normal の
+  遷移が起きないためです。経路を試すときは「閾値だけを変えて Normal に戻す」こと。
+- 通知先は n8n の Webhook (`http://127.0.0.1:5678/webhook/grafana-alert-40b2fc68`) 1 本のみ。
+  ワークフローは `Notify Grafana Alert to Discord` (`fD6js4TzcXdUF4Wx`)。発報・復旧の両方向を実測済み (2026-08-04)。
+  SMTP を使わないのは秘密情報の置き場が無いためで、通知の振り分けは n8n 側の仕事です。
+  Webhook のワークフローが無くてもルールの評価と Alerting 画面の表示は動きます。
 
 ### Grafana MCP
 

@@ -323,8 +323,21 @@ syncoid ユニットの稼働状態とタイマーの発火は node_exporter の
 # 収集が動いているか
 systemctl list-timers zfs-snapshot-metrics
 cat /var/lib/prometheus-node-exporter-text-files/zfs-snapshots.prom
-curl -s localhost:9100/metrics | grep '^zfs_snapshot'
+curl -s localhost:9100/metrics | grep -E '^zfs_(snapshot|pool)'
 ```
+
+#### 見に行かなくても気づけるようにする (アラート)
+
+上のダッシュボードは「見に行けば分かる」だけなので、閾値の判定は Grafana のアラートに任せています
+(`modules/alerting.nix`)。複製に関するものは 3 つで、**複製遅延が 36 時間を超えた**とき、
+**syncoid ユニットが failed になった**とき、そして **textfile collector 自体が 30 分以上更新されていない**とき
+(この 3 つ目が無いと、複製遅延の判定が古い値のまま「正常」に見えてしまいます)。
+このほか ZFS プールの劣化・ディスクの SMART と温度・空き容量・メモリ・CPU・常駐サービスの死活を見ています。
+
+通知は n8n の Webhook (`http://127.0.0.1:5678/webhook/grafana-alert-40b2fc68`) へ POST するだけで、
+そこから先 (Discord に流すのか、夜間は黙らせるのか) は n8n のワークフロー側の仕事です。
+**その Webhook ワークフローは別途 n8n で作って有効化する必要があります。**
+無い場合でも配送が失敗するだけで、アラートの状態は Grafana の Alerting 画面に出ます。
 
 ### HDD 故障時の交換
 
