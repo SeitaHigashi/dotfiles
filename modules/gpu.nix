@@ -131,6 +131,26 @@
   };
 
   ############################################################################
+  # /sbin/ldconfig の互換シンボリックリンク
+  #
+  # NixOS には /sbin/ldconfig が存在しません (共有ライブラリのキャッシュは
+  # Nix store の rpath で解決するため、glibc の ldconfig 自体は運用上不要)。
+  # ところが triton (torch のカーネル JIT) は CUDA ライブラリの検索先を得るのに
+  # `/sbin/ldconfig -p` を絶対パスで直接叩くため、パスが無いと
+  # `FileNotFoundError: [Errno 2] No such file or directory: '/sbin/ldconfig'`
+  # で落ちます (modules/comfyui.nix 経由の ComfyUI で実際に発生・確認済み)。
+  # PATH ではなく絶対パス呼び出しなので systemd unit 側の `path = [...]` では
+  # 解決できず、ファイルシステム上に実体を置く必要があります。
+  #
+  # 同様の絶対パス呼び出しは xformers / bitsandbytes など他の CUDA 系
+  # Python パッケージにもある既知のパターンのため、単一サービス
+  # (comfyui.nix) ではなくここ (GPU/CUDA の土台) に置きます。
+  systemd.tmpfiles.rules = [
+    "d /sbin 0755 root root -"
+    "L+ /sbin/ldconfig - - - - ${pkgs.glibc.bin}/bin/ldconfig"
+  ];
+
+  ############################################################################
   # 運用メモ
   #
   #   枚数と型番 : nvidia-smi -L

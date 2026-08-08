@@ -62,6 +62,7 @@
         ./modules/alerting.nix         # Grafana のアラート (通知は n8n Webhook)
         ./modules/ollama.nix           # ローカル LLM (Ollama + Open WebUI)
         ./modules/n8n.nix              # ワークフロー自動化 (unstable 追従)
+        ./modules/comfyui.nix          # 画像生成 (ComfyUI, comfy-cli 経由の venv)
         ./modules/reverse-proxy.nix    # Tailscale Serve で HTTP サービスを集約
         ./modules/resource-priority.nix # サービス間の CPU / メモリ優先度
         ./modules/discord-bot.nix      # Discord Gateway ボット -> n8n webhook

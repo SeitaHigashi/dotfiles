@@ -6,6 +6,12 @@ let
   # ARC の上限。実 RAM の 1/4〜1/2 を目安に (machine.nix で設定)。
   # 例) 8G=8589934592, 12G=12884901888, 16G=17179869184, 32G=34359738368
   arcMaxBytes = m.arcMaxBytes;
+
+  # ARC に「これだけは空きメモリとして残せ」と伝える下限 (zfs_arc_sys_free)。
+  # arcMaxBytes の 1/4 を割り当て。machine.nix に新規フィールドを増やすと
+  # install.sh / disks.env のスキーマ変更が要るため、ここで arcMaxBytes から
+  # 計算するだけにとどめている。
+  arcSysFreeBytes = arcMaxBytes / 4;
 in
 {
   ############################################################################
@@ -63,9 +69,24 @@ in
   #
   # 読み込みが遅いと感じたら arcMaxBytes (machine.nix) を上げてください。
   # 現状の確認: arc_summary | head -40
+  #
+  # zfs_arc_sys_free について:
+  #   既定値は物理 RAM のごく一部 (数百MB程度) しかなく、ARC は c_max 近くまで
+  #   張り付いたまま自発的にはなかなか縮みません。ARC はどの cgroup にも
+  #   計上されないため (modules/resource-priority.nix 参照)、他サービスの
+  #   cgroup 側 MemoryHigh を締め付けても ARC 自身は解放されず、システム
+  #   全体の実質的な空きメモリを圧迫し続けます。zfs_arc_sys_free に
+  #   arcMaxBytes の 1/4 を与えることで、その分の空きメモリを常に確保する
+  #   よう ARC に先んじて縮ませます (2026-08-08、ComfyUI 稼働時に
+  #   /proc/pressure/memory の悪化を確認したのがきっかけ)。
+  #
+  #   zfs_arc_shrink_shift (縮小の刻み幅) は既定 (auto=0) のまま触っていません。
+  #   固定値にすると縮小が過敏になりキャッシュヒット率を犠牲にする恐れがあり、
+  #   zfs_arc_sys_free だけで「早めに手放す」という狙いには十分だからです。
   ############################################################################
   boot.kernelParams = [
     "zfs.zfs_arc_max=${toString arcMaxBytes}"
+    "zfs.zfs_arc_sys_free=${toString arcSysFreeBytes}"
 
     ##########################################################################
     # NVMe の脱落対策

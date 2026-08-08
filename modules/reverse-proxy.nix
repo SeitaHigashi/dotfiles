@@ -37,6 +37,9 @@ let
   # n8n だけ別ポート (理由は下の routes のコメント)
   n8nUrl = "https://${fqdn}:8443";
 
+  # ComfyUI も別ポート (理由は下の routes のコメント)
+  comfyuiUrl = "https://${fqdn}:9443";
+
   ############################################################################
   # 振り分け表
   #
@@ -81,11 +84,18 @@ let
   #   クライアントはベース URL にパスを含められず、そもそも /ollama/ では
   #   繋がらないため、Ollama の口は tailscale0 の 11434 直結
   #   (modules/ollama.nix) が唯一の経路です。
+  #
+  # ★ ComfyUI も n8n と同じく別ポート (9443) のルートにしています ★
+  #   ComfyUI のフロントエンドはサブパス/ベースパスでのリバースプロキシ配下
+  #   運用に正式対応していません (絶対パスで API を呼ぶ箇所があり、prefix を
+  #   剥がすプロキシ経由だと壊れます)。443 のルートは Open WebUI が占有して
+  #   おり、8443 は n8n が使っているため、新しいポートに逃がしています。
   ############################################################################
   routes = [
     { path = null;       httpsPort = 443;  port = 8080;  note = "open-webui"; }
     { path = "/grafana"; httpsPort = 443;  port = 3000;  note = "grafana"; }
     { path = null;       httpsPort = 8443; port = 5678;  note = "n8n"; }
+    { path = null;       httpsPort = 9443; port = 8188;  note = "comfyui"; }
   ];
 
   # Serve が使う HTTPS ポート (ファイアウォールで開ける対象)
@@ -253,6 +263,7 @@ in
   #     ${baseUrl}/          Open WebUI
   #     ${baseUrl}/grafana/  Grafana
   #     ${n8nUrl}/           n8n  (LAN からは http://<LAN IP>:5678/ も従来どおり)
+  #     ${comfyuiUrl}/       ComfyUI
   #     Ollama API は Serve を通しません: http://<tailscale IP>:11434/
   #
   #   全部剥がして元に戻す:

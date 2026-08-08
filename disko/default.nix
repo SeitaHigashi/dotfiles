@@ -341,6 +341,30 @@ in
           # いたためです (経緯は rpool の srv/minecraft のコメント参照)。
           # dpool は複製先 (下の backup) としてだけ関わります。
 
+          # ComfyUI (modules/comfyui.nix) の venv + モデル置き場。
+          #
+          # dpool に置く理由 (rpool の ollama モデルとは逆の判断):
+          #   ComfyUI のチェックポイントは肥大化しやすく (SDXL/Flux 級で
+          #   複数持つと数十〜100GiB超も普通)、rpool は single vdev で
+          #   冗長性が無く容量も有限です。Minecraft を rpool に置いている
+          #   理由 (SMR HDD での書き込み watchdog stall) とは I/O 特性が
+          #   異なり、ComfyUI は大容量・低頻度・非リアルタイムな読み書き
+          #   (チェックポイントの一括ダウンロードと生成開始時の読み出し) が
+          #   主なので、SMR HDD でも問題になりにくいという判断です。
+          #   ただしチェックポイント読み込みが NVMe より多少遅くなる
+          #   可能性はトレードオフとして残ります。
+          #
+          # recordsize=1M / compression=off は ollama のモデル置き場と同じ
+          # 理由です (巨大ファイルの連続読み出し中心、safetensors はほぼ
+          # 非圧縮データなので zstd を通しても縮まない)。
+          #
+          # マウント先は /var/lib/comfyui。ollama/victoriametrics と違い
+          # DynamicUser を使わない固定ユーザーで動かす設計のため (理由は
+          # modules/comfyui.nix 参照)、/var/lib/private/ への retreat は
+          # 不要です。
+          "comfyui" =
+            fsDataset "/var/lib/comfyui" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
+
           # rpool の複製先 (modules/replication.nix)。
           #
           # rpool は single vdev で冗長性が無いため、SSD が死ぬとシステムが
