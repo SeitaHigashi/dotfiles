@@ -224,6 +224,19 @@ in
           #   一致させる必要はありません。
           "var/lib/victoriametrics" =
             fsDataset "/var/lib/private/victoriametrics" ({ recordsize = "16K"; } // notSnapshotted);
+
+          # ログストア (modules/monitoring.nix の Loki)。
+          #
+          # 独立させる理由は VictoriaMetrics と同じ 2 点 (書き込みが絶え間なく、
+          # 失っても再取得の必要が無い) です。recordsize=16K も同じ理由。
+          #
+          # マウント先は /var/lib/loki に直接で問題ありません。
+          # VictoriaMetrics と違い loki.service は DynamicUser ではなく固定
+          # ユーザー "loki" で動くため、/var/lib/private/ への退避 (EBUSY 回避) が
+          # 不要です (nixpkgs の loki NixOS モジュールで確認済み)。
+          "var/lib/loki" =
+            fsDataset "/var/lib/loki" ({ recordsize = "16K"; } // notSnapshotted);
+
           # LLM のモデル置き場 (modules/ollama.nix)。
           #
           # 独立させる理由は VictoriaMetrics と同じ 2 点です。

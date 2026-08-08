@@ -1,13 +1,19 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# 監視スタック (VictoriaMetrics + Grafana)。
+# 監視スタック (VictoriaMetrics + Loki + Grafana)。
 #
 # 何のために入れるか:
 #   このホストには Minecraft (podman) が常駐しており、今後 n8n と Ollama が
 #   同居します。CPU は Ryzen 3 3300X の 4C/8T しかなく、GPU も世代違いの
 #   2 枚差しです。「Minecraft が重い」と感じたときに *誰が犯人か* を
 #   切り分けられないと、この同居構成は運用できません。そのための土台です。
+#
+#   メトリクスだけでは「いつから異常か」は分かっても「なぜ異常か」までは
+#   追えないことが多いため、ログも同じ Grafana から見られるようにします
+#   (Loki + Promtail)。podman の既定ログドライバが journald のため、
+#   systemd サービスとコンテナ (Minecraft 含む) のログは journald を
+#   1 箇所収集するだけで揃います。
 #
 # なぜ Prometheus ではなく VictoriaMetrics か:
 #   - PromQL 互換なので Grafana の Prometheus データソースがそのまま使えます。
@@ -29,6 +35,8 @@ let
 
   ports = {
     victoriametrics = 8428;
+    loki            = 3100;
+    promtail        = 9080;   # 自身のヘルスチェック/メトリクス用 (未指定だと既定の 80 で bind 失敗する)
     grafana         = 3000;
     node            = 9100;
     smartctl        = 9633;
@@ -144,6 +152,117 @@ in
         #   # GPU 側は上の nvidia ジョブで、プロセス側は cadvisor / node の
         #   # processes コレクタで見る形になります。
         # }
+      ];
+    };
+  };
+
+  ############################################################################
+  # ログ (Loki + Promtail)
+  #
+  # journald を丸ごと収集します。systemd サービスも podman コンテナ
+  # (Minecraft 含む) も journald にログが流れているため、これ 1 本で
+  # 両方カバーできます (podman の既定ログドライバが journald であることを
+  # 実機で確認済み — `podman info --format '{{.Host.LogDriver}}'`)。
+  #
+  # 127.0.0.1 のみで待ち受け、Grafana からのみ参照します。外部公開なし。
+  ############################################################################
+  # loki.service は DynamicUser ではなく固定ユーザー "loki" で動くため、
+  # VictoriaMetrics のような自動 chown が効きません。ZFS のマウントポイントは
+  # root:root 0755 で作られる (zfs create の既定) ため、そのままだと
+  # loki プロセスが chunks/rules/compactor を mkdir できず起動に失敗します
+  # (実機で確認済み: "mkdir /var/lib/loki/rules: permission denied")。
+  # 毎起動時に chown し直すことで、再インストールでデータセットを作り直しても
+  # 手動 chown を忘れる心配が無いようにする。
+  systemd.tmpfiles.rules = [
+    "d /var/lib/loki 0700 loki loki - -"
+  ];
+
+  services.loki = {
+    enable = true;
+
+    # このホストの規模では単一バイナリ・単一インスタンスで十分。
+    # filesystem storage (TSDB インデックス + チャンクをローカルディスクに) を使う。
+    configuration = {
+      auth_enabled = false;
+
+      server = {
+        http_listen_address = "127.0.0.1";
+        http_listen_port = ports.loki;
+      };
+
+      common = {
+        path_prefix = config.services.loki.dataDir;
+        storage.filesystem = {
+          chunks_directory = "${config.services.loki.dataDir}/chunks";
+          rules_directory = "${config.services.loki.dataDir}/rules";
+        };
+        replication_factor = 1;
+        ring.kvstore.store = "inmemory";
+      };
+
+      schema_config.configs = [
+        {
+          from = "2026-01-01";
+          store = "tsdb";
+          object_store = "filesystem";
+          schema = "v13";
+          index = {
+            prefix = "index_";
+            period = "24h";
+          };
+        }
+      ];
+
+      # 保持期間 14 日。SSD の rpool には十分な空きがあり、障害調査には
+      # このくらいの長さがあれば足ります。
+      compactor = {
+        working_directory = "${config.services.loki.dataDir}/compactor";
+        retention_enabled = true;
+        delete_request_store = "filesystem";
+      };
+      limits_config = {
+        retention_period = "336h"; # 14d
+      };
+    };
+  };
+
+  services.promtail = {
+    enable = true;
+
+    configuration = {
+      # 自身のヘルスチェック/メトリクス用の待ち受け。他の exporter と同じく
+      # 127.0.0.1 限定 (既定は 0.0.0.0)。ポートも明示する — 省略すると
+      # 既定の 80 番になり、非特権ユーザーの promtail が bind できずに
+      # 起動失敗する (実機で確認済み)。
+      server.http_listen_address = "127.0.0.1";
+      server.http_listen_port = ports.promtail;
+      server.grpc_listen_address = "127.0.0.1";
+      server.grpc_listen_port = ports.promtail + 1;
+
+      positions.filename = "/var/cache/promtail/positions.yaml";
+
+      clients = [
+        { url = "http://127.0.0.1:${toString ports.loki}/loki/api/v1/push"; }
+      ];
+
+      scrape_configs = [
+        {
+          job_name = "journal";
+          journal = {
+            path = "/var/log/journal";
+            max_age = "12h";
+            labels.job = "journal";
+          };
+          # ユニット名をラベルに昇格させる。Minecraft は
+          # "podman-ftb-evolution.service" のように見えるので、
+          # LogQL 側で {unit=~"podman-.+"} のように絞り込める。
+          relabel_configs = [
+            {
+              source_labels = [ "__journal__systemd_unit" ];
+              target_label = "unit";
+            }
+          ];
+        }
       ];
     };
   };
@@ -336,6 +455,14 @@ in
             timeInterval = "30s";
           };
         }
+        {
+          name = "Loki";
+          type = "loki";
+          access = "proxy";
+          uid = "loki";
+          url = "http://127.0.0.1:${toString ports.loki}";
+          isDefault = false;
+        }
       ];
 
       ########################################################################
@@ -440,5 +567,14 @@ in
   #   保存容量の確認:
   #     zfs list rpool/var/lib/victoriametrics
   #     du -sh /var/lib/victoriametrics
+  #
+  #   Loki が生きているか:
+  #     curl -s localhost:3100/ready
+  #
+  #   ラベル (unit 等) が出ているか (logcli は loki パッケージに同梱):
+  #     logcli --addr=http://127.0.0.1:3100 labels
+  #
+  #   Promtail が journald を読めているか:
+  #     journalctl -u promtail --no-pager -n 50
   ############################################################################
 }
