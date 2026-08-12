@@ -4,16 +4,20 @@
 # NVIDIA GPU (プロプライエタリドライバ)。
 #
 # 何のために入れるか:
-#   このホストはデスクトップではありません。X も Wayland も動かしません。
 #   目的は「GPU を計算資源として使えるようにすること」と
 #   「GPU の状態を監視できるようにすること」の 2 点です。
-#     - 将来の Ollama (CUDA 推論)
+#     - Ollama / ComfyUI (CUDA 推論)
 #     - modules/monitoring.nix の nvidia-gpu-exporter (nvidia-smi を叩く)
+#   2026-08-11 に GT1030 を表示専任として増設し、X (modules/desktop.nix,
+#   KDE Plasma) はこのカードだけを使います。以下の計算用途の記述は
+#   1660 SUPER / 3060 Ti の 2 枚 (GT1030 を含まない) についてのものです。
 #
-# 2 枚差しについて (実機で確認済み):
-#     GPU 0  GTX 1660 SUPER (Turing TU116 / 6 GiB) — PCIe x4
-#     GPU 1  RTX 3060 Ti    (Ampere GA104 / 8 GiB) — PCIe x8
-#   合計 VRAM 14 GiB。世代が違っても production ドライバ 1 つで両方カバーされます。
+# 3 枚差しについて (実機で確認済み。GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び):
+#     GPU 0  GTX 1660 SUPER (Turing TU116 / 6 GiB) — PCIe x4、計算用
+#     GPU 1  GT 1030        (Pascal GP108)          — 表示専任 (modules/desktop.nix)
+#     GPU 2  RTX 3060 Ti    (Ampere GA104 / 8 GiB) — PCIe x8、計算用
+#   計算用の合計 VRAM は 14 GiB (0+2)。世代が違っても production ドライバ
+#   1 つで全カードをカバーできます。
 #
 #   ただし 2 枚またぎの推論には次のハンデがあります。速くなることが
 #   保証された構成ではなく、「監視しながら判断する」ための土台です。
@@ -31,50 +35,7 @@
 ##############################################################################
 
 {
-  ############################################################################
-  # unfree の許可
-  #
-  # NVIDIA のドライバは非フリーなので、明示的に許可しないとビルドが止まります。
-  # 全面的に allowUnfree = true にはせず、NVIDIA 関連だけを通します。
-  # (うっかり別の非フリーパッケージが混入するのを防ぐため)
-  ############################################################################
-  # CUDA ランタイム (ollama-cuda が引く cuda_cudart / libcublas / ...) も
-  # NVIDIA の非フリーライセンスです。個数が多く名前も版ごとに増減するため、
-  # 1 つずつ列挙せず接頭辞で通します。それでも allowUnfree = true より
-  # ずっと狭い許可です。
-  #
-  # ※ nixpkgs.config.cudaSupport = true は設定しないこと。
-  #   nixpkgs 全体が CUDA 付きで再ビルドになり、バイナリキャッシュが
-  #   一切効かなくなります。CUDA が要るパッケージだけ
-  #   (modules/ollama.nix の pkgs.ollama-cuda) を名指しで使います。
-  nixpkgs.config.allowUnfreePredicate =
-    pkg:
-    let
-      name = lib.getName pkg;
-    in
-    builtins.elem name [
-      "nvidia-x11"
-      "nvidia-settings"
-      "nvidia-persistenced"
-
-      # ここから下は NVIDIA とは無関係ですが、ここに書くしかありません。
-      # nixpkgs.config.allowUnfreePredicate は関数なのでモジュール間で
-      # マージできず、2 箇所で定義すると衝突エラーになります。
-
-      # n8n は Sustainable Use License (再配布不可) で非フリー扱いです。
-      "n8n"
-
-      # Open WebUI は 0.6.x では MIT でしたが、独自の Open WebUI License に
-      # 変わり非フリー扱いになりました (ブランド表示の除去や一定規模を超える
-      # 利用に制限がかかる条項が入っています)。modules/ollama.nix で
-      # unstable 版 (0.11.0) を使うためにここでの許可が要ります。
-      # stable の 0.6.9 に戻すならこの行も消せます。
-      "open-webui"
-    ]
-    || lib.hasPrefix "cuda" name      # cuda_cudart, cuda_cccl, cuda_nvcc, ...
-    || lib.hasPrefix "libcu" name     # libcublas, libcurand, libcusparse, ...
-    || lib.hasPrefix "libnv" name     # libnvjitlink, libnvidia-container, ...
-    || builtins.elem name [ "cudnn" "nccl" ];
+  # unfree の許可は modules/unfree.nix に集約 (NVIDIA ドライバ・CUDA を含む)。
 
   ############################################################################
   # ドライバ

@@ -9,8 +9,12 @@
 #
 # このホストの制約 (modules/gpu.nix も参照):
 #     GPU 0  GTX 1660 SUPER  6 GiB  sm_75  PCIe x4
-#     GPU 1  RTX 3060 Ti     8 GiB  sm_86  PCIe x8
-#   合計 VRAM 14 GiB (ollama から見える実効値は 13.3 GiB)。
+#     GPU 1  GT 1030         表示専任 (modules/desktop.nix)。推論には使わない
+#     GPU 2  RTX 3060 Ti     8 GiB  sm_86  PCIe x8
+#   合計 VRAM (0+2) 14 GiB (ollama から見える実効値は 13.3 GiB)。
+#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (PCI bus 04/05/07 の順)。
+#   2026-08-11 に GT1030 を bus 05 へ増設した際、PCI bus 07 の 3060 Ti が
+#   index 1 から 2 へ繰り下がった (以前は 2 枚構成で index 1 = 3060 Ti)。
 #   CPU は Ryzen 3 3300X (4C/8T)。RAM 46 GiB のうち ZFS ARC に 16 GiB、
 #   Minecraft のヒープに 8 GiB を既に割り当てているため、CPU オフロードに
 #   使える余地は 20 GiB 程度です。
@@ -102,9 +106,10 @@ in
       # GPU 2 枚を束ねて 14 GiB のプールとして使う
       ########################################################################
 
-      # 速い 3060 Ti を先頭にして、層の割り当てで優先させる。
+      # 速い 3060 Ti (index 2) を先頭にして、層の割り当てで優先させる。
+      # GT1030 (index 1, 表示専任) は含めない。
       # (この順序は ollama から見た GPU 番号にも影響します)
-      CUDA_VISIBLE_DEVICES = "1,0";
+      CUDA_VISIBLE_DEVICES = "2,0";
 
       # 1 枚に収まるモデルでも敢えて 2 枚に分散させる。
       #
@@ -112,7 +117,7 @@ in
       #   1660 SUPER は PCIe x4 かつ FP16 テンソルコアを持たない TU116 です。
       #   層分割ではカード間転送と遅い側の演算が律速し、3060 Ti 単体より
       #   tok/s が落ちることがあります。7B クラスで遅いと感じたら、
-      #   この行を消して CUDA_VISIBLE_DEVICES = "1" に切り戻してください
+      #   この行を消して CUDA_VISIBLE_DEVICES = "2" に切り戻してください
       #   (3060 Ti 単体構成)。判断材料の取り方は末尾の運用メモに書いています。
       OLLAMA_SCHED_SPREAD = "1";
 
@@ -296,7 +301,7 @@ in
   #          | grep -o '"eval_count":[0-9]*\|"eval_duration":[0-9]*'
   #      tok/s = eval_count / (eval_duration / 1e9)
   #   2) このファイルの OLLAMA_SCHED_SPREAD を消し
-  #      CUDA_VISIBLE_DEVICES = "1" にして rebuild、同じ計測
+  #      CUDA_VISIBLE_DEVICES = "2" にして rebuild、同じ計測
   #   3) 遅くならないなら 1 枚構成のままにする。
   #      Grafana の NVIDIA ダッシュボードで両カードが均等に回っているかも
   #      あわせて確認してください。

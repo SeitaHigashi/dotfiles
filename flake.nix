@@ -57,6 +57,8 @@
         ./modules/unstable.nix         # pkgs.unstable.* を使えるようにする
         ./modules/ftb-evolution.nix    # Minecraft (FTB Evolution) を podman で
         ./modules/gpu.nix              # NVIDIA ドライバ (計算用途 + 監視のため)
+        ./modules/unfree.nix           # unfree パッケージの許可一覧 (allowUnfreePredicate の唯一の定義場所)
+        ./modules/desktop.nix          # KDE Plasma (X11) — プロジェクター投影用
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
         ./modules/zfs-snapshot-metrics.nix # スナップショット / 複製状況のメトリクス
         ./modules/alerting.nix         # Grafana のアラート (通知は n8n Webhook)

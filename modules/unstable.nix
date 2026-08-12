@@ -38,6 +38,9 @@ let
     # このリポジトリではなく ~/.claude.json 側にあります — MCP クライアントの
     # 設定であって NixOS の構成ではないためです。詳細は CLAUDE.md を参照。
     mcp-grafana
+
+    # Brave ブラウザ。unfree のため modules/unfree.nix での許可が要ります。
+    brave
   ];
 in
 {

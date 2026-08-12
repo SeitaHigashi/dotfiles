@@ -123,6 +123,13 @@ in
   # sudoedit / systemctl edit / git commit などが nvim を使うようにする。
   environment.variables.EDITOR = "nvim";
 
+  # `nix profile install` / `nix shell` など対話的な CLI 操作での unfree 許可。
+  # システム全体のビルド (modules/gpu.nix の allowUnfreePredicate) とは別物 —
+  # そちらは NVIDIA/n8n/open-webui など個別許可のみで、ここを true にしても
+  # nixos-rebuild の評価には影響しません (nix コマンドが読む NIXPKGS_ALLOW_UNFREE
+  # 環境変数と、モジュールの nixpkgs.config.allowUnfreePredicate は別経路のため)。
+  environment.variables.NIXPKGS_ALLOW_UNFREE = "1";
+
   ############################################################################
   # SSH (インストール後も SSH で入る前提)
   ############################################################################
