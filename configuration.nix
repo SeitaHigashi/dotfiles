@@ -119,6 +119,7 @@ in
     pciutils
     usbutils
   ];
+  # multica-cli は stable に無いため modules/unstable.nix 側で追加 (pkgs.unstable.multica-cli)。
 
   # sudoedit / systemctl edit / git commit などが nvim を使うようにする。
   environment.variables.EDITOR = "nvim";

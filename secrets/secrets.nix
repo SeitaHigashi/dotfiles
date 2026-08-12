@@ -7,4 +7,5 @@ let
 in
 {
   "discord-bot-env.age".publicKeys = [ host ];
+  "multica-env.age".publicKeys = [ host ];
 }

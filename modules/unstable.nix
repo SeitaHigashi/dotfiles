@@ -41,6 +41,10 @@ let
 
     # Brave ブラウザ。unfree のため modules/unfree.nix での許可が要ります。
     brave
+
+    # Multica の CLI/daemon。stable 25.05 には無いパッケージなので unstable から。
+    # 自前ホストしているサーバー本体は modules/multica.nix (podman) 側です。
+    multica-cli
   ];
 in
 {

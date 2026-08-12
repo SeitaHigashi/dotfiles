@@ -40,6 +40,9 @@ let
   # ComfyUI も別ポート (理由は下の routes のコメント)
   comfyuiUrl = "https://${fqdn}:9443";
 
+  # Multica も別ポート (理由は下の routes のコメント)
+  multicaUrl = "https://${fqdn}:9444";
+
   ############################################################################
   # 振り分け表
   #
@@ -90,12 +93,19 @@ let
   #   運用に正式対応していません (絶対パスで API を呼ぶ箇所があり、prefix を
   #   剥がすプロキシ経由だと壊れます)。443 のルートは Open WebUI が占有して
   #   おり、8443 は n8n が使っているため、新しいポートに逃がしています。
+  #
+  # ★ Multica も同様の理由で別ポート (9444) のルートにしています ★
+  #   フロントエンド (Next.js) は window.origin からの絶対パス (/api, /ws 等)
+  #   を前提にしており、prefix を剥がすサブパスマウントとは相性が悪いため。
+  #   Multica コンテナ自体は 127.0.0.1 のみで待ち受けており (modules/multica.nix)、
+  #   ここが唯一の tailnet からの到達経路です。
   ############################################################################
   routes = [
     { path = null;       httpsPort = 443;  port = 8080;  note = "open-webui"; }
     { path = "/grafana"; httpsPort = 443;  port = 3000;  note = "grafana"; }
     { path = null;       httpsPort = 8443; port = 5678;  note = "n8n"; }
     { path = null;       httpsPort = 9443; port = 8188;  note = "comfyui"; }
+    { path = null;       httpsPort = 9444; port = 3001;  note = "multica"; }
   ];
 
   # Serve が使う HTTPS ポート (ファイアウォールで開ける対象)
@@ -264,6 +274,7 @@ in
   #     ${baseUrl}/grafana/  Grafana
   #     ${n8nUrl}/           n8n  (LAN からは http://<LAN IP>:5678/ も従来どおり)
   #     ${comfyuiUrl}/       ComfyUI
+  #     ${multicaUrl}/       Multica
   #     Ollama API は Serve を通しません: http://<tailscale IP>:11434/
   #
   #   全部剥がして元に戻す:

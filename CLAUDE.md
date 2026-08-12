@@ -56,6 +56,7 @@ nix flake update
 | `modules/monitoring.nix` | VictoriaMetrics + Grafana + exporter 群 |
 | `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui。どちらも unstable 追従 (open-webui は `package` オプションで指定、overlay 不要) |
 | `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
+| `modules/multica.nix` | Multica (AI エージェント管理ワークスペース) を podman 3 コンテナ (postgres/backend/frontend) で自前ホスト。秘密情報は agenix (`secrets/multica-env.age`) |
 | `modules/reverse-proxy.nix` | Tailscale Serve で HTTP サービスを 1 つの HTTPS 入口に集約。振り分け表 (`routes`) と、前段プロキシに追随させる各サービスの URL 設定をここに集約 |
 | `modules/alerting.nix` | Grafana のアラートルール・通知先・通知ポリシー。provisioning なので UI からは編集不可、git が唯一の正 |
 | `modules/resource-priority.nix` | サービス間の CPU / メモリ優先度 (cgroup v2)。重みは相対値なのでここに集約 |
@@ -180,6 +181,9 @@ Claude Code から Grafana を読むために `mcp-grafana` (Grafana Labs 公式
   (放置すると新名に `-1` が付き fqdn とズレて証明書取得が失敗)、
   (3) 改名を含む最初の switch だけ `--flake /etc/nixos#<新ホスト名>` と明示が要る
   (`nixosConfigurations` の attr 名が変わるため)、の 3 点に注意。
-- 秘密情報の仕組み (sops-nix / agenix) はまだありません。Grafana の admin パスワードは
-  `/var/lib/grafana/admin-password` を Grafana の `$__file{}` で読む形で nix store と git の外に置いています。
-  新しい秘密情報も nix 式に直書きしないこと。
+- 秘密情報は agenix (`secrets/*.age`、復号鍵はホストの SSH ホスト鍵から導出した `/etc/age/host.key`。
+  詳細は `modules/discord-bot.nix` の `age.identityPaths` コメント参照) で git に暗号化して置くのが基本です
+  (`secrets/discord-bot-env.age`、`secrets/multica-env.age`)。新しい `.age` を足すときは `secrets/secrets.nix`
+  の `publicKeys` にも追記すること。Grafana の admin パスワードだけは例外で、agenix 導入前からの経緯で
+  `/var/lib/grafana/admin-password` を Grafana の `$__file{}` で読む形 (nix store と git の外への手動配置) の
+  ままにしてあります。いずれにせよ秘密情報を nix 式に直書きしないこと。
