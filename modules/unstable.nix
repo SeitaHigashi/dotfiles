@@ -45,6 +45,13 @@ let
     # Multica の CLI/daemon。stable 25.05 には無いパッケージなので unstable から。
     # 自前ホストしているサーバー本体は modules/multica.nix (podman) 側です。
     multica-cli
+
+    # OpenCode — Multica のランタイム (プロトコルファミリー) として Ollama の
+    # ローカルモデルを直接使うために追加。claude プロトコルは Anthropic API
+    # 専用で Ollama を喋れないため、Ollama をネイティブ対応する OpenCode を
+    # 経由させています。プロバイダ設定は ~/.config/opencode/opencode.json
+    # (このリポジトリの管理外、ユーザーのホームディレクトリ直下) 側です。
+    opencode
   ];
 in
 {
