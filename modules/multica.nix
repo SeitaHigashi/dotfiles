@@ -44,8 +44,17 @@ let
   # ホスト側 (127.0.0.1) に publish するポート。
   # 3000 は Grafana (modules/monitoring.nix) が、8080 は Open WebUI
   # (modules/ollama.nix) が 127.0.0.1 に既に持っているため、frontend は
-  # 3001 にずらす。backend はそもそも host には publish しない (下記)。
+  # 3001、backend は 8082 にずらす。
+  #
+  # backend も publish している理由:
+  #   ブラウザ (Next.js SSR 経由) だけでなく、multica-cli の daemon/runtime も
+  #   backend の API に直接繋ぎに行きます。daemon はブラウザではないため
+  #   Next.js の SSR プロキシを経由できず (Content-Type や特有のレスポンス
+  #   ヘッダで backend 本体かどうかを見ているらしく、frontend 経由だと
+  #   "not reachable" 扱いになることを実機で確認: 2026-08-12)。そのため
+  #   backend 用に modules/reverse-proxy.nix で別ポート (9445) も用意しています。
   frontendHostPort = 3001;
+  backendHostPort = 8082;
 
   secretsFile = config.age.secrets.multica-env.path;
 in
@@ -70,18 +79,21 @@ in
     multica-backend = {
       image = "ghcr.io/multica-ai/multica-backend:latest";
       dependsOn = [ "multica-postgres" ];
-      # host には publish しない。frontend からは podman のデフォルトネットワーク
-      # 経由でコンテナ名 (multica-backend:8080) で届くため、127.0.0.1 に
-      # 公開する必要がない (デバッグしたいときは podman exec で入るか
-      # `podman port multica-backend` で一時的に確認する)。
+      # frontend からは podman のデフォルトネットワーク経由でコンテナ名
+      # (multica-backend:8080) で届くので、この publish 自体は
+      # multica-cli の daemon/runtime 用 (上のコメント参照)。
+      ports = [ "127.0.0.1:${toString backendHostPort}:${toString backendContainerPort}" ];
       volumes = [ "multica-backend-uploads:/app/data/uploads" ];
       environment = {
         PORT = toString backendContainerPort;
-        FRONTEND_ORIGIN = "http://multica-frontend:${toString frontendContainerPort}";
         APP_ENV = "production";
         ALLOW_SIGNUP = "true";
         # 自前ホスト限定機能 (Forgejo/Gitea/GitLab 連携)。鍵は secretsFile 側。
         MULTICA_VCS_INTEGRATION_ENABLED = "true";
+        # FRONTEND_ORIGIN / CORS_ALLOWED_ORIGINS / MULTICA_APP_URL /
+        # MULTICA_PUBLIC_URL は Tailscale Serve の URL に依存するため、
+        # ここではなく modules/reverse-proxy.nix の「Multica」節で設定します
+        # (Grafana の root_url / n8n の webhookUrl と同じ置き場の方針)。
       };
       # DATABASE_URL / JWT_SECRET / MULTICA_VCS_SECRET_KEY
       environmentFiles = [ secretsFile ];
@@ -115,8 +127,10 @@ in
   #     journalctl -u podman-multica-backend -f
   #
   #   アクセス:
-  #     https://<fqdn>:9444/  (modules/reverse-proxy.nix)
-  #     直結デバッグしたいときは SSH port-forward 越しに http://127.0.0.1:3001/
+  #     https://<fqdn>:9444/  ブラウザ (modules/reverse-proxy.nix)
+  #     https://<fqdn>:9445/  multica-cli の --server-url (backend 直結)
+  #     直結デバッグしたいときは SSH port-forward 越しに http://127.0.0.1:3001/ (frontend)
+  #     や http://127.0.0.1:8082/ (backend)
   #
   #   ログインメールが届かない (未解決の既知の制約):
   #     RESEND_API_KEY / SMTP_HOST のどちらも設定していないため、メール送信の

@@ -42,6 +42,8 @@ let
 
   # Multica も別ポート (理由は下の routes のコメント)
   multicaUrl = "https://${fqdn}:9444";
+  # Multica の backend 直結用 (multica-cli の daemon/runtime が使う。理由は routes のコメント)
+  multicaBackendUrl = "https://${fqdn}:9445";
 
   ############################################################################
   # 振り分け表
@@ -99,13 +101,21 @@ let
   #   を前提にしており、prefix を剥がすサブパスマウントとは相性が悪いため。
   #   Multica コンテナ自体は 127.0.0.1 のみで待ち受けており (modules/multica.nix)、
   #   ここが唯一の tailnet からの到達経路です。
+  #
+  # ★ Multica の backend だけさらにもう 1 本 (9445) 生やしています ★
+  #   9444 は frontend (Next.js の SSR) 止まりで、multica-cli の daemon/runtime は
+  #   ブラウザではないため SSR プロキシを経由できず、backend 本体に直接繋ぎに
+  #   行きます。frontend 経由の URL を --server-url に渡すと Next.js が返す HTML
+  #   ページを engineが「backend ではない」と判定し "not reachable" 扱いになる
+  #   ことを実機で確認しました (2026-08-12)。
   ############################################################################
   routes = [
     { path = null;       httpsPort = 443;  port = 8080;  note = "open-webui"; }
     { path = "/grafana"; httpsPort = 443;  port = 3000;  note = "grafana"; }
     { path = null;       httpsPort = 8443; port = 5678;  note = "n8n"; }
     { path = null;       httpsPort = 9443; port = 8188;  note = "comfyui"; }
-    { path = null;       httpsPort = 9444; port = 3001;  note = "multica"; }
+    { path = null;       httpsPort = 9444; port = 3001;  note = "multica-frontend"; }
+    { path = null;       httpsPort = 9445; port = 8082;  note = "multica-backend"; }
   ];
 
   # Serve が使う HTTPS ポート (ファイアウォールで開ける対象)
@@ -259,6 +269,27 @@ in
     WEBUI_URL = baseUrl;
   };
 
+  # --- Multica -----------------------------------------------------------
+  # ★ CORS_ALLOWED_ORIGINS を設定しないと WebSocket (/ws) が全滅する ★
+  #   バックエンドの Upgrader.CheckOrigin はここに列挙した Origin しか
+  #   受け付けません。modules/multica.nix 側では内部の
+  #   http://multica-frontend:3000 しか知らないため、Tailscale Serve 越しの
+  #   実際のブラウザ Origin (multicaUrl) をここで明示する必要があります。
+  #   未設定のまま実機で動かした結果、`ws: rejected origin` /
+  #   `websocket upgrade failed` がログに出続け、issue のリアルタイム更新等が
+  #   静かに機能しない状態になっていました (2026-08-12 に発覚)。
+  #
+  # MULTICA_PUBLIC_URL は「API が外から到達できる URL」なので、フロントエンドの
+  # multicaUrl ではなく backend 直結の multicaBackendUrl を渡します
+  # (webhook URL の生成に使われる値なので、frontend の URL を渡すと
+  # multica-cli 等の直接クライアントには意味を持たない URL になってしまいます)。
+  virtualisation.oci-containers.containers.multica-backend.environment = {
+    FRONTEND_ORIGIN = multicaUrl;
+    CORS_ALLOWED_ORIGINS = multicaUrl;
+    MULTICA_APP_URL = multicaUrl;
+    MULTICA_PUBLIC_URL = multicaBackendUrl;
+  };
+
   ############################################################################
   # 運用メモ
   #
@@ -274,7 +305,8 @@ in
   #     ${baseUrl}/grafana/  Grafana
   #     ${n8nUrl}/           n8n  (LAN からは http://<LAN IP>:5678/ も従来どおり)
   #     ${comfyuiUrl}/       ComfyUI
-  #     ${multicaUrl}/       Multica
+  #     ${multicaUrl}/       Multica (ブラウザ)
+  #     ${multicaBackendUrl}/ Multica backend (multica-cli の --server-url)
   #     Ollama API は Serve を通しません: http://<tailscale IP>:11434/
   #
   #   全部剥がして元に戻す:
