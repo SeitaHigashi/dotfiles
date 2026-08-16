@@ -54,6 +54,7 @@ nix flake update
 | `modules/gpu.nix` | NVIDIA プロプライエタリドライバ |
 | `modules/unfree.nix` | `allowUnfreePredicate` の唯一の定義場所 (NVIDIA/CUDA + n8n + open-webui + brave) |
 | `modules/monitoring.nix` | VictoriaMetrics + Grafana + exporter 群 |
+| `modules/nix-info.nix` | インストール済みパッケージ一覧 (systemPackages)、Repology 経由のパッケージ単位の更新有無、使用中 nixpkgs revision の Hydra ビルド状況を textfile collector で出す |
 | `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui。どちらも unstable 追従 (open-webui は `package` オプションで指定、overlay 不要) |
 | `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
 | `modules/multica.nix` | Multica (AI エージェント管理ワークスペース) を podman 3 コンテナ (postgres/backend/frontend) で自前ホスト。秘密情報は agenix (`secrets/multica-env.age`) |

@@ -61,6 +61,7 @@
         ./modules/desktop.nix          # KDE Plasma (X11) — プロジェクター投影用
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
         ./modules/zfs-snapshot-metrics.nix # スナップショット / 複製状況のメトリクス
+        ./modules/nix-info.nix         # インストール済みパッケージ一覧 / Hydra ビルド状況のメトリクス
         ./modules/alerting.nix         # Grafana のアラート (通知は n8n Webhook)
         ./modules/ollama.nix           # ローカル LLM (Ollama + Open WebUI)
         ./modules/n8n.nix              # ワークフロー自動化 (unstable 追従)

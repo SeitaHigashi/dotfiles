@@ -487,6 +487,9 @@ in
       #   30-nvidia-gpu          Grafana.com ID 14574 (空パネルを削除済み。下記)
       #   40-zfs-replication     自作。スナップショットの世代と syncoid の複製遅延
       #                          (メトリクスの出所は modules/zfs-snapshot-metrics.nix)
+      #   70-nix-info             自作。インストール済みパッケージ一覧、Repology 経由の
+      #                          パッケージ単位の更新有無、Hydra ビルド状況
+      #                          (メトリクスの出所は modules/nix-info.nix)
       #
       # コミュニティ製の 3 つは取り込み時に手を入れてあります:
       #   - __inputs / __requires を削除 (これが残っていると、provisioning
