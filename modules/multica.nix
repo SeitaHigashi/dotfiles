@@ -37,6 +37,8 @@
 ##############################################################################
 
 let
+  m = import ../machine.nix;
+
   # コンテナ内部の待ち受けポート (公式イメージ固定値、変更不可)。
   backendContainerPort = 8080;
   frontendContainerPort = 3000;
@@ -120,11 +122,57 @@ in
   ############################################################################
 
   ############################################################################
+  # multica daemon (ローカルエージェントランタイム)
+  #
+  # サーバー本体 (上記コンテナ) とは別に、Claude/OpenCode (Ollama) を実際に
+  # 実行するのはこのホスト上の `multica daemon` プロセスです。今まで
+  # `multica daemon start` を手動で叩いて常駐させていましたが systemd 管理外
+  # だったため再起動のたびに止まっていました (2026-08-12 に発覚)。
+  #
+  # 認証情報 (~/.multica/config.json の token) は `multica setup` /
+  # `multica login` で作られる、このリポジトリの管理外のファイルです。
+  # 秘密情報を nix 式に書きたくないため、ここでは触らずユーザーのホーム
+  # ディレクトリのものをそのまま使います (agenix 化はしていません)。
+  #
+  # --foreground が必要な理由:
+  #   既定 (フォアグラウンドなし) だと multica 自身が二重 fork してバックグラウンド化
+  #   するため、systemd がプロセスを見失い再起動管理ができません。
+  #   SIGTERM は実行中タスクを待ってから (最大 30s) 正常終了することを実機で確認済み。
+  ############################################################################
+  systemd.services.multica-daemon = {
+    description = "Multica local agent runtime daemon";
+    after = [ "network-online.target" "podman-multica-backend.service" ];
+    wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
+    environment = {
+      HOME = "/home/${m.userName}";
+      # daemon が agent (claude/opencode) の子プロセスに渡す PATH は、
+      # multica-cli 自身のバイナリディレクトリ + この unit の PATH。
+      # systemd unit の既定 PATH には nix-profile 由来のもの (claude 本体、
+      # rtk) も /run/current-system/sw/bin 由来のもの (opencode) も
+      # 含まれないため、明示しないと agent 実行環境からどちらも見えない。
+      # ~/.nix-profile は imperative インストール (nix profile install) の
+      # ため、GC や nix profile remove で claude/rtk が消えると道連れで壊れる。
+      PATH = lib.mkForce "/home/${m.userName}/.nix-profile/bin:/run/current-system/sw/bin:/usr/bin:/bin";
+    };
+    serviceConfig = {
+      Type = "simple";
+      User = m.userName;
+      ExecStart = "${pkgs.unstable.multica-cli}/bin/multica daemon start --foreground";
+      Restart = "always";
+      RestartSec = "10s";
+      TimeoutStopSec = "40s";
+    };
+  };
+
+  ############################################################################
   # 運用メモ
   #
   #   状態確認:
   #     systemctl status podman-multica-postgres podman-multica-backend podman-multica-frontend
   #     journalctl -u podman-multica-backend -f
+  #     systemctl status multica-daemon    # ローカルエージェントランタイム
+  #     multica daemon status / multica daemon logs -f
   #
   #   アクセス:
   #     https://<fqdn>:9444/  ブラウザ (modules/reverse-proxy.nix)
