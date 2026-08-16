@@ -8,15 +8,15 @@
 #   「GPU の状態を監視できるようにすること」の 2 点です。
 #     - Ollama / ComfyUI (CUDA 推論)
 #     - modules/monitoring.nix の nvidia-gpu-exporter (nvidia-smi を叩く)
-#   2026-08-11 に GT1030 を表示専任として増設し、X (modules/desktop.nix,
-#   KDE Plasma) はこのカードだけを使います。以下の計算用途の記述は
-#   1660 SUPER / 3060 Ti の 2 枚 (GT1030 を含まない) についてのものです。
+#   2026-08-11 に表示専任として増設した GT1030 は 2026-08-12 に撤去しました。
+#   プロジェクター投影 (X, modules/desktop.nix, KDE Plasma) は 1660 SUPER の
+#   HDMI 出力に繋ぎ変えており、このカードが表示と計算 (Ollama/ComfyUI) を
+#   兼務します。
 #
-# 3 枚差しについて (実機で確認済み。GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び):
-#     GPU 0  GTX 1660 SUPER (Turing TU116 / 6 GiB) — PCIe x4、計算用
-#     GPU 1  GT 1030        (Pascal GP108)          — 表示専任 (modules/desktop.nix)
-#     GPU 2  RTX 3060 Ti    (Ampere GA104 / 8 GiB) — PCIe x8、計算用
-#   計算用の合計 VRAM は 14 GiB (0+2)。世代が違っても production ドライバ
+# 2 枚差しについて (実機で確認済み。GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び):
+#     GPU 0  GTX 1660 SUPER (Turing TU116 / 6 GiB) — PCIe x4、計算 + 表示 (HDMI)
+#     GPU 1  RTX 3060 Ti    (Ampere GA104 / 8 GiB) — PCIe x8、計算専任
+#   計算用の合計 VRAM は 14 GiB (0+1)。世代が違っても production ドライバ
 #   1 つで全カードをカバーできます。
 #
 #   ただし 2 枚またぎの推論には次のハンデがあります。速くなることが
@@ -28,6 +28,8 @@
 #     - PCIe レーンが分割され、実測で x4 / x8 でした (どちらも物理は x16)。
 #       層分割ではカード間の転送が効くので、遅い方が x4 なのは不利に働きます。
 #       確認: nvidia-smi --query-gpu=name,pcie.link.width.current --format=csv
+#     - 1660 SUPER は投影中は X (Xorg) にも VRAM と演算を取られます。
+#       投影しながら重い推論を回すと、1660 SUPER 側がさらに不利になります。
 #
 #   1660 SUPER を外して 3060 Ti 単体にした方が速い可能性は十分あります。
 #   モデルを載せたら、Grafana の「GPU 使用率 (カード別)」で

@@ -8,13 +8,13 @@
 #   2. ブラウザからのチャットとコード補助 (Open WebUI, 8080)
 #
 # このホストの制約 (modules/gpu.nix も参照):
-#     GPU 0  GTX 1660 SUPER  6 GiB  sm_75  PCIe x4
-#     GPU 1  GT 1030         表示専任 (modules/desktop.nix)。推論には使わない
-#     GPU 2  RTX 3060 Ti     8 GiB  sm_86  PCIe x8
-#   合計 VRAM (0+2) 14 GiB (ollama から見える実効値は 13.3 GiB)。
-#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (PCI bus 04/05/07 の順)。
-#   2026-08-11 に GT1030 を bus 05 へ増設した際、PCI bus 07 の 3060 Ti が
-#   index 1 から 2 へ繰り下がった (以前は 2 枚構成で index 1 = 3060 Ti)。
+#     GPU 0  GTX 1660 SUPER  6 GiB  sm_75  PCIe x4  (プロジェクター投影時は X とも共用)
+#     GPU 1  RTX 3060 Ti     8 GiB  sm_86  PCIe x8
+#   合計 VRAM (0+1) 14 GiB (ollama から見える実効値は 13.3 GiB)。
+#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (PCI bus 04/07 の順)。
+#   2026-08-11 に表示専任の GT1030 を bus 05 へ増設し、PCI bus 07 の 3060 Ti が
+#   index 1 から 2 へ繰り下がったことがあったが、2026-08-12 に GT1030 を撤去
+#   (HDMI は 1660 SUPER に繋ぎ変え) したため index 1 = 3060 Ti に戻っている。
 #   CPU は Ryzen 3 3300X (4C/8T)。RAM 46 GiB のうち ZFS ARC に 16 GiB、
 #   Minecraft のヒープに 8 GiB を既に割り当てているため、CPU オフロードに
 #   使える余地は 20 GiB 程度です。
@@ -106,10 +106,20 @@ in
       # GPU 2 枚を束ねて 14 GiB のプールとして使う
       ########################################################################
 
-      # 速い 3060 Ti (index 2) を先頭にして、層の割り当てで優先させる。
-      # GT1030 (index 1, 表示専任) は含めない。
+      # ★ これが無いと下の CUDA_VISIBLE_DEVICES の番号が別の GPU を指します ★
+      #   CUDA ランタイムは既定では PCI バス順ではなく「速い GPU が先」の
+      #   FASTEST_FIRST 順で番号を振ります。実機で確認した既定順序:
+      #     0 = RTX 3060 Ti, 1 = GTX 1660 SUPER
+      #   これを明示的に PCI バス順 (bus 04/07 = 1660 SUPER/3060 Ti) に
+      #   固定しないと、下の "1,0" は意図しない組み合わせを指してしまい
+      #   1660 SUPER が一切使われません (2026-08-12 に GT1030 増設時に実機で
+      #   踏みました。modules/comfyui.nix には設定済みでしたが ollama 側だけ
+      #   抜けていました)。
+      CUDA_DEVICE_ORDER = "PCI_BUS_ID";
+
+      # 速い 3060 Ti (index 1) を先頭にして、層の割り当てで優先させる。
       # (この順序は ollama から見た GPU 番号にも影響します)
-      CUDA_VISIBLE_DEVICES = "2,0";
+      CUDA_VISIBLE_DEVICES = "1,0";
 
       # 1 枚に収まるモデルでも敢えて 2 枚に分散させる。
       #
