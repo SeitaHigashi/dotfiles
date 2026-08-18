@@ -59,11 +59,49 @@ let
   backendHostPort = 8082;
 
   secretsFile = config.age.secrets.multica-env.path;
+  githubAppKeyFile = config.age.secrets.multica-github-app-key.path;
+  githubAppKeySecretName = "multica-github-app-key";
 in
 {
   age.secrets.multica-env = {
     file = ../secrets/multica-env.age;
     mode = "0400";
+  };
+
+  # GITHUB_APP_PRIVATE_KEY (複数行の PEM) だけ別の age secret に分離。
+  #
+  # 理由: multica-env.age の他の変数は environmentFiles (podman の
+  # --env-file) 経由で渡していますが、この形式は KEY=VALUE の 1 行区切りで、
+  # ダブルクォートで囲んでも複数行の値としては解釈されません
+  # (Docker Compose の .env ファイル読み込みとは別実装で multiline 非対応)。
+  # 実機で検証した際も、複数行のまま書くと 1 行目だけがクォート文字ごと
+  # 値として切り取られ、\n へのエスケープも展開されずに素通りするだけで
+  # 壊れた PEM になることを確認しました (2026-08-18)。
+  #
+  # そのため PEM はここでは agenix の生ファイルのまま持ち、podman secret
+  # (下の systemd.services.multica-github-secret) 経由でコンテナに渡します。
+  # podman secret は行区切りパーサーを介さず生バイト列をそのまま
+  # 環境変数にコピーするため、改行を保持できます。
+  age.secrets.multica-github-app-key = {
+    file = ../secrets/multica-github-app-key.age;
+    mode = "0400";
+  };
+
+  # 上の PEM を podman secret として登録する (idempotent: --replace)。
+  # multica-backend の起動前に完了している必要があるため before/requires で縛る。
+  systemd.services.multica-github-secret = {
+    description = "Register Multica GitHub App private key as a podman secret";
+    before = [ "podman-multica-backend.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.podman}/bin/podman secret create --replace ${githubAppKeySecretName} ${githubAppKeyFile}";
+    };
+  };
+
+  systemd.services.podman-multica-backend = {
+    after = [ "multica-github-secret.service" ];
+    requires = [ "multica-github-secret.service" ];
   };
 
   virtualisation.oci-containers.containers = {
@@ -98,7 +136,11 @@ in
         # (Grafana の root_url / n8n の webhookUrl と同じ置き場の方針)。
       };
       # DATABASE_URL / JWT_SECRET / MULTICA_VCS_SECRET_KEY
+      # (GITHUB_APP_PRIVATE_KEY は含めない。改行を保持できないため
+      # 下の --secret 経由で渡す。理由は multica-github-secret のコメント参照)
       environmentFiles = [ secretsFile ];
+      # GITHUB_APP_PRIVATE_KEY を podman secret から環境変数として注入。
+      extraOptions = [ "--secret=${githubAppKeySecretName},type=env,target=GITHUB_APP_PRIVATE_KEY" ];
       autoStart = true;
     };
 
