@@ -44,6 +44,15 @@ let
   multicaUrl = "https://${fqdn}:9444";
   # Multica の backend 直結用 (multica-cli の daemon/runtime が使う。理由は routes のコメント)
   multicaBackendUrl = "https://${fqdn}:9445";
+  # Multica の GitHub App Webhook 用 (公開インターネットから到達可能。理由は routes のコメント)
+  multicaGithubWebhookUrl = "https://${fqdn}:10000";
+
+  # modules/multica.nix の backendHostPort と同じ値。GitHub Webhook 中継用の
+  # nginx (下記) がバックエンドへ転送する先として必要なため、ここでも持つ。
+  multicaBackendPort = 8082;
+  # 上の nginx が 127.0.0.1 で待ち受けるポート。Tailscale Funnel はこの nginx を
+  # 経由してから backend に届く (理由は routes のコメント)。
+  multicaGithubWebhookProxyPort = 8083;
 
   ############################################################################
   # 振り分け表
@@ -108,17 +117,45 @@ let
   #   行きます。frontend 経由の URL を --server-url に渡すと Next.js が返す HTML
   #   ページを engineが「backend ではない」と判定し "not reachable" 扱いになる
   #   ことを実機で確認しました (2026-08-12)。
+  #
+  # ★ Multica の GitHub Webhook だけ Funnel (公開インターネット) で、しかも
+  #   nginx を挟んでいます ★
+  #   GitHub App の Webhook 配送元 (GitHub 側サーバー) は tailnet の外にいるため、
+  #   tailnet 限定の Tailscale Serve では届きません。公開するには
+  #   `tailscale funnel` が要りますが、Funnel は **ポート単位のオン/オフ**で
+  #   パス単位の絞り込みができません。443 (open-webui) や 8443 (n8n) を funnel
+  #   すると、そのポートに同居する全パスがまとめて公開インターネットに
+  #   晒されてしまうため使えず、Funnel 専用の新しいポートを切っています。
+  #
+  #   Tailscale Funnel は 443 / 8443 / 10000 の 3 つでしか動きません
+  #   (仕様上の制約)。443・8443 は上記の理由で使えないため、消去法で 10000 を
+  #   使っています。
+  #
+  #   10000 番の Serve マウント先は multica-backend (8082) に直接ではなく、
+  #   間に挟んだ nginx (127.0.0.1:8083) です。理由は、10000 を funnel すると
+  #   そのポートに乗る全パスが公開されてしまう制約は上と同じで、
+  #   multica-backend を直接乗せると /api/webhooks/github 以外の backend API
+  #   (multica-cli 用の認証付き API 全体) まで公開インターネットから叩ける
+  #   状態になるためです。nginx で /api/webhooks/github だけを通し、それ以外は
+  #   404 で弾いてから backend へ渡すことで、公開されるのは Webhook の
+  #   受け口 (GitHub の署名検証で守られる) だけに絞っています。
+  #
+  #   このリポジトリで nginx を避けてきた理由 (ファイル冒頭のコメント) は
+  #   TLS 証明書の秘密情報の置き場が無いことでした。この nginx は TLS を
+  #   終端しません (Funnel 側が終端し、平文 HTTP で 127.0.0.1 に転送するだけ)
+  #   ので、その制約には抵触しません。
   ############################################################################
   routes = [
-    { path = null;       httpsPort = 443;  port = 8080;  note = "open-webui"; }
-    { path = "/grafana"; httpsPort = 443;  port = 3000;  note = "grafana"; }
-    { path = null;       httpsPort = 8443; port = 5678;  note = "n8n"; }
-    { path = null;       httpsPort = 9443; port = 8188;  note = "comfyui"; }
-    { path = null;       httpsPort = 9444; port = 3001;  note = "multica-frontend"; }
-    { path = null;       httpsPort = 9445; port = 8082;  note = "multica-backend"; }
+    { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
+    { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
+    { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
+    { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
+    { path = null;       httpsPort = 9444;  port = 3001;                          note = "multica-frontend"; }
+    { path = null;       httpsPort = 9445;  port = 8082;                          note = "multica-backend"; }
+    { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (nginx 経由)"; funnel = true; }
   ];
 
-  # Serve が使う HTTPS ポート (ファイアウォールで開ける対象)
+  # Serve/Funnel が使う HTTPS ポート (ファイアウォールで開ける対象)
   httpsPorts = lib.unique (map (r: r.httpsPort) routes);
 
   tailscaleBin = "${config.services.tailscale.package}/bin/tailscale";
@@ -126,8 +163,10 @@ let
   serveCommand = r:
     let
       setPath = lib.optionalString (r.path != null) "--set-path=${r.path} ";
+      # funnel = true の行だけ公開インターネットに晒す。それ以外は tailnet 限定の serve。
+      subcommand = if (r.funnel or false) then "funnel" else "serve";
     in
-    "${tailscaleBin} serve --bg --yes --https=${toString r.httpsPort} ${setPath}${toString r.port}  # ${r.note}";
+    "${tailscaleBin} ${subcommand} --bg --yes --https=${toString r.httpsPort} ${setPath}${toString r.port}  # ${r.note}";
 in
 {
   ############################################################################
@@ -207,6 +246,26 @@ in
   # 無く (上の routes のコメント参照)、ここが唯一の到達経路です。
   ############################################################################
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = httpsPorts;
+
+  ############################################################################
+  # Multica GitHub Webhook 用の中継 nginx
+  #
+  # 127.0.0.1 のみで待ち受け、/api/webhooks/github だけを multica-backend へ
+  # 転送し、それ以外は 404 で弾きます。TLS は終端しません (Funnel 側が終端し
+  # 平文 HTTP で渡してくるのを受けるだけ)。理由は上の routes のコメント参照。
+  ############################################################################
+  services.nginx = {
+    enable = true;
+    virtualHosts."multica-github-webhook" = {
+      listen = [ { addr = "127.0.0.1"; port = multicaGithubWebhookProxyPort; } ];
+      locations."= /api/webhooks/github" = {
+        proxyPass = "http://127.0.0.1:${toString multicaBackendPort}/api/webhooks/github";
+      };
+      locations."/" = {
+        extraConfig = "return 404;";
+      };
+    };
+  };
 
   ############################################################################
   # 各サービス側の追随設定
@@ -307,6 +366,8 @@ in
   #     ${comfyuiUrl}/       ComfyUI
   #     ${multicaUrl}/       Multica (ブラウザ)
   #     ${multicaBackendUrl}/ Multica backend (multica-cli の --server-url)
+  #     ${multicaGithubWebhookUrl}/api/webhooks/github
+  #                          GitHub App の Webhook URL に設定する値 (公開インターネットから到達可能)
   #     Ollama API は Serve を通しません: http://<tailscale IP>:11434/
   #
   #   全部剥がして元に戻す:
