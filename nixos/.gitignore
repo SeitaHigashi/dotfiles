@@ -1,0 +1,5 @@
+result
+
+# Claude Code のローカル設定 (マシンごとに異なるので追跡しない)
+.claude/settings.local.json
+.claude/*.tmp.*

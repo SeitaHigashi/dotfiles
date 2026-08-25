@@ -1,0 +1,407 @@
+{
+  "uid": "nix-info",
+  "title": "パッケージ一覧と Hydra ビルド状況",
+  "tags": ["nix", "hydra"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": null,
+  "editable": null,
+  "refresh": "30m",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Hydra ビルド状況",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "nixos-25.05: 固定リビジョンは Hydra で評価済みか",
+      "description": "flake.lock の nixpkgs revision が、Hydra の nixos/release-25.05-small ジョブセットの直近の評価一覧に見つかったか。0 (赤) は、まだ評価されていないか API 問い合わせに失敗しています。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "hydra_pinned_revision_evaluated{channel=\"nixos-25.05\"}",
+          "legendFormat": "評価済み"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "未評価" } } },
+            { "type": "value", "options": { "1": { "text": "評価済み" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "nixos-25.05: 最終評価からの経過",
+      "description": "Hydra の nixos/release-25.05-small ジョブセットが最後に評価されてからの時間。リリースブランチなので unstable より間隔は空きます。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - hydra_channel_last_eval_timestamp_seconds{channel=\"nixos-25.05\"}",
+          "legendFormat": "経過"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 604800 },
+              { "color": "red", "value": 2592000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "nixos-unstable: 固定リビジョンは Hydra で評価済みか",
+      "description": "flake.lock の nixpkgs-unstable revision が、Hydra の nixpkgs/unstable (nixpkgs master ブランチ評価) ジョブセットの直近の評価一覧に見つかったか。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "hydra_pinned_revision_evaluated{channel=\"nixos-unstable\"}",
+          "legendFormat": "評価済み"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "未評価" } } },
+            { "type": "value", "options": { "1": { "text": "評価済み" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "nixos-unstable: 最終評価からの経過",
+      "description": "Hydra の nixpkgs/unstable ジョブセットが最後に評価されてからの時間。master ブランチは1日に何度も評価されるため、通常は数時間以内に収まります。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - hydra_channel_last_eval_timestamp_seconds{channel=\"nixos-unstable\"}",
+          "legendFormat": "経過"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 86400 },
+              { "color": "red", "value": 604800 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Hydra API 問い合わせの成否",
+      "description": "hydra.nixos.org への問い合わせが失敗し続けている場合、上のパネルは古い値のまま止まっています。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "hydra_fetch_ok",
+          "legendFormat": "{{channel}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "max": 1 },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "type": "row",
+      "title": "インストール済みパッケージ",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "パッケージ総数",
+      "description": "environment.systemPackages に列挙されているパッケージの数 (依存関係を含む closure 全体ではありません)。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nixos_installed_package_count",
+          "legendFormat": "パッケージ数"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0 },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Repology 上で更新が見つかっているパッケージ数",
+      "description": "対応するチャンネル (unstable 由来なら nix_unstable、それ以外は使用中の stable チャンネル) で、Repology が報告しているバージョンと今入っているバージョンが違うパッケージの数。flake update すれば上がる可能性があります。1日1回しか更新されません。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(nixos_package_repology_outdated)",
+          "legendFormat": "更新あり"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Repology で追跡できなかったパッケージ数",
+      "description": "Repology 上に対応する名前のエントリが見つからなかった (自前/ニッチなパッケージ、または名前が一致しない) 数。これらは更新判定の対象外です。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(nixos_package_repology_known == 0)",
+          "legendFormat": "追跡不可"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0 },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "table",
+      "title": "パッケージ一覧と更新有無",
+      "description": "environment.systemPackages の内容と、Repology から見た更新有無。「更新可能」は対応チャンネルのバージョンといま入っているバージョンが違うことを示すだけで、破壊的変更の有無までは分かりません。「Repology追跡」が「対象外」の行は Repology 側にエントリが見つからず判定していません (自前/ニッチなパッケージや名前の不一致)。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 18, "w": 24, "x": 0, "y": 17 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nixos_installed_package_info",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "nixos_package_repology_known",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "C",
+          "expr": "nixos_package_repology_outdated",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "D",
+          "expr": "nixos_package_repology_version_info",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "name", "mode": "outer" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "__name__": true,
+              "__name__ 1": true,
+              "__name__ 2": true,
+              "__name__ 3": true,
+              "__name__ 4": true,
+              "instance": true,
+              "instance 1": true,
+              "instance 2": true,
+              "instance 3": true,
+              "instance 4": true,
+              "job": true,
+              "job 1": true,
+              "job 2": true,
+              "job 3": true,
+              "job 4": true,
+              "Value #A": true,
+              "Value #D": true
+            },
+            "renameByName": {
+              "name": "パッケージ名",
+              "version": "バージョン",
+              "Value #B": "Repology追跡",
+              "Value #C": "更新可能",
+              "version 1": "Repology 上のバージョン"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": { "fields": {}, "sort": [{ "field": "更新可能", "desc": true }] }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "更新可能" },
+            "properties": [
+              { "id": "unit", "value": "short" },
+              { "id": "decimals", "value": 0 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "0": { "text": "最新" } } },
+                  { "type": "value", "options": { "1": { "text": "更新あり" } } }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-text" }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 1 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Repology追跡" },
+            "properties": [
+              { "id": "unit", "value": "short" },
+              { "id": "decimals", "value": 0 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "0": { "text": "対象外" } } },
+                  { "type": "value", "options": { "1": { "text": "追跡中" } } }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": { "show": false }
+      }
+    }
+  ]
+}

@@ -1,0 +1,432 @@
+{
+  "uid": "zfs-replication",
+  "title": "ZFS スナップショットと複製",
+  "tags": ["zfs", "backup", "syncoid"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": null,
+  "editable": null,
+  "refresh": "5m",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "type": "row",
+      "title": "いま復旧できるか",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "ワールドの最新スナップショット",
+      "description": "rpool/srv/minecraft の最新スナップショットからの経過時間。autoSnapshot は 15 分刻みなので、30 分を超えたらスナップショットが止まっています。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - zfs_snapshot_latest_creation_seconds{dataset=\"rpool/srv/minecraft\"}",
+          "legendFormat": "経過"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1800 },
+              { "color": "red", "value": 5400 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "HDD 側に届いている世界の古さ",
+      "description": "dpool/backup/minecraft の最新スナップショットからの経過時間。いま SSD が物理的に死んだ場合、失うのがこの長さです。syncoid は日次なので通常 0〜24 時間を行き来します。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - zfs_snapshot_latest_creation_seconds{dataset=\"dpool/backup/minecraft\"}",
+          "legendFormat": "経過"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 93600 },
+              { "color": "red", "value": 180000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "syncoid の失敗ユニット数",
+      "description": "syncoid-*.service のうち failed 状態のもの。0 以外なら journalctl -u 'syncoid-*' を見てください。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(node_systemd_unit_state{name=~\"syncoid-.*\\\\.service\", state=\"failed\"})",
+          "legendFormat": "failed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "この画面の数字の鮮度",
+      "description": "zfs-snapshot-metrics.timer が最後に走ってからの経過時間。5 分間隔なので、これが伸びていたらこのダッシュボードの他の数字は全部信用できません。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - zfs_snapshot_metrics_last_run_seconds",
+          "legendFormat": "経過"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 900 },
+              { "color": "red", "value": 3600 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "table",
+      "title": "データセット別のスナップショット状況",
+      "description": "全データセットの一覧。世代数が 0 のまま動かないものは autoSnapshot の対象外 (com.sun:auto-snapshot=false) か、取得が止まっています。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - zfs_snapshot_latest_creation_seconds",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "zfs_snapshot_count",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "C",
+          "expr": "zfs_dataset_usedbysnapshots_bytes",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "D",
+          "expr": "time() - zfs_snapshot_oldest_creation_seconds",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "dataset", "mode": "outer" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "__name__": true,
+              "__name__ 1": true,
+              "__name__ 2": true,
+              "__name__ 3": true,
+              "__name__ 4": true,
+              "instance": true,
+              "instance 1": true,
+              "instance 2": true,
+              "instance 3": true,
+              "instance 4": true,
+              "job": true,
+              "job 1": true,
+              "job 2": true,
+              "job 3": true,
+              "job 4": true
+            },
+            "renameByName": {
+              "dataset": "データセット",
+              "Value #A": "最新からの経過",
+              "Value #B": "世代数",
+              "Value #C": "スナップショット使用量",
+              "Value #D": "最古からの経過"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": { "fields": {}, "sort": [{ "field": "データセット" }] }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0 },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "最新からの経過" },
+            "properties": [
+              { "id": "unit", "value": "s" },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-text" }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 93600 },
+                    { "color": "red", "value": 604800 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "最古からの経過" },
+            "properties": [{ "id": "unit", "value": "s" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "スナップショット使用量" },
+            "properties": [{ "id": "unit", "value": "bytes" }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": { "show": false }
+      }
+    },
+    {
+      "type": "row",
+      "title": "推移",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "複製遅延 (複製元と複製先の最新スナップショットの差)",
+      "description": "syncoid が日次なので、通常は 0 から 24 時間へ伸びては 0 に落ちる鋸歯状になります。落ちずに階段状に伸び続けたら複製が止まっています。ユニットの終了コードより確実な指標です — 成功で終わっていても実際には何も転送していない状態を捕まえられます。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "zfs_snapshot_latest_creation_seconds{dataset=\"rpool/srv/minecraft\"} - ignoring(dataset) zfs_snapshot_latest_creation_seconds{dataset=\"dpool/backup/minecraft\"}",
+          "legendFormat": "srv/minecraft"
+        },
+        {
+          "refId": "B",
+          "expr": "zfs_snapshot_latest_creation_seconds{dataset=\"rpool/root\"} - ignoring(dataset) zfs_snapshot_latest_creation_seconds{dataset=\"dpool/backup/root\"}",
+          "legendFormat": "root"
+        },
+        {
+          "refId": "C",
+          "expr": "zfs_snapshot_latest_creation_seconds{dataset=\"rpool/var/lib\"} - ignoring(dataset) zfs_snapshot_latest_creation_seconds{dataset=\"dpool/backup/var-lib\"}",
+          "legendFormat": "var/lib"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": { "fillOpacity": 10, "showPoints": "never" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "スナップショットが占める容量",
+      "description": "usedbysnapshots。rpool は SSD 単体で容量に余裕が無いため、ここが伸び続けていたら autoSnapshot の世代数 (modules/zfs.nix) を見直してください。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "zfs_dataset_usedbysnapshots_bytes > 0",
+          "legendFormat": "{{dataset}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": { "fillOpacity": 10, "showPoints": "never" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "スナップショットの世代数",
+      "description": "autoSnapshot の保持設定 (frequent 4 / hourly 24 / daily 7 / weekly 4 / monthly 12) が効いていれば、各データセットは頭打ちになって水平に落ち着きます。単調増加なら古い世代の破棄が動いていません。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "zfs_snapshot_count > 0",
+          "legendFormat": "{{dataset}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "fillOpacity": 0, "showPoints": "never" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "最古スナップショットの古さ (= 実際に巻き戻せる範囲)",
+      "description": "monthly 12 が効いていれば rpool 側は 1 年弱で頭打ちになります。ここが短いままなら、そのデータセットは思っているほど過去に戻せません。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - (zfs_snapshot_oldest_creation_seconds > 0)",
+          "legendFormat": "{{dataset}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": { "fillOpacity": 0, "showPoints": "never" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "syncoid ユニット",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "syncoid ユニットの稼働状態",
+      "description": "1 が立っている間だけ転送中です。日次で数秒〜数分の山が 3 本立つのが正常。node_exporter の systemd コレクタ由来なので、これは textfile とは別経路で取れています。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 35 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_systemd_unit_state{name=~\"syncoid-.*\\\\.service\", state=\"active\"}",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "custom": { "fillOpacity": 30, "showPoints": "never", "lineInterpolation": "stepAfter" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "syncoid タイマーの最終発火からの経過",
+      "description": "タイマー自体が生きているかの確認。日次なので 24 時間の鋸歯になります。上のグラフと違い、転送の成否ではなく「起動したかどうか」だけを示します。",
+      "datasource": { "type": "prometheus", "uid": "victoriametrics" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 35 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - node_systemd_timer_last_trigger_seconds{name=~\"syncoid-.*\\\\.timer\"}",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": { "fillOpacity": 0, "showPoints": "never" }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

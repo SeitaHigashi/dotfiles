@@ -1,0 +1,73 @@
+{ inputs, config, lib, pkgs, ... }:
+
+##############################################################################
+# stable ベースのまま、選んだツールだけ unstable から引くための仕組み。
+#
+# なぜこの向きなのか:
+#   「カーネルだけ stable、他は unstable」はできません。カーネルモジュール
+#   (ZFS を含む) はカーネル本体と同じ nixpkgs でビルドされている必要があり、
+#   カーネル・ZFS・kmod 群は分離不可能なセットだからです。
+#   そのため逆に、土台を stable に固定したうえで、葉のパッケージだけを
+#   unstable から取ってきます。
+#
+# 使い方:
+#   下の unstablePackages にパッケージ名を足すだけ。
+#   個別に参照したい場合は他のモジュールから pkgs.unstable.<name> と書けます。
+#
+# 入れてはいけないもの:
+#   - カーネル / カーネルモジュール (linuxPackages*, zfs, nvidia ドライバ等)
+#   - systemd, glibc, systemd-boot まわり
+#   いずれも起動不能に直結します。ここは「ユーザーが直接使うツール」専用です。
+#
+# 注意:
+#   unstable 由来のパッケージは依存ライブラリも unstable 側のものを引くため、
+#   その分だけビルド/ダウンロードが増えます (stable 側と共有されない)。
+#   数個〜十数個なら誤差ですが、大きなものを大量に入れると効いてきます。
+##############################################################################
+
+let
+  # ここに書いたものが unstable から来ます。
+  unstablePackages = with pkgs.unstable; [
+    neovim
+
+    # Grafana Labs 公式の MCP サーバー。Claude Code から Grafana の
+    # ダッシュボードやアラート、VictoriaMetrics への PromQL を読むために使います。
+    # stable 25.05 には無いパッケージなので unstable から。
+    #
+    # 起動設定 (URL とトークンのファイルパス、--disable-write) は
+    # このリポジトリではなく ~/.claude.json 側にあります — MCP クライアントの
+    # 設定であって NixOS の構成ではないためです。詳細は CLAUDE.md を参照。
+    mcp-grafana
+
+    # Brave ブラウザ。unfree のため modules/unfree.nix での許可が要ります。
+    brave
+
+    # Multica の CLI/daemon。stable 25.05 には無いパッケージなので unstable から。
+    # 自前ホストしているサーバー本体は modules/multica.nix (podman) 側です。
+    multica-cli
+
+    # OpenCode — Multica のランタイム (プロトコルファミリー) として Ollama の
+    # ローカルモデルを直接使うために追加。claude プロトコルは Anthropic API
+    # 専用で Ollama を喋れないため、Ollama をネイティブ対応する OpenCode を
+    # 経由させています。プロバイダ設定は ~/.config/opencode/opencode.json
+    # (このリポジトリの管理外、ユーザーのホームディレクトリ直下) 側です。
+    opencode
+
+    # Node.js 最新版。OpenViking を Claude Code と MCP 経由で連携するのに使う
+    # (npx でサーバーを起動する用途)。stable 25.05 は 22.x 止まりなので unstable から。
+    nodejs
+  ];
+in
+{
+  nixpkgs.overlays = [
+    (final: prev: {
+      unstable = import inputs.nixpkgs-unstable {
+        inherit (final.stdenv.hostPlatform) system;
+        # unfree の許可設定などを stable 側と揃える
+        inherit (prev) config;
+      };
+    })
+  ];
+
+  environment.systemPackages = unstablePackages;
+}
