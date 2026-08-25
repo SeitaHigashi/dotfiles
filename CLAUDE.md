@@ -5,44 +5,49 @@ Personal dotfiles for NixOS + Home Manager (Nix Flakes).
 ## Critical Commands
 
 ```sh
-# Apply config (main desktop)
-cd nixos && sudo nixos-rebuild switch --flake .#seita-nixos
-
-# Apply config (Mac)
-cd nixos && sudo nixos-rebuild switch --flake .#seita-mac-nix
+# Apply config (seita-nixos-baremetal, /etc/nixos is a symlink into this repo's nixos/)
+cd nixos && sudo nixos-rebuild switch --flake .#seita-nixos-baremetal
 
 # Validate before applying
 cd nixos && nix flake check
 nix flake show
+
+# Apply user-level dotfiles (separate standalone flake, not wired into nixos/)
+cd home-manager && home-manager switch --flake .#seita
 ```
 
-Home Manager is **integrated into NixOS** — never use `home-manager switch` standalone.
+`nixos/` and `home-manager/` are **separate, independent flakes** — `nixos/flake.nix` does not
+import home-manager as a NixOS module. See `nixos/CLAUDE.md` for the full host-specific reference
+(services, ZFS/disko layout, GPU assignment, secrets via agenix, known gotchas).
 
 ## Key File Locations
 
 | What to change | Where |
 |---|---|
-| System packages, services | `nixos/hosts/seita-nixos/seita-nixos-configuration.nix` |
+| System packages, services (seita-nixos-baremetal) | `nixos/configuration.nix`, `nixos/modules/*.nix` |
+| Disk/ZFS layout | `nixos/disko/default.nix`, `nixos/machine.nix` |
+| Secrets (agenix) | `nixos/secrets/` |
 | User packages, shell, git | `home-manager/home.nix` |
 | Hyprland WM | `home-manager/wm/hyprland.nix` |
-| Shared NixOS modules | `nixos/commons/` |
 | Neovim plugins | `nvim/lua/plugins/` |
 | Neovim keybinds/LSP | `nvim/lua/keybinds.lua`, `nvim/lua/lsp-configs.lua` |
 
 ## Architecture Notes
 
-- `nixos/flake.nix` — single source of truth; imports home-manager as a NixOS module
-- `nixos/commons/` — shared between both hosts; `default.nix` imports all modules
+- `nixos/` — full history-preserving merge of the host's live `/etc/nixos` git repo (see
+  `nixos/CLAUDE.md`); `/etc/nixos` is a symlink to this directory, so system config is edited
+  directly here and applied with `nixos-rebuild switch`
+- `home-manager/` — standalone home-manager flake, applied independently with `home-manager switch`
 - Neovim config is **not** managed by Nix — symlinked manually at `~/.config/nvim`
+- `herdr/` — same symlink pattern: `~/.config/herdr` points here; runtime state (logs, sockets,
+  session.json) is gitignored, only `config.toml` is tracked
 - WezTerm is managed via home-manager (`programs.wezterm`)
 
-## Active Services (seita-nixos)
+## Active Services (seita-nixos-baremetal)
 
-- **Ollama** — CUDA-enabled local LLM, port 11434
-- **Open WebUI** — Podman container (CUDA), port 3000
-- **Home Assistant** — Podman container, network host
-- **Tailscale** — mesh VPN with exit node
-- **XRDP** — remote desktop via KDE Plasma
+See `nixos/CLAUDE.md` for the authoritative, up-to-date list — it covers Ollama, ComfyUI, Open
+WebUI, Home Assistant, Grafana/monitoring, Multica, OpenViking, n8n, Discord bot, Tailscale
+Serve/Funnel, and more, along with the module responsible for each.
 
 ## Git Conventions
 
