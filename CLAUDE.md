@@ -5,28 +5,32 @@ Personal dotfiles for NixOS + Home Manager (Nix Flakes).
 ## Critical Commands
 
 ```sh
-# Apply config (seita-nixos-baremetal, /etc/nixos is a symlink into this repo's nixos/)
-cd nixos && sudo nixos-rebuild switch --flake .#seita-nixos-baremetal
+# Apply config (seita-nixos-baremetal; /etc/nixos is a symlink into this repo's seita-nixos-baremetal/)
+cd seita-nixos-baremetal && sudo nixos-rebuild switch --flake .#seita-nixos-baremetal
 
 # Validate before applying
-cd nixos && nix flake check
+cd seita-nixos-baremetal && nix flake check
 nix flake show
 
-# Apply user-level dotfiles (separate standalone flake, not wired into nixos/)
+# Apply config (Mac / WSL — older multi-host flake, /etc/nixos symlinks here on those hosts)
+cd nixos && sudo nixos-rebuild switch --flake .#seita-mac-nix   # or .#seita-wsl
+
+# Apply user-level dotfiles (separate standalone flake, not wired into either nixos config above)
 cd home-manager && home-manager switch --flake .#seita
 ```
 
-`nixos/` and `home-manager/` are **separate, independent flakes** — `nixos/flake.nix` does not
-import home-manager as a NixOS module. See `nixos/CLAUDE.md` for the full host-specific reference
-(services, ZFS/disko layout, GPU assignment, secrets via agenix, known gotchas).
+`seita-nixos-baremetal/`, `nixos/`, and `home-manager/` are **separate, independent flakes** — none
+of them import each other. See `seita-nixos-baremetal/CLAUDE.md` for the full baremetal host
+reference (services, ZFS/disko layout, GPU assignment, secrets via agenix, known gotchas).
 
 ## Key File Locations
 
 | What to change | Where |
 |---|---|
-| System packages, services (seita-nixos-baremetal) | `nixos/configuration.nix`, `nixos/modules/*.nix` |
-| Disk/ZFS layout | `nixos/disko/default.nix`, `nixos/machine.nix` |
-| Secrets (agenix) | `nixos/secrets/` |
+| System packages, services (seita-nixos-baremetal) | `seita-nixos-baremetal/configuration.nix`, `seita-nixos-baremetal/modules/*.nix` |
+| Disk/ZFS layout (seita-nixos-baremetal) | `seita-nixos-baremetal/disko/default.nix`, `seita-nixos-baremetal/machine.nix` |
+| Secrets (agenix, seita-nixos-baremetal) | `seita-nixos-baremetal/secrets/` |
+| System config (seita-mac-nix / seita-wsl) | `nixos/hosts/*.nix`, `nixos/commons/` |
 | User packages, shell, git | `home-manager/home.nix` |
 | Hyprland WM | `home-manager/wm/hyprland.nix` |
 | Neovim plugins | `nvim/lua/plugins/` |
@@ -34,9 +38,12 @@ import home-manager as a NixOS module. See `nixos/CLAUDE.md` for the full host-s
 
 ## Architecture Notes
 
-- `nixos/` — full history-preserving merge of the host's live `/etc/nixos` git repo (see
-  `nixos/CLAUDE.md`); `/etc/nixos` is a symlink to this directory, so system config is edited
-  directly here and applied with `nixos-rebuild switch`
+- `seita-nixos-baremetal/` — full history-preserving merge of this host's live `/etc/nixos` git
+  repo (see `seita-nixos-baremetal/CLAUDE.md`); `/etc/nixos` on this host is a symlink to this
+  directory, so system config is edited directly here and applied with `nixos-rebuild switch`
+- `nixos/` — older multi-host flake (`seita-mac-nix`, `seita-wsl`) with home-manager imported as a
+  NixOS module; `/etc/nixos` on those hosts symlinks here — kept as-is, not touched by the
+  baremetal-host rework above
 - `home-manager/` — standalone home-manager flake, applied independently with `home-manager switch`
 - Neovim config is **not** managed by Nix — symlinked manually at `~/.config/nvim`
 - `herdr/` — same symlink pattern: `~/.config/herdr` points here; runtime state (logs, sockets,
@@ -45,9 +52,9 @@ import home-manager as a NixOS module. See `nixos/CLAUDE.md` for the full host-s
 
 ## Active Services (seita-nixos-baremetal)
 
-See `nixos/CLAUDE.md` for the authoritative, up-to-date list — it covers Ollama, ComfyUI, Open
-WebUI, Home Assistant, Grafana/monitoring, Multica, OpenViking, n8n, Discord bot, Tailscale
-Serve/Funnel, and more, along with the module responsible for each.
+See `seita-nixos-baremetal/CLAUDE.md` for the authoritative, up-to-date list — it covers Ollama,
+ComfyUI, Open WebUI, Home Assistant, Grafana/monitoring, Multica, OpenViking, n8n, Discord bot,
+Tailscale Serve/Funnel, and more, along with the module responsible for each.
 
 ## Git Conventions
 
