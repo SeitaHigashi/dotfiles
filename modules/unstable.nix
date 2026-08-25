@@ -52,6 +52,10 @@ let
     # 経由させています。プロバイダ設定は ~/.config/opencode/opencode.json
     # (このリポジトリの管理外、ユーザーのホームディレクトリ直下) 側です。
     opencode
+
+    # Node.js 最新版。OpenViking を Claude Code と MCP 経由で連携するのに使う
+    # (npx でサーバーを起動する用途)。stable 25.05 は 22.x 止まりなので unstable から。
+    nodejs
   ];
 in
 {

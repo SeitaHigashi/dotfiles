@@ -67,6 +67,7 @@
         ./modules/n8n.nix              # ワークフロー自動化 (unstable 追従)
         ./modules/comfyui.nix          # 画像生成 (ComfyUI, comfy-cli 経由の venv)
         ./modules/multica.nix          # Multica (AI エージェント管理) を podman で自前ホスト
+        ./modules/openviking.nix       # OpenViking (AI エージェント向けコンテキスト DB) を podman で自前ホスト
         ./modules/reverse-proxy.nix    # Tailscale Serve で HTTP サービスを集約
         ./modules/resource-priority.nix # サービス間の CPU / メモリ優先度
         ./modules/discord-bot.nix      # Discord Gateway ボット -> n8n webhook

@@ -8,13 +8,14 @@
 #   2. ブラウザからのチャットとコード補助 (Open WebUI, 8080)
 #
 # このホストの制約 (modules/gpu.nix も参照):
-#     GPU 0  GTX 1660 SUPER  6 GiB  sm_75  PCIe x4  (プロジェクター投影時は X とも共用)
-#     GPU 1  RTX 3060 Ti     8 GiB  sm_86  PCIe x8
+#     GPU 0  GTX 1660 SUPER  6 GiB  sm_75  PCIe x4
+#     GPU 1  RTX 3060 Ti     8 GiB  sm_86  PCIe x8  (プロジェクター投影時は X とも共用)
 #   合計 VRAM (0+1) 14 GiB (ollama から見える実効値は 13.3 GiB)。
-#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (PCI bus 04/07 の順)。
-#   2026-08-11 に表示専任の GT1030 を bus 05 へ増設し、PCI bus 07 の 3060 Ti が
-#   index 1 から 2 へ繰り下がったことがあったが、2026-08-12 に GT1030 を撤去
-#   (HDMI は 1660 SUPER に繋ぎ変え) したため index 1 = 3060 Ti に戻っている。
+#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (PCI bus 04/06 の順)。
+#   2026-08-11 に表示専任の GT1030 を bus 05 へ増設し、PCI bus 06 の 3060 Ti が
+#   index 1 から 2 へ繰り下がったことがあったが、2026-08-12 に GT1030 を撤去した
+#   ため index 1 = 3060 Ti に戻っている (投影用 HDMI の接続先は 2026-08-12 に
+#   1660 SUPER、2026-08-25 に 3060 Ti へ繋ぎ変えたが、index には影響しない)。
 #   CPU は Ryzen 3 3300X (4C/8T)。RAM 46 GiB のうち ZFS ARC に 16 GiB、
 #   Minecraft のヒープに 8 GiB を既に割り当てているため、CPU オフロードに
 #   使える余地は 20 GiB 程度です。
@@ -110,7 +111,7 @@ in
       #   CUDA ランタイムは既定では PCI バス順ではなく「速い GPU が先」の
       #   FASTEST_FIRST 順で番号を振ります。実機で確認した既定順序:
       #     0 = RTX 3060 Ti, 1 = GTX 1660 SUPER
-      #   これを明示的に PCI バス順 (bus 04/07 = 1660 SUPER/3060 Ti) に
+      #   これを明示的に PCI バス順 (bus 04/06 = 1660 SUPER/3060 Ti) に
       #   固定しないと、下の "1,0" は意図しない組み合わせを指してしまい
       #   1660 SUPER が一切使われません (2026-08-12 に GT1030 増設時に実機で
       #   踏みました。modules/comfyui.nix には設定済みでしたが ollama 側だけ
@@ -163,7 +164,12 @@ in
     loadModels = [
       "qwen2.5-coder:7b" # コード補助。Q4 で ~4.7 GiB、3060 Ti 単体にも載る
       "gemma4:12b"        # 汎用チャット
-      "nomic-embed-text" # 埋め込み / RAG 用。~0.3 GiB と軽い
+      "nomic-embed-text" # Open WebUI の RAG_EMBEDDING_MODEL 用。~0.3 GiB と軽い
+      "moondream"         # OpenViking (modules/openviking.nix) の VLM 用。~1.7 GiB と軽量
+      "qwen3-embedding:4b" # OpenViking の embedding 用。Matryoshka 学習済みで
+                            # dimensions パラメータにより出力次元を落とせるため、
+                            # イメージ同梱のブートストラップコレクションが期待する
+                            # 2048 次元に合わせられる。Q4_K_M で ~2.5 GiB
     ];
 
     # 新しい nixpkgs にある services.ollama.syncModels (宣言外のモデルを

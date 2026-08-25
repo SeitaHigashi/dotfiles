@@ -58,6 +58,7 @@ nix flake update
 | `modules/ollama.nix` | `services.ollama` (ollama-cuda) + open-webui。どちらも unstable 追従 (open-webui は `package` オプションで指定、overlay 不要) |
 | `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
 | `modules/multica.nix` | Multica (AI エージェント管理ワークスペース) を podman 3 コンテナ (postgres/backend/frontend) で自前ホスト。秘密情報は agenix (`secrets/multica-env.age`) |
+| `modules/openviking.nix` | OpenViking (AI エージェント向けコンテキスト DB) を podman 1 コンテナで自前ホスト。埋め込み/VLM は ollama を OpenAI 互換で利用、`--network=host` + tailscale0 直結 (11434 と同じ方式)。秘密情報は agenix (`secrets/openviking-root-api-key.age`) |
 | `modules/reverse-proxy.nix` | Tailscale Serve で HTTP サービスを 1 つの HTTPS 入口に集約。振り分け表 (`routes`) と、前段プロキシに追随させる各サービスの URL 設定をここに集約 |
 | `modules/alerting.nix` | Grafana のアラートルール・通知先・通知ポリシー。provisioning なので UI からは編集不可、git が唯一の正 |
 | `modules/resource-priority.nix` | サービス間の CPU / メモリ優先度 (cgroup v2)。重みは相対値なのでここに集約 |
@@ -155,6 +156,19 @@ Claude Code から Grafana を読むために `mcp-grafana` (Grafana Labs 公式
 
 ## 触るときの注意
 
+- **`disko/default.nix` に新しいデータセットを追加しただけでは、稼働中システムでは実体化されません。**
+  disko がデータセットを実際に `zfs create` するのはインストール時 (`disko --mode disko`) だけで、
+  `nixos-rebuild switch` は `fileSystems`/mount unit を生成するだけです。宣言だけして switch すると、
+  対応する `<mountpoint>.mount` が「データセットが存在しない」で失敗し、`local-fs.target` の依存失敗で
+  **emergency mode に落ちてブート不能になります** (2026-08-25 に openviking 追加時に実機で発生)。
+  switch 前に、宣言した `fsDataset` の `options` と同じ内容で手動 `zfs create` を実行しておくこと。例:
+  `sudo zfs create -p -o mountpoint=legacy -o com.sun:auto-snapshot=false dpool/var/lib/openviking`
+  (`-p` で `var`/`var/lib` のような中間データセットも自動生成される)。
+  さらに、**rpool/dpool 配下に新しいマウントを追加する switch は、その pool の import service
+  (`zfs-import-<pool>.service`) の再起動を誘発し、同じ pool 上の全マウントを巻き添えで
+  アンマウントします。**`/home` も対象なら、SSH ログインセッションが `/home` を使用中のため
+  巻き添えでセッションごと切断されます (同日実機で確認)。可能なら物理コンソールか `tmux` 越しに
+  switch を実行すること。
 - **`special` vdev を SSD 1台で dpool に足さない** — SSD が死ぬと HDD ミラーごと全損します。
 - `networking.hostId` はインストール後に変更しないこと (ZFS のプール識別に使われます)。
 - `system.stateVersion = "25.05"` は上げない。

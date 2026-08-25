@@ -378,6 +378,18 @@ in
           "comfyui" =
             fsDataset "/var/lib/comfyui" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
 
+          # OpenViking (modules/openviking.nix) のワークスペース/ベクトル DB 置き場。
+          #
+          # dpool は mirror (RAID1) で冗長性があるため、ComfyUI と同じく
+          # notSnapshotted (バックアップ用のスナップショット層は不要というユーザー判断)。
+          #
+          # SMR (ST4000DM004) の注意点: Minecraft は同じ HDD 上で頻繁な小書き込みが
+          # 60 秒超ブロックし watchdog に落とされた実績があるが (上の srv/minecraft の
+          # コメント参照)、OpenViking はリアルタイム watchdog を持つゲームサーバーでは
+          # なくセッション後の非同期書き込みが中心と見て、ComfyUI 同様ここに置く。
+          # 実運用で書き込みが詰まるようなら rpool 側への移設を検討すること。
+          "var/lib/openviking" = fsDataset "/var/lib/openviking" notSnapshotted;
+
           # rpool の複製先 (modules/replication.nix)。
           #
           # rpool は single vdev で冗長性が無いため、SSD が死ぬとシステムが

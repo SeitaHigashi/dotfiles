@@ -34,17 +34,23 @@
 #
 # GPU 割り当てと VRAM 衝突ガード:
 #   GPU1 (RTX 3060 Ti, 8GiB, FP16 テンソルコアあり) に固定します。
-#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (bus 04/07) です。
+#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (bus 04/06) です。
 #   2026-08-11 に GT1030 を bus 05 (表示専任) へ増設した際は 3060 Ti の
-#   index が 1 から 2 に繰り下がっていましたが、2026-08-12 に GT1030 を撤去
-#   (HDMI は 1660 SUPER に繋ぎ変え、modules/desktop.nix) したため index 1 に
-#   戻っています。
+#   index が 1 から 2 に繰り下がっていましたが、2026-08-12 に GT1030 を撤去した
+#   ため index 1 に戻っています。
 #   ollama もこの GPU を優先的に使います (modules/ollama.nix の
 #   CUDA_VISIBLE_DEVICES="1,0")。VRAM を分離する仕組みがこのホストには
 #   無いため、同時に重い処理が走ると CUDA out of memory どころか
 #   NVIDIA ドライバの Xid エラーで GPU ごと wedge し、そのGPUを使う
 #   全プロセスが固まる (最悪サーバ全体のハングに近い症状になる) リスクが
-#   あります。「衝突するくらいなら Comfy を止める」方針で:
+#   あります。
+#
+#   **2026-08-25 にプロジェクター投影用の HDMI もこのカードへ繋ぎ変えました**
+#   (1660 SUPER → 3060 Ti、modules/desktop.nix)。投影中は X (Xorg) の VRAM
+#   消費もこの GPU に乗るため、ollama/Comfy との衝突リスクが従来より上がって
+#   います。下記ガードは使用率ベースのチェックなので X の消費分も検知は
+#   しますが、閾値に達しやすくなる点は変わりません。「衝突するくらいなら
+#   Comfy を止める」方針で:
 #
 #     - comfyui-vram-guard (pre-start): 起動前に GPU1 (3060 Ti) の使用率を見て、
 #       既に高ければ起動を拒否する (ollama がロード中なら Comfy は動かさない)。
@@ -75,7 +81,7 @@
 let
   port = 8188;
   stateDir = "/var/lib/comfyui";
-  gpuIndex = "1"; # RTX 3060 Ti (GT1030 撤去により index 2→1 に戻った。modules/gpu.nix 参照)
+  gpuIndex = "1"; # RTX 3060 Ti (GT1030 撤去により index 2→1 に戻った。投影用 HDMI も同カード、modules/gpu.nix 参照)
 
   # VRAM 使用率のしきい値 (%)。ヒステリシスで境界値付近のフラッピングを防ぐ。
   startBlockPct = 85; # 起動前チェック: これ以上なら起動を拒否

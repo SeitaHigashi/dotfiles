@@ -9,8 +9,10 @@
 # GPU の切り分け方針:
 #   表示専任として GT1030 (Pascal) を増設していましたが 2026-08-12 に撤去し、
 #   プロジェクターの HDMI は 1660 SUPER (bus 4, Ollama/ComfyUI の計算にも
-#   使っているカード) に繋ぎ変えました。したがって投影中は 1660 SUPER の
-#   VRAM と演算を X (Xorg) とも取り合います (modules/gpu.nix 参照)。
+#   使っているカード) に繋いでいましたが、2026-08-25 に 3060 Ti (bus 6,
+#   ComfyUI が計算専任で固定しているカード) へ繋ぎ変えました。したがって
+#   投影中は 3060 Ti の VRAM と演算を X (Xorg) とも取り合います
+#   (modules/gpu.nix、modules/comfyui.nix 参照)。
 #   2 枚とも NVIDIA なので services.xserver.videoDrivers = [ "nvidia" ]
 #   (modules/gpu.nix) がそのままドライバをカバーしますが、何も指定しないと
 #   Xorg がどのカードで起動するか不定なため、BusID を明示しています
@@ -48,12 +50,13 @@
   # HDMI 出力先カードの固定
   #
   # 実機の /sys/bus/pci/devices/*/uevent (PCI_SLOT_NAME) で確認した
-  # 1660 SUPER の PCI アドレスは 0000:04:00.0 (bus 4, device 0, function 0)。
-  # GT1030 撤去 (2026-08-12) に伴い、投影用の HDMI をこのカードに繋ぎ変えた。
-  # 3060 Ti (bus 7) は計算専任のまま Xorg には出さない。
+  # 3060 Ti の PCI アドレスは 0000:06:00.0 (bus 6, device 0, function 0)。
+  # 2026-08-25 に投影用の HDMI を 1660 SUPER (bus 4) からこのカードへ
+  # 繋ぎ変えた (/sys/class/drm/card*/status で connected を確認)。
+  # 1660 SUPER は計算専任になり、Xorg には出さない。
   ############################################################################
   services.xserver.deviceSection = ''
-    BusID "PCI:4:0:0"
+    BusID "PCI:6:0:0"
   '';
 
   ############################################################################
