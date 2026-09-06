@@ -53,6 +53,13 @@ let
   # 上書きすると既定 PATH の定義と conflicting definition で評価エラーになる
   # ため使わない (2026-08-30 実機確認)。
   userNixProfile = "/home/${m.userName}/.nix-profile";
+
+  # claude CLI が呼ぶ SessionEnd フック (session-end.mjs) が node を要求するが、
+  # node は home-manager 経由 (/etc/profiles/per-user/<user>) で入っており
+  # ~/.nix-profile には無い。上と同じ理由でこのユニットの PATH にも足す必要が
+  # あり、無いと "node: command not found" がフック失敗として毎回ログに出る
+  # (2026-08-30 に実機の journal で確認)。
+  userHomeManagerProfile = "/etc/profiles/per-user/${m.userName}";
 in
 {
   ############################################################################
@@ -65,7 +72,7 @@ in
     wants = [ "nvidia-persistenced.service" ];
     wantedBy = [ "multi-user.target" ];
 
-    path = [ userNixProfile ];
+    path = [ userNixProfile userHomeManagerProfile ];
 
     serviceConfig = {
       Type = "simple";

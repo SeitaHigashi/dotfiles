@@ -96,6 +96,15 @@ let
     (p: ''nixos_installed_package_info{name="${p.name}",version="${p.version}"} 1'')
     packages;
 
+  # Repology 問い合わせは name だけがラベルなので、同じ pname が違う version で
+  # 複数回 systemPackages に現れると (実測: fuse 2.9.9 と fuse 3.16.2 が両方入る)
+  # 同一ラベルの metric を2回吐いて node_exporter 側で
+  # "collected metric ... was collected before with the same name and label
+  # values" エラーになる (2026-09-06 に実機の journal で確認、30秒おきに
+  # 無限に出続けていた)。name 単位で先勝ちさせて1回だけ問い合わせる。
+  packagesByName = lib.attrValues
+    (lib.foldl' (acc: p: acc // { ${p.name} = acc.${p.name} or p; }) { } packages);
+
   packagesProm = pkgs.writeText "nixos-packages.prom" ''
     # HELP nixos_installed_package_info environment.systemPackages に列挙されているパッケージ (値は常に1)
     # TYPE nixos_installed_package_info gauge
@@ -109,7 +118,7 @@ let
   # unstable 由来のパッケージは nix_unstable、それ以外は stableRepologyRepo と
   # 比較先が変わるので、行ごとに持たせる。
   packageNamesVersionsTsv = pkgs.writeText "nixos-package-names-versions.tsv"
-    (lib.concatMapStringsSep "\n" (p: "${p.name}\t${p.version}\t${p.repologyRepo}") packages);
+    (lib.concatMapStringsSep "\n" (p: "${p.name}\t${p.version}\t${p.repologyRepo}") packagesByName);
 
   # flake.lock の nixpkgs (stable) / nixpkgs-unstable の revision。
   # machine.nix と同じく「値の置き場は1つ」の原則に従い、ここでも読み直さず

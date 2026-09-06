@@ -198,6 +198,14 @@ in
         };
         replication_factor = 1;
         ring.kvstore.store = "inmemory";
+        # 単一バイナリなので querier <-> query-scheduler 等の内部通信は本来
+        # ホスト内で完結してよいが、instance_addr を明示しないと Loki が
+        # デフォルトルートの NIC アドレス (= このホストの LAN 静的 IP,
+        # machine.nix の staticAddress) を自己アドレスとして ring に登録し、
+        # 自分自身への gRPC (9095) をわざわざ LAN 経由で発信する。
+        # LAN 側が瞬断すると "network is unreachable" で失敗し続けていた
+        # (2026-09-02 に実機の journal で確認)。ループバックに固定して回避する。
+        instance_addr = "127.0.0.1";
       };
 
       schema_config.configs = [

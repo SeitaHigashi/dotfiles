@@ -361,8 +361,14 @@ with open(path, "w") as f:
   systemd.services.comfyui-vram-guard = {
     description = "Stop comfyui if GPU VRAM contention risks a driver hang";
     partOf = [ "comfyui.service" ];
+    # RemainAfterExit: このユニットは oneshot で 30秒ごとにタイマー起動されるだけ
+    # だが、これが無いと実行完了直後に cgroup が消え、次に呼ばれるまでの間
+    # cadvisor が /sys/fs/cgroup/.../comfyui-vram-guard.service を読もうとして
+    # "no such device" の警告を出し続けていた (2026-09-06 に実機の journal で確認)。
+    # active (exited) のまま維持して cgroup を存続させることで解消する。
     serviceConfig = {
       Type = "oneshot";
+      RemainAfterExit = true;
       ExecStart = "${vramGuard}/bin/comfyui-vram-guard watch";
     };
   };

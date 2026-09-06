@@ -14,9 +14,23 @@
 # 埋め込み/VLM モデル:
 #   外部 API キーを使わず、このホストの services.ollama (modules/ollama.nix) を
 #   OpenAI 互換バックエンドとして使います。embedding は qwen3-embedding:4b、
-#   vlm は qwen3.5:9b、query_planner は guoxuter/ov_intent_analysis_sft:v7_q8 —
+#   vlm と query_planner はどちらも qwen3.5:9b (同一モデルを共用) —
 #   いずれも modules/ollama.nix の loadModels に追加済みです。ollama は認証を
 #   持たないため api_key はダミー値で構いません。
+#
+#   query_planner に専用モデル guoxuter/ov_intent_analysis_sft:v7_q8 (~0.8B)
+#   を割り当てていた時期がありましたが、8GB VRAM (3060 Ti) に embedding
+#   (qwen3-embedding:4b, ~4GB) + vlm (qwen3.5:9b, ~5.4GB) + query_planner
+#   の3モデルが同時に収まりきらず、OLLAMA_MAX_LOADED_MODELS=2 の上限も相まって
+#   リクエストのたびにモデルの evict/再ロードが発生していました
+#   (実機の journalctl -u ollama で数分おきの "loading model via llama-server"
+#   と "cudaMalloc failed: out of memory" を確認、2026-09-06)。再ロード待ちが
+#   OpenViking 側の HTTP タイムアウトを超え、記憶抽出 (extract_loop) とクエリ
+#   拡張の両方が定期的に失敗していたため、query_planner を vlm と同じ
+#   qwen3.5:9b に統一し常駐モデルを2つ (embedding + vlm) に減らして解消。
+#   guoxuter モデルを query_planner 専用に充てる案は、公式ドキュメントが
+#   「4B 未満の VLM は記憶抽出に失敗する」と明記している最低ラインを
+#   guoxuter (~0.8B) が大きく下回るため、vlm 役としての転用も不可。
 #
 #   embedding だけ dimension を明示しています。イメージ同梱のブートストラップ
 #   コレクションが 2048 次元を前提にしており (実機で "Dense vector dimension
@@ -51,13 +65,6 @@
 #   いる。なお画像パーサ (ImageConfig.enable_vlm) もこの同じ vlm を使うため、
 #   moondream からの切り替えで画像理解の特性が変わる点はトレードオフとして
 #   残ります。
-#
-#   query_planner は取得意図解析/クエリ展開専用の軽量モデルで、未設定なら
-#   vlm にフォールバックします (実機のログで見た "Query expansion failed"
-#   もこのフォールバック経路)。OpenViking 公式がこの用途向けにファイン
-#   チューンした guoxuter/ov_intent_analysis_sft:v7_q8 (~0.8B) を明示的に
-#   充てることで、クエリ展開のたびに重い vlm (qwen3.5:9b) を起動せずに
-#   済みます。
 #
 # 公開範囲:
 #   Tailscale Serve のサブパス越しにはせず、Ollama (11434) と同じパターンで
@@ -150,7 +157,11 @@ let
       provider = "openai";
       api_base = ollamaBaseUrl;
       api_key = "ollama";
-      model = "guoxuter/ov_intent_analysis_sft:v7_q8";
+      model = "qwen3.5:9b"; # vlm と同じモデルに統一 (下記コメント参照)。
+      # think=false は vlm と同じ理由 (provider="openai" 経由だと Ollama 向けの
+      # think 既定値注入が効かない) で明示指定。num_ctx はクエリ展開の
+      # プロンプトが短いため既定のままで問題ない。
+      extra_request_body = { think = false; };
     };
   });
 in

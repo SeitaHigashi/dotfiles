@@ -156,8 +156,13 @@ in
       # 使用量を見ながら調整してください。num_ctx をさらに大きい値
       # (163840 など) にすると同時ロードで容易に cudaMalloc OOM します
       # (gemma4:12b-163k で実機確認済み — modules/openviking.nix のコメント参照)。
-      # query_planner (~0.8B) は稀な呼び出しなので、3 本目として溢れた分は
-      # 都度スワップされても実害は小さいと判断しています。
+      # query_planner は vlm (qwen3.5:9b) と同一モデルを共用しており
+      # (modules/openviking.nix 参照)、常駐が必要なのは embedding と vlm の
+      # 2 本だけなのでこの上限で足ります。以前 query_planner に専用の軽量
+      # モデル (guoxuter/ov_intent_analysis_sft) を充てていた際は常駐 3 本目
+      # として毎回スワップが発生し、再ロード待ちが OpenViking 側のタイムアウトを
+      # 超えて記憶抽出/クエリ拡張が失敗する事故になったため元に戻しています
+      # (2026-09-06、modules/openviking.nix のコメント参照)。
       OLLAMA_MAX_LOADED_MODELS = "2";
 
       # 4C/8T なので同時リクエストも絞る。
@@ -192,10 +197,12 @@ in
                             # dimensions パラメータにより出力次元を落とせるため、
                             # イメージ同梱のブートストラップコレクションが期待する
                             # 2048 次元に合わせられる。Q4_K_M で ~2.5 GiB
-      "guoxuter/ov_intent_analysis_sft:v7_q8" # OpenViking の query_planner 用。
-                            # クエリ意図解析にファインチューン済みの専用軽量
-                            # モデル (~0.8B)。未設定だと vlm (qwen3.5:9b) に
-                            # フォールバックし毎回重いモデルを起動してしまう
+      # guoxuter/ov_intent_analysis_sft:v7_q8 (旧 query_planner 専用モデル) は
+      # 2026-09-06 に削除。8GB VRAM に embedding+vlm+これの3本が同時に収まらず
+      # 常時スワップで記憶抽出/クエリ拡張がタイムアウトしていたため、
+      # query_planner を vlm (qwen3.5:9b) と共用に変更した (modules/openviking.nix
+      # 参照)。手動 pull 済みのモデルはここから消しても自動では消えないため、
+      # 不要なら `ollama rm guoxuter/ov_intent_analysis_sft:v7_q8` で手動削除する。
     ];
 
     # 新しい nixpkgs にある services.ollama.syncModels (宣言外のモデルを
