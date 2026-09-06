@@ -31,9 +31,25 @@
       url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # ユーザー環境 (dotfiles/home-manager/home.nix) を NixOS モジュールとして
+    # 取り込む。nixos/ (mac/wsl) と同じパターン (../home-manager/home.nix を
+    # そのまま import) で、home-manager/ 自体は独立した standalone flake の
+    # ままなので `home-manager switch --flake ./home-manager` でも別途使える。
+    # home-manager は system と同じ stable (nixos-25.05) 系列の release-25.05
+    # ブランチに固定する。master (unstable 前提) を stable nixpkgs と組み合わせると
+    # home-manager モジュール内部が要求する lib が stable 側に無くて評価エラーになる
+    # ため (2026-08-29 実機確認)。unstable の個別パッケージが home-manager 側で
+    # 欲しい場合は modules/unstable.nix と同じ pkgs.unstable overlay 経由で使う
+    # (useGlobalPkgs = true にしてあるので home.nix からも pkgs.unstable.<name> が
+    # そのまま参照できる)。
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, disko, agenix, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, disko, agenix, home-manager, ... }@inputs:
   let
     # 構成名をホスト名と一致させる。
     # nixos-rebuild は --flake に属性名を省略すると、実行中マシンの
@@ -61,6 +77,7 @@
         ./modules/desktop.nix          # KDE Plasma (X11) — プロジェクター投影用
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
         ./modules/zfs-snapshot-metrics.nix # スナップショット / 複製状況のメトリクス
+        ./modules/gpu-xid-metrics.nix  # NVIDIA Xid (GPU fallen off the bus 等) のメトリクス
         ./modules/nix-info.nix         # インストール済みパッケージ一覧 / Hydra ビルド状況のメトリクス
         ./modules/alerting.nix         # Grafana のアラート (通知は n8n Webhook)
         ./modules/ollama.nix           # ローカル LLM (Ollama + Open WebUI)
@@ -71,6 +88,15 @@
         ./modules/reverse-proxy.nix    # Tailscale Serve で HTTP サービスを集約
         ./modules/resource-priority.nix # サービス間の CPU / メモリ優先度
         ./modules/discord-bot.nix      # Discord Gateway ボット -> n8n webhook
+        ./modules/fukurou.nix          # fukurou (音声対話ループ、~/fukurou) の systemd 化
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.seita = import ../home-manager/home.nix;
+          home-manager.extraSpecialArgs = { inherit inputs; };
+          home-manager.backupFileExtension = "backup";
+        }
       ];
     };
   };

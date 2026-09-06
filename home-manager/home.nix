@@ -32,7 +32,10 @@
     pkgs.wget
     pkgs.python3
     pkgs.jq
-    pkgs.rtk
+    # rtk は stable nixpkgs にまだ無いので、pkgs.unstable overlay がある環境
+    # (seita-nixos-baremetal/modules/unstable.nix) ではそちらから、無ければ
+    # (mac/wsl の nixos/ は元から unstable 全体を使っている) pkgs から直接。
+    (if pkgs ? unstable then pkgs.unstable.rtk else pkgs.rtk)
     pkgs.bottom
   ];
 
@@ -48,21 +51,16 @@
       # package = pkgs.nightfox-gtk-theme;
       # name = "Nightfox-Dark-hdpi";
     };
-    gtk4.theme = null;
   };
 
   imports = [ ./wm/hyprland.nix ];
 
   programs.git = {
     enable = true;
-    settings = {
-      init = {
-        defaultBranch = "main";
-      };
-      user = {
-        name = "Seita Higashi";
-        email = "higashi110902@gmail.com";
-      };
+    userName = "Seita Higashi";
+    userEmail = "higashi110902@gmail.com";
+    extraConfig = {
+      init.defaultBranch = "main";
     };
   };
 
