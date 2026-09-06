@@ -146,9 +146,19 @@ in
       # 常駐とスケジューリング
       ########################################################################
 
-      # 14 GiB しかないので、モデルの同時ロードは 1 本に固定。
-      # 複数ロードを許すと VRAM を奪い合ってロードとアンロードが往復します。
-      OLLAMA_MAX_LOADED_MODELS = "1";
+      # OpenViking (modules/openviking.nix) が embedding (qwen3-embedding:4b,
+      # 実測 ~4.5-4.7GB 常駐) と vlm (qwen3.5:9b, ~6.6GB) を交互に呼ぶため、
+      # 1 本固定だとリクエストのたびにロード/アンロードが往復し「slow call」の
+      # 異常な遅延 (実機で duration_ms=5000〜16000 を確認) を引き起こします。
+      # 合計 ~11.1GB は実効 VRAM 13.3GiB に収まる想定ですが、vlm 側の
+      # num_ctx=16384 (modules/openviking.nix の vlm.extra_request_body 参照)
+      # 分の KV キャッシュも上乗せされるため、ここは実機の ollama ps / GPU
+      # 使用量を見ながら調整してください。num_ctx をさらに大きい値
+      # (163840 など) にすると同時ロードで容易に cudaMalloc OOM します
+      # (gemma4:12b-163k で実機確認済み — modules/openviking.nix のコメント参照)。
+      # query_planner (~0.8B) は稀な呼び出しなので、3 本目として溢れた分は
+      # 都度スワップされても実害は小さいと判断しています。
+      OLLAMA_MAX_LOADED_MODELS = "2";
 
       # 4C/8T なので同時リクエストも絞る。
       # 並列を上げると KV キャッシュの分だけ VRAM も余計に食います。
@@ -163,13 +173,29 @@ in
     # 初回の rebuild ではここのダウンロード (計 15 GiB 程度) が走ります。
     loadModels = [
       "qwen2.5-coder:7b" # コード補助。Q4 で ~4.7 GiB、3060 Ti 単体にも載る
-      "gemma4:12b"        # 汎用チャット
+      "gemma4:12b"        # 汎用チャット (Open WebUI)。以前は OpenViking の vlm
+                          # としても兼用していたが、extract_loop の
+                          # tool_choice="auto" のもとでツール呼び出しの代わりに
+                          # 自然文の要約を返すことがあり (実機確認)、下の
+                          # qwen3.5:9b に切り替えた。Open WebUI 用としては残置。
+      "qwen3.5:9b"        # OpenViking (modules/openviking.nix) の vlm (記憶抽出/
+                          # クエリ拡張/要約などの汎用 LLM) 用。num_ctx は
+                          # openviking 側の extra_request_body で 16384 に
+                          # 指定している (provider="openai" 経由だと litellm
+                          # の "ollama/" プレフィックス判定に乗らず openviking
+                          # 側の num_ctx 自動注入が効かないため、明示指定が必要
+                          # — modules/openviking.nix の vlm コメント参照)。
+                          # tools ケイパビリティを ollama show で確認済み、
+                          # ~6.6 GiB
       "nomic-embed-text" # Open WebUI の RAG_EMBEDDING_MODEL 用。~0.3 GiB と軽い
-      "moondream"         # OpenViking (modules/openviking.nix) の VLM 用。~1.7 GiB と軽量
       "qwen3-embedding:4b" # OpenViking の embedding 用。Matryoshka 学習済みで
                             # dimensions パラメータにより出力次元を落とせるため、
                             # イメージ同梱のブートストラップコレクションが期待する
                             # 2048 次元に合わせられる。Q4_K_M で ~2.5 GiB
+      "guoxuter/ov_intent_analysis_sft:v7_q8" # OpenViking の query_planner 用。
+                            # クエリ意図解析にファインチューン済みの専用軽量
+                            # モデル (~0.8B)。未設定だと vlm (qwen3.5:9b) に
+                            # フォールバックし毎回重いモデルを起動してしまう
     ];
 
     # 新しい nixpkgs にある services.ollama.syncModels (宣言外のモデルを

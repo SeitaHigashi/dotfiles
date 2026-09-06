@@ -14,14 +14,50 @@
 # 埋め込み/VLM モデル:
 #   外部 API キーを使わず、このホストの services.ollama (modules/ollama.nix) を
 #   OpenAI 互換バックエンドとして使います。embedding は qwen3-embedding:4b、
-#   VLM (画像理解) は moondream — どちらも modules/ollama.nix の loadModels に
-#   追加済みです。ollama は認証を持たないため api_key はダミー値で構いません。
+#   vlm は qwen3.5:9b、query_planner は guoxuter/ov_intent_analysis_sft:v7_q8 —
+#   いずれも modules/ollama.nix の loadModels に追加済みです。ollama は認証を
+#   持たないため api_key はダミー値で構いません。
 #
 #   embedding だけ dimension を明示しています。イメージ同梱のブートストラップ
 #   コレクションが 2048 次元を前提にしており (実機で "Dense vector dimension
 #   mismatch: expected 2048, got 768" を確認)、qwen3-embedding は Matryoshka
 #   学習済みで dimensions パラメータによる出力次元の切り詰めに対応しているため、
 #   nomic-embed-text (固定768次元) ではなくこちらを選び 2048 に合わせています。
+#
+#   vlm は名前に反して「画像理解専用」ではなく、記憶抽出 (extract_loop)・
+#   クエリ拡張・L0/L1 の要約生成など OpenViking のほぼ全生成処理が
+#   config.vlm.get_completion_async() 経由で使う汎用 LLM 設定です
+#   (openviking/session/memory/extract_loop.py 等で実機確認)。当初ここに
+#   moondream (1.7B, 視覚特化) を割り当てていたところ、
+#   "LLM returned neither tool calls nor operations" で記憶抽出が
+#   常に失敗していました。公式の openviking_cli/setup_wizard.py に
+#   「qwen3.5:4b 未満の VLM は記憶抽出に失敗する (few-shot 例をそのまま
+#   偽の記憶として複製する)」と明記されており、4B を大きく下回る moondream は
+#   この最低ラインの対象外でした。
+#
+#   4B 以上なら何でもよいわけではなく、次に試した gemma4:12b (12B、embedding
+#   の qwen3-embedding とモデルファミリーを揃える必要はない — 公式プリセットも
+#   32-64GB 帯では qwen3-embedding + gemma4 の組み合わせを推奨) は
+#   num_ctx/think を明示指定してもなお、extract_loop の tool_choice="auto" の
+#   もとでツール呼び出しの代わりに自然文の要約を返すことがあり
+#   ("Failed to parse memory operations ... Expected dict after parsing"
+#   を実機で確認)。3 回のリトライで最終的には帳尻が合うことが多いものの、
+#   1 レコードあたり平均 70 秒前後かかっており (実機で 9 レコード 625 秒)、
+#   ツール呼び出し遵守性が低い分リトライが嵩んでいると見られる。
+#   openviking_cli/setup_wizard.py の VLM プリセットは Qwen 系
+#   (qwen3.5:4b/9b/27b/35b/122b) が主軸で、Gemma は 32-64GB 帯の代替枠
+#   だけだったことを踏まえ、qwen3.5:9b (16-32GB 帯の公式プリセット、
+#   tools ケイパビリティを持つことを ollama show で確認済み) に切り替えて
+#   いる。なお画像パーサ (ImageConfig.enable_vlm) もこの同じ vlm を使うため、
+#   moondream からの切り替えで画像理解の特性が変わる点はトレードオフとして
+#   残ります。
+#
+#   query_planner は取得意図解析/クエリ展開専用の軽量モデルで、未設定なら
+#   vlm にフォールバックします (実機のログで見た "Query expansion failed"
+#   もこのフォールバック経路)。OpenViking 公式がこの用途向けにファイン
+#   チューンした guoxuter/ov_intent_analysis_sft:v7_q8 (~0.8B) を明示的に
+#   充てることで、クエリ展開のたびに重い vlm (qwen3.5:9b) を起動せずに
+#   済みます。
 #
 # 公開範囲:
 #   Tailscale Serve のサブパス越しにはせず、Ollama (11434) と同じパターンで
@@ -89,7 +125,32 @@ let
       provider = "openai";
       api_base = ollamaBaseUrl;
       api_key = "ollama";
-      model = "moondream";
+      model = "qwen3.5:9b";
+      # 上のコメントの通り、ここは provider="openai" 経由 (litellm の
+      # "ollama/" プレフィックス判定を通らない) なので、openviking 側の
+      # num_ctx=16384 自動注入 (litellm_vlm.py の OLLAMA_DEFAULT_NUM_CTX)
+      # が効かず、Ollama の既定コンテキスト長で記憶抽出の長いプロンプトが
+      # 黙って切り詰められる。モデル自体の Modelfile を大コンテキスト用の
+      # 別タグに差し替える (gemma4:12b-163k で一度試した) と、KV キャッシュが
+      # VRAM を圧迫し embedding (qwen3-embedding:4b) との同時ロードで
+      # "cudaMalloc failed: out of memory" を実機で確認したため、
+      # extra_request_body で必要十分な num_ctx を直接指定する方式にしている。
+      #
+      # think=false も同じ理由 (provider="openai" 経由だと litellm_vlm.py の
+      # "ollama/" プレフィックス判定に乗らず、Ollama 向けの think 既定値
+      # 注入も効かない) で明示指定が必要。qwen3.5:9b は thinking ケイパビリ
+      # ティを持つため、無指定だと推論過程のトークンを毎回生成してしまい
+      # (記憶抽出/クエリ拡張のような JSON 構造化出力だけが欲しい用途では
+      # 純粋なオーバーヘッド)、レイテンシと VRAM 上の KV キャッシュ消費が
+      # 余計にかかる。extra_request_body の項目説明にも Ollama 向けの
+      # 例としてそのまま {"think": false} が挙げられている。
+      extra_request_body = { num_ctx = 16384; think = false; };
+    };
+    query_planner = {
+      provider = "openai";
+      api_base = ollamaBaseUrl;
+      api_key = "ollama";
+      model = "guoxuter/ov_intent_analysis_sft:v7_q8";
     };
   });
 in
