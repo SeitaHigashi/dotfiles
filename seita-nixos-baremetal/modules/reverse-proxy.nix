@@ -47,6 +47,11 @@ let
   # Multica の GitHub App Webhook 用 (公開インターネットから到達可能。理由は routes のコメント)
   multicaGithubWebhookUrl = "https://${fqdn}:10000";
 
+  # fukurou-webui だけ別ポート (理由は下の routes のコメント)
+  fukurouWebuiUrl = "https://${fqdn}:9446";
+  # fukurou-server の wss:// 経由の口 (理由は下の routes のコメント)
+  fukurouServerWssUrl = "wss://${fqdn}:9447";
+
   # modules/multica.nix の backendHostPort と同じ値。GitHub Webhook 中継用の
   # nginx (下記) がバックエンドへ転送する先として必要なため、ここでも持つ。
   multicaBackendPort = 8082;
@@ -144,6 +149,23 @@ let
   #   TLS 証明書の秘密情報の置き場が無いことでした。この nginx は TLS を
   #   終端しません (Funnel 側が終端し、平文 HTTP で 127.0.0.1 に転送するだけ)
   #   ので、その制約には抵触しません。
+  #
+  # ★ fukurou-webui も別ポート (9446) のルートにしています ★
+  #   fukurou-webui はページ 1 枚を返すだけの開発用テストサーバで、サブパス
+  #   対応の作り込みは無い (index.html はバイナリに埋め込み)。443/8443 は
+  #   他サービスが占有しているため、ComfyUI/Multica と同じ理由で新しい
+  #   ポートに逃がしている。バックエンドは modules/fukurou.nix で
+  #   127.0.0.1:8765 待ち受けに絞ってあり、ここが唯一の到達経路。
+  #
+  # ★ fukurou-server も wss:// 用にもう 1 本 (9447) 生やしています ★
+  #   fukurou-server 自体は生の WebSocket で TLS 終端は要らない想定
+  #   (modules/fukurou.nix のとおり tailscale0 に ws://:7878 で直結済み) だった
+  #   が、fukurou-webui を https:// (Serve) で配っている以上、ブラウザは
+  #   https のページから ws:// (非暗号化) への接続を mixed content として
+  #   ブロックする。fukurou-webui からの接続専用に wss:// の口をもう1つ
+  #   用意し、webui/index.html 側もページが https のときはこちらを既定値に
+  #   する (2026-08-30 実機で ws:// 接続が失敗することを確認して追加)。
+  #   ws://:7878 直結はブラウザ以外のクライアント用にそのまま残す。
   ############################################################################
   routes = [
     { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
@@ -152,6 +174,8 @@ let
     { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
     { path = null;       httpsPort = 9444;  port = 3001;                          note = "multica-frontend"; }
     { path = null;       httpsPort = 9445;  port = 8082;                          note = "multica-backend"; }
+    { path = null;       httpsPort = 9446;  port = 8765;                          note = "fukurou-webui"; }
+    { path = null;       httpsPort = 9447;  port = 7878;                          note = "fukurou-server (wss、fukurou-webui 用)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (nginx 経由)"; funnel = true; }
   ];
 
@@ -368,7 +392,10 @@ in
   #     ${multicaBackendUrl}/ Multica backend (multica-cli の --server-url)
   #     ${multicaGithubWebhookUrl}/api/webhooks/github
   #                          GitHub App の Webhook URL に設定する値 (公開インターネットから到達可能)
+  #     ${fukurouWebuiUrl}/ fukurou-webui (ブラウザ push-to-talk テストページ)
+  #     ${fukurouServerWssUrl}/ fukurou-server (wss、fukurou-webui からの接続用)
   #     Ollama API は Serve を通しません: http://<tailscale IP>:11434/
+  #     fukurou-server は ws://<tailscale IP>:7878/ にも直結しています (ブラウザ以外のクライアント用)
   #
   #   全部剥がして元に戻す:
   #     flake.nix の modules から ./modules/reverse-proxy.nix を外して rebuild し、

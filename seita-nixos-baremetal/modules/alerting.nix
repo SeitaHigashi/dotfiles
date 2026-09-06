@@ -348,6 +348,39 @@ in
             })
 
             (mkRule {
+              uid = "gpu-reboot-required";
+              title = "GPU が致命的な Xid エラーを出している (要再起動)";
+              # modules/gpu-xid-metrics.nix が出す指標。2026-08-28 に GPU1 が
+              # "fallen off the bus" (Xid 79) で脱落し、ollama が CPU
+              # フォールバックに落ちて OpenViking の summary task が全滅した
+              # 障害を受けて追加。nvidia-gpu-exporter は Xid を出さないため
+              # (README.md 参照)、この指標だけが検知経路。
+              expr = "max by (pci) (gpu_reboot_required)";
+              op = "gt";
+              limit = 0;
+              # 状態ベースの指標 (カウンタではない) で、出た時点で確実に
+              # 致命的なので pending は最短に留める。
+              pending = "1m";
+              severity = "critical";
+              summary = "GPU {{ $labels.pci }} が致命的な Xid エラーを出しています";
+              description = "journalctl -k -g 'NVRM: Xid' で内容を確認し、再起動で復旧するか確認してください (Xid 79 = fallen off the bus 等)。ollama が CPU フォールバックしていないか `ollama ps` の PROCESSOR 列も確認すること。";
+            })
+
+            (mkRule {
+              uid = "gpu-xid-metrics-stale";
+              title = "GPU Xid メトリクスの収集が止まっている";
+              # 2 分間隔のタイマーなので 15 分で異常と見なす。
+              expr = "time() - gpu_xid_metrics_last_run_seconds";
+              op = "gt";
+              limit = 900;
+              pending = "10m";
+              severity = "warning";
+              noData = "Alerting";
+              summary = "gpu-xid-metrics の出力が 15 分以上更新されていません";
+              description = "上の gpu-reboot-required ルールが信用できなくなっています。systemctl status gpu-xid-metrics.timer を確認してください。";
+            })
+
+            (mkRule {
               uid = "systemd-unit-failed";
               title = "systemd ユニットが failed";
               # どのユニットでも拾う網。個別のサービス死活は services グループ側。

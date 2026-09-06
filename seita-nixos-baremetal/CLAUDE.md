@@ -59,6 +59,7 @@ nix flake update
 | `modules/n8n.nix` | ワークフロー自動化。SQLite (`/var/lib/private/n8n`)。overlay で `pkgs.n8n` を unstable に差し替え |
 | `modules/multica.nix` | Multica (AI エージェント管理ワークスペース) を podman 3 コンテナ (postgres/backend/frontend) で自前ホスト。秘密情報は agenix (`secrets/multica-env.age`) |
 | `modules/openviking.nix` | OpenViking (AI エージェント向けコンテキスト DB) を podman 1 コンテナで自前ホスト。埋め込み/VLM は ollama を OpenAI 互換で利用、`--network=host` + tailscale0 直結 (11434 と同じ方式)。秘密情報は agenix (`secrets/openviking-root-api-key.age`) |
+| `modules/fukurou.nix` | fukurou (`~/fukurou`、seita 自前の音声対話ループアプリ) の systemd 化。fukurou-server (WebSocket 7878) は tailscale0 直結、fukurou-webui (127.0.0.1:8765、開発用テストページ) は Tailscale Serve 経由。ビルドはこのモジュールの管轄外 (`~/fukurou` で手動 `cargo build --release`) |
 | `modules/reverse-proxy.nix` | Tailscale Serve で HTTP サービスを 1 つの HTTPS 入口に集約。振り分け表 (`routes`) と、前段プロキシに追随させる各サービスの URL 設定をここに集約 |
 | `modules/alerting.nix` | Grafana のアラートルール・通知先・通知ポリシー。provisioning なので UI からは編集不可、git が唯一の正 |
 | `modules/resource-priority.nix` | サービス間の CPU / メモリ優先度 (cgroup v2)。重みは相対値なのでここに集約 |
