@@ -114,6 +114,14 @@
     shellAliases = {
       rm = "trash-put";
     };
+    # Auto-attach to herdr's "default" persistent session on interactive shell
+    # start, mirroring zellij's attachExistingSession. HERDR_ENV=1 guards
+    # against re-launching from inside a herdr-managed pane.
+    bashrcExtra = ''
+      if [[ -z "''${HERDR_ENV:-}" ]] && [[ $- == *i* ]]; then
+        exec herdr
+      fi
+    '';
   };
 
   programs.starship = {
