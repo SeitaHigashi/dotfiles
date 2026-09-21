@@ -37,6 +37,10 @@
     # (mac/wsl の nixos/ は元から unstable 全体を使っている) pkgs から直接。
     (if pkgs ? unstable then pkgs.unstable.rtk else pkgs.rtk)
     pkgs.bottom
+
+    # herdr は同様に比較的新しいパッケージなので、stable 系の pkgs しか無い環境
+    # (useGlobalPkgs = true の NixOS ホストなど) では pkgs.unstable.herdr を使う。
+    (if pkgs ? unstable then pkgs.unstable.herdr else pkgs.herdr)
   ];
 
   home.sessionVariables = {
@@ -116,10 +120,14 @@
     };
     # Auto-attach to herdr's "default" persistent session on interactive shell
     # start, mirroring zellij's attachExistingSession. HERDR_ENV=1 guards
-    # against re-launching from inside a herdr-managed pane.
+    # against re-launching from inside a herdr-managed pane. Deliberately not
+    # `exec`: if herdr is missing/broken (e.g. mid nix-profile/home-manager
+    # switch), falling through to a normal shell is required, not optional —
+    # `exec herdr` once left an SSH login shell unusable when herdr briefly
+    # wasn't resolvable on PATH.
     bashrcExtra = ''
-      if [[ -z "''${HERDR_ENV:-}" ]] && [[ $- == *i* ]]; then
-        exec herdr
+      if [[ -z "''${HERDR_ENV:-}" ]] && [[ $- == *i* ]] && command -v herdr >/dev/null 2>&1; then
+        herdr
       fi
     '';
   };
