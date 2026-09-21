@@ -136,32 +136,48 @@ let
       # 上のコメントの通り、ここは provider="openai" 経由 (litellm の
       # "ollama/" プレフィックス判定を通らない) なので、openviking 側の
       # num_ctx=16384 自動注入 (litellm_vlm.py の OLLAMA_DEFAULT_NUM_CTX)
-      # が効かず、Ollama の既定コンテキスト長で記憶抽出の長いプロンプトが
-      # 黙って切り詰められる。モデル自体の Modelfile を大コンテキスト用の
+      # が効かない。当初は extra_request_body に num_ctx をトップレベルで
+      # 指定していたが、実機の journalctl -u ollama で `n_ctx_slot = 4096`
+      # (Ollama の既定値) のままなことを確認 (2026-09-07) — Ollama の
+      # OpenAI 互換エンドポイント (/v1/chat/completions) はトップレベルの
+      # num_ctx を無視し、`options.num_ctx` にネストしないと反映されない
+      # (Ollama 本体の既知の挙動)。モデル自体の Modelfile を大コンテキスト用の
       # 別タグに差し替える (gemma4:12b-163k で一度試した) と、KV キャッシュが
       # VRAM を圧迫し embedding (qwen3-embedding:4b) との同時ロードで
-      # "cudaMalloc failed: out of memory" を実機で確認したため、
-      # extra_request_body で必要十分な num_ctx を直接指定する方式にしている。
+      # "cudaMalloc failed: out of memory" を実機で確認しているため、モデル
+      # タグではなく options.num_ctx のネストで必要十分な値を指定する。
       #
       # think=false も同じ理由 (provider="openai" 経由だと litellm_vlm.py の
       # "ollama/" プレフィックス判定に乗らず、Ollama 向けの think 既定値
-      # 注入も効かない) で明示指定が必要。qwen3.5:9b は thinking ケイパビリ
-      # ティを持つため、無指定だと推論過程のトークンを毎回生成してしまい
-      # (記憶抽出/クエリ拡張のような JSON 構造化出力だけが欲しい用途では
-      # 純粋なオーバーヘッド)、レイテンシと VRAM 上の KV キャッシュ消費が
-      # 余計にかかる。extra_request_body の項目説明にも Ollama 向けの
-      # 例としてそのまま {"think": false} が挙げられている。
-      extra_request_body = { num_ctx = 16384; think = false; };
+      # 注入も効かない) で明示指定が必要だが、こちらは num_ctx と違って
+      # ネストしても直らない — Ollama の OpenAI 互換エンドポイントはネイティブの
+      # think パラメータ自体をサポートしておらず、代わりに reasoning_effort
+      # フィールド ("none"/"low"/"medium"/"high") を見る (Ollama 本体の既知の
+      # 挙動)。当初 `reasoning = "none"` (フィールド名を誤認) を指定していたが、
+      # 実機で "json: cannot unmarshal string into Go struct field
+      # ChatCompletionRequest.reasoning of type openai.Reasoning" という 400
+      # エラーで記憶抽出/クエリ拡張が全滅することを確認 (2026-09-08) —
+      # `reasoning` は文字列ではなくオブジェクト型のフィールドで、文字列の
+      # effort 値を渡すフィールド名は `reasoning_effort` が正しい。
+      # think=false のままだと黙って無視され、qwen3.5:9b が thinking
+      # ケイパビリティを持つため毎回推論過程のトークンを生成し続け、
+      # 記憶抽出/クエリ拡張のような JSON 構造化出力だけが欲しい用途では
+      # 数分単位の無駄なレイテンシになる。実機の journalctl -u
+      # podman-openviking で頻発していた openai.APITimeoutError (httpx
+      # ReadTimeout) はこれが主因だったとみられる (2026-09-07 確認、
+      # 該当リクエストの入力トークン数は最大でも 2050 程度で num_ctx=4096 の
+      # 既定値すら超えておらず、context 超過による切り詰めは起きていなかった)。
+      extra_request_body = { options.num_ctx = 16384; reasoning_effort = "none"; };
     };
     query_planner = {
       provider = "openai";
       api_base = ollamaBaseUrl;
       api_key = "ollama";
       model = "qwen3.5:9b"; # vlm と同じモデルに統一 (下記コメント参照)。
-      # think=false は vlm と同じ理由 (provider="openai" 経由だと Ollama 向けの
-      # think 既定値注入が効かない) で明示指定。num_ctx はクエリ展開の
-      # プロンプトが短いため既定のままで問題ない。
-      extra_request_body = { think = false; };
+      # reasoning_effort="none" は vlm と同じ理由 (think=false は Ollama の
+      # OpenAI 互換エンドポイントでは無視される) で明示指定。num_ctx はクエリ
+      # 展開のプロンプトが短いため既定のままで問題ない。
+      extra_request_body = { reasoning_effort = "none"; };
     };
   });
 in
