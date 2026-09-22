@@ -263,7 +263,24 @@ with open(path, "w") as f:
     after = [ "comfyui-setup.service" "nvidia-persistenced.service" ];
     wants = [ "comfyui-setup.service" "nvidia-persistenced.service" "comfyui-vram-guard.timer" ];
     requires = [ "comfyui-setup.service" ];
-    wantedBy = [ "multi-user.target" ];
+
+    ########################################################################
+    # ★ 2026-09-22: 既定では起動しません (wantedBy = []) ★
+    #   3060 Ti (CUDA0) の VRAM を llama.cpp のモデルに明け渡すためです。
+    #   ComfyUI は待機中も 130 MiB を握り続けます (実測)。
+    #
+    #   モジュールごと flake.nix から外していないのは、そうすると
+    #   modules/resource-priority.nix の comfyui.serviceConfig だけが残り、
+    #   ExecStart を持たない壊れたユニットが出力されるためです
+    #   (ollama を止めたときに実際に踏んだ問題。
+    #    modules/resource-priority.nix:101-111 のコメント参照)。
+    #   venv (/var/lib/comfyui) も Tailscale Serve の 9443 もそのままなので、
+    #   使いたくなったら手動起動で戻せます:
+    #     sudo systemctl start comfyui
+    #   常時稼働に戻すときは、ここと下の comfyui-vram-resume.timer の
+    #   wantedBy を両方元に戻してください。
+    ########################################################################
+    wantedBy = [ ];
 
     # comfy launch も comfy-cli 経由で workspace_manager.py (GitPython) を
     # 通るため、setup と同じく git が要る。さらに comfy-cli は launch 時に
@@ -396,7 +413,12 @@ with open(path, "w") as f:
 
   systemd.timers.comfyui-vram-resume = {
     description = "Periodic check to auto-resume comfyui after a guard stop";
-    wantedBy = [ "timers.target" ];
+    # ★ comfyui.service を既定停止にしたのに合わせて、この timer も止めます ★
+    #   30 秒ごとに起きるだけの oneshot で、フラグが無ければ何もしませんが、
+    #   止めた ComfyUI を勝手に起こしうる唯一の経路がここなので、
+    #   経路そのものを塞いでおきます (ガードが立てたフラグが /run に
+    #   残ったまま手で止めた場合など)。
+    wantedBy = [ ];
     timerConfig = {
       OnBootSec = "1min";
       OnUnitActiveSec = "30s";
