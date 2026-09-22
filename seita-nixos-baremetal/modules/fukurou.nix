@@ -32,10 +32,14 @@
 # 自前で dlopen するため、WorkingDirectory が合っていることだけが条件。
 #
 # GPU:
-#   whisper.cpp は Vulkan 経由で ollama/comfyui と同じ GPU を使う
-#   (modules/gpu.nix 参照)。VRAM 衝突ガードは用意していない — 音声対話は
-#   単発の短い推論なので、ollama 同様ロード待ちが起きる程度で済む想定。
-#   問題が出るようなら comfyui-vram-guard 相当の仕組みを検討すること。
+#   whisper.cpp (STT) が Vulkan 経由で GPU を使う (modules/gpu.nix 参照)。
+#   2026-09-22 に GGML_VK_VISIBLE_DEVICES = "1" で GTX 1660 SUPER に固定し、
+#   RTX 3060 Ti を llama.cpp のモデル専用に空けました。CUDA の環境変数では
+#   動かせない理由と、Vulkan のインデックスが nvidia-smi と逆である点は
+#   下の fukurou-server のコメントに書いてあります。
+#   VRAM 衝突ガードは用意していない — 音声対話は単発の短い推論なので、
+#   ロード待ちが起きる程度で済む想定。問題が出るようなら
+#   comfyui-vram-guard 相当の仕組みを検討すること。
 ##############################################################################
 
 let
@@ -73,6 +77,46 @@ in
     wantedBy = [ "multi-user.target" ];
 
     path = [ userNixProfile userHomeManagerProfile ];
+
+    ########################################################################
+    # whisper.cpp (STT) を GTX 1660 SUPER に固定する。
+    #
+    # ★ CUDA の環境変数は効きません ★
+    #   fukurou-server が GPU に触る経路は Vulkan だけです
+    #   (ldd に libvulkan.so.1 のみ、CUDA/cuBLAS はリンクされていない。
+    #    2026-09-22 実機確認)。したがって modules/ollama.nix や
+    #    modules/llama-cpp.nix が使う CUDA_VISIBLE_DEVICES /
+    #    CUDA_DEVICE_ORDER はこのユニットには一切影響しません。
+    #
+    # ggml の Vulkan バックエンド (whisper-rs-sys 0.11.1 同梱の
+    # ggml/src/ggml-vulkan.cpp:2117 "Emulate behavior of
+    # CUDA_VISIBLE_DEVICES for Vulkan") が GGML_VK_VISIBLE_DEVICES を
+    # カンマ区切りのインデックスとして読み、指定が無ければ discrete GPU を
+    # 全部使います。
+    #
+    # ★ インデックスは nvidia-smi の番号ではありません ★
+    #   Vulkan 独自の列挙順で、このホストでは逆になります
+    #   (vulkaninfo --summary で実測、2026-09-22):
+    #     Vulkan 0 = RTX 3060 Ti      (nvidia-smi では 1)
+    #     Vulkan 1 = GTX 1660 SUPER   (nvidia-smi では 0)
+    #     Vulkan 2 = llvmpipe (Mesa のソフトウェア実装、CPU)
+    #   たまたま CUDA の FASTEST_FIRST と同じ並びですが別系統なので、
+    #   「CUDA1 だから 1」という覚え方をしないこと。
+    #
+    # 何のために寄せるか:
+    #   3060 Ti (CUDA0) を llama.cpp のモデル専用にするためです。fukurou は
+    #   待機中も約 478 MiB を握り続けます (実測)。1660 SUPER 側の予算は
+    #   5.7 GiB で、ここに埋め込みプリセットを置く構想があるので
+    #   (modules/llama-cpp.nix 参照)、478 MiB を先に引いて考えてください。
+    #
+    # ★ 未検証: VOICEVOX core の onnxruntime ★
+    #   478 MiB はモデルサイズ (ggml-small.bin = 465 MB) とほぼ一致するので
+    #   whisper.cpp の分と見て矛盾しませんが、onnxruntime が GPU を使って
+    #   いないかは確かめていません。使っていればこの変数では動かせません
+    #   (onnxruntime 側の provider 設定になります)。切り替え後に
+    #   nvidia-smi でカード別の内訳を実測して確認すること。
+    ########################################################################
+    environment.GGML_VK_VISIBLE_DEVICES = "1";
 
     serviceConfig = {
       Type = "simple";
