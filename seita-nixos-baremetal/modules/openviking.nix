@@ -96,7 +96,17 @@ let
 
   rootApiKeyFile = config.age.secrets.openviking-root-api-key.path;
 
-  ollamaBaseUrl = "http://127.0.0.1:11434/v1";
+  # ★ 2026-09-21: Ollama から llama.cpp (modules/llama-cpp.nix) へ移行 ★
+  #   modules/ollama.nix は enable = false になりました。推論のバックエンドは
+  #   llama-server のルーター (127.0.0.1:8888) で、こちらも OpenAI 互換なので
+  #   provider = "openai" のまま api_base とモデル名だけ差し替えます。
+  #   model は Ollama のタグではなく models.ini のプリセット名です。
+  #
+  #   ★ llama-cpp.service は wantedBy = [] の手動起動です ★
+  #     起動していないと OpenViking は /embeddings のリトライループに入ります。
+  #       sudo systemctl start llama-cpp
+  # ollamaBaseUrl = "http://127.0.0.1:11434/v1";
+  inferenceBaseUrl = "http://127.0.0.1:8888/v1";
 
   # ov.conf の非秘密部分。root_api_key だけ oneshot ユニットで差し込みます。
   # provider は "openai" (OpenAI API 互換の一般値、openviking のコンテナイメージ内
@@ -122,17 +132,72 @@ let
     embedding = {
       dense = {
         provider = "openai";
-        api_base = ollamaBaseUrl;
-        api_key = "ollama"; # ollama は認証しないためダミー値
-        model = "qwen3-embedding:4b";
-        dimension = 2048; # ブートストラップコレクションの想定次元に合わせる (上記コメント参照)
+        api_base = inferenceBaseUrl;
+        api_key = "llamacpp"; # llama.cpp も認証しないためダミー値
+        # models.ini の [embedding] プリセット。中身は同じ Qwen3-Embedding-4B
+        # (Q4_K_M) です。以前は 1660 SUPER (CUDA1) に固定していましたが、
+        # 2026-09-22 に CPU 実行 (device = none / ngl = 0) へ移しました
+        # (実測 warm 66 ms/リクエスト)。理由は modules/llama-cpp.nix の
+        # [embedding] プリセットのコメント参照。
+        # model = "qwen3-embedding:4b";
+        model = "embedding";
+        # ★ 2048 のままで正しい。再インデックスは不要 ★
+        #   llama.cpp の /v1/embeddings は dimensions パラメータを無視し、
+        #   Qwen3-Embedding のネイティブな 2560 次元をそのまま返します。
+        #   しかし OpenViking はそもそも dimensions を送っていません —
+        #   openviking 0.4.21 の
+        #   openviking/models/embedder/openai_embedders.py の
+        #   _should_send_dimensions() は provider == "openai" のとき False を
+        #   返し、代わりに _truncate_vector() でクライアント側で切り詰めます。
+        #   よって Ollama 経由のときと同じ 2048 次元のベクトルが得られます。
+        #   実機測定 (2026-09-21): 2560 -> 2048 の切り詰めで言い換え文の
+        #   cosine 類似度は 0.9624 -> 0.9622。Qwen3-Embedding は Matryoshka
+        #   学習済みなので実質的な劣化はありません。
+        dimension = 2048;
       };
+
+      # ★ これが無いと起動しません (2026-09-21 に実機で踏みました) ★
+      #   OpenViking はコレクションのメタデータに次元だけでなく
+      #   provider / model 名も記録しています。model を
+      #   "qwen3-embedding:4b" から "embedding" に変えた時点でメタデータが
+      #   一致しなくなり、起動時に落ちます:
+      #     EmbeddingRebuildRequiredError: Existing collection embedding
+      #     metadata does not match current configuration.
+      #
+      #   このフラグは「次元が変わらず provider/model 名だけが変わった」
+      #   移行のために用意されたものです (openviking 0.4.21 の
+      #   openviking/storage/collection_schemas.py:417-437)。true にすると
+      #   コレクションのメタデータを書き換えたうえで既存ベクトルを維持し、
+      #   警告をログに出して起動を続けます。次元が実際に変わっている場合は
+      #   このフラグがあっても拒否されるので、取り違えても安全側に倒れます。
+      #
+      #   ★ 承知しておくべきリスク ★
+      #     既存ベクトルは Ollama の推論で作られたもので、今後は llama.cpp が
+      #     作ります。モデルの重みは同じ Qwen3-Embedding-4B ですが、実装が
+      #     違うため pooling や正規化の細部でベクトルがずれる可能性は残ります
+      #     (両者を突き合わせた検証はしていません。ollama を止めた後に
+      #      気づいたため、比較する手段が無くなっています)。
+      #     検索の精度が落ちたと感じたら、そのときに再インデックスしてください。
+      #     2026-09-21 時点のユーザー判断は「再インデックスは行うが先送り」。
+      allow_metadata_override = true;
     };
     vlm = {
       provider = "openai";
-      api_base = ollamaBaseUrl;
-      api_key = "ollama";
-      model = "qwen3.5:9b";
+      api_base = inferenceBaseUrl;
+      api_key = "llamacpp";
+      # models.ini の [bonsai] プリセット = Ternary-Bonsai-2-27B (PTQ1_0,
+      # 三値量子化)。3060 Ti 単体、context 16384、実測 33.4-33.8 tok/s。
+      #
+      # ★ ツール呼び出しの遵守性が gemma4:12b より高いことを実測 ★
+      #   下のコメントにある「gemma4 が tool_choice="auto" のもとでツール
+      #   呼び出しの代わりに自然文を返す」問題が、Bonsai では再現しません。
+      #   2026-09-21 の試験: 基礎スイート 21/21、難易度高スイート 25/27
+      #   (ネストスキーマ / 8 ツールからの選択 / 日本語 / tool_choice 強制 /
+      #    並列呼び出し / 逐次チェーン / ツールを呼んではいけない陰性ケース)。
+      #   唯一の弱点は深いネスト (location.room を 3 回中 2 回落とした) なので、
+      #   extract_loop のスキーマが深くネストしている場合はそこを疑うこと。
+      # model = "qwen3.5:9b";
+      model = "bonsai";
       # 上のコメントの通り、ここは provider="openai" 経由 (litellm の
       # "ollama/" プレフィックス判定を通らない) なので、openviking 側の
       # num_ctx=16384 自動注入 (litellm_vlm.py の OLLAMA_DEFAULT_NUM_CTX)
@@ -167,16 +232,32 @@ let
       # ReadTimeout) はこれが主因だったとみられる (2026-09-07 確認、
       # 該当リクエストの入力トークン数は最大でも 2050 程度で num_ctx=4096 の
       # 既定値すら超えておらず、context 超過による切り詰めは起きていなかった)。
-      extra_request_body = { options.num_ctx = 16384; reasoning_effort = "none"; };
+      # ★ 2026-09-21: llama.cpp 移行にあわせて options.num_ctx を削除 ★
+      #   llama.cpp にはリクエスト単位の context 指定がありません。context は
+      #   プリセットごとにサーバー起動時に固定され、[bonsai] は 16384 です —
+      #   つまりここで指定していた値がそのまま実現されています。
+      #   送っても無視されるだけですが、効かない設定を残すと次に読む人が
+      #   「効いている」と誤読するので消します。
+      #
+      #   reasoning_effort = "none" は残します。llama.cpp でも効くことを実機で
+      #   確認 (2026-09-21): 指定なしだと reasoning_content が 133 文字返り、
+      #   "none" だと 0 文字になりました。理由は Ollama のときと異なり、
+      #   llama.cpp は推論部分を常に reasoning_content に分離して返すためです
+      #   (content のパースを壊さない代わり、黙って推論トークンを消費します)。
+      #   なお "high" を指定すると content も reasoning も空で返る事象を
+      #   観測しています。"none" 以外は使わないこと。
+      # extra_request_body = { options.num_ctx = 16384; reasoning_effort = "none"; };
+      extra_request_body = { reasoning_effort = "none"; };
     };
     query_planner = {
       provider = "openai";
-      api_base = ollamaBaseUrl;
-      api_key = "ollama";
-      model = "qwen3.5:9b"; # vlm と同じモデルに統一 (下記コメント参照)。
-      # reasoning_effort="none" は vlm と同じ理由 (think=false は Ollama の
-      # OpenAI 互換エンドポイントでは無視される) で明示指定。num_ctx はクエリ
-      # 展開のプロンプトが短いため既定のままで問題ない。
+      api_base = inferenceBaseUrl;
+      api_key = "llamacpp";
+      # model = "qwen3.5:9b";
+      model = "bonsai"; # vlm と同じプリセットに統一 (下記コメント参照)。
+      # reasoning_effort="none" は vlm と同じ理由で明示指定 (上の vlm の
+      # コメント参照 — llama.cpp でも効くことを実機で確認済み)。num_ctx は
+      # クエリ展開のプロンプトが短いため、そもそも指定不要。
       extra_request_body = { reasoning_effort = "none"; };
     };
   });
