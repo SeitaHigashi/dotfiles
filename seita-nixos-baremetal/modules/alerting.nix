@@ -424,7 +424,24 @@ in
               title = "常駐サービスが止まっている";
               # いずれも Restart 前提の常駐ユニットなので、
               # active でない = 落ちている、と見なして構いません。
-              expr = ''min by (name) (node_systemd_unit_state{state="active",name=~"grafana.service|victoriametrics.service|n8n.service|ollama.service|open-webui.service|tailscaled.service|podman-ftb-evolution.service|podman-mc-monitor.service"})'';
+              #
+              # ★ llama-cpp.service はまだここに入れてはいけません ★
+              #   modules/llama-cpp.nix は wantedBy = [] で、切り替えを決める
+              #   までは手動起動です。ユニット自体は /etc/systemd/system に
+              #   存在するため node_exporter は inactive として値を出し続け、
+              #   この式に足すと「常に発報しているアラート」が 1 本増えます
+              #   (それは他の本物の異常を埋もれさせます)。
+              #   ollama から llama.cpp へ切り替えるときに、
+              #   llama-cpp.service を足して ollama.service を外してください。
+              #
+              # ★ 2026-09-21: ollama.service を外しました ★
+              #   modules/ollama.nix で enable = false にしたため、常に
+              #   inactive になり鳴りっぱなしになるからです。llama-cpp.service
+              #   はまだ足していません — あちらは wantedBy = [] の手動起動で、
+              #   足すと同じ理由で鳴り続けます。llama-cpp を常時起動に
+              #   切り替えた時点で追加してください。
+              #   (元の式: … |n8n.service|ollama.service|open-webui.service| … )
+              expr = ''min by (name) (node_systemd_unit_state{state="active",name=~"grafana.service|victoriametrics.service|n8n.service|open-webui.service|tailscaled.service|podman-ftb-evolution.service|podman-mc-monitor.service"})'';
               op = "lt";
               limit = 1;
               pending = "10m";

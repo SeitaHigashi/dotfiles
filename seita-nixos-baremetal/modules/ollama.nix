@@ -50,7 +50,32 @@ in
   # Ollama 本体
   ############################################################################
   services.ollama = {
-    enable = true;
+    ########################################################################
+    # ★ 2026-09-21: 無効化しました ★
+    #
+    #   modules/llama-cpp.nix (llama.cpp の PrismML フォークのルーター、
+    #   127.0.0.1:8888) へ移行するためです。VRAM は 2 枚で 13.6 GiB しか
+    #   なく、ollama が OpenViking 用に約 4.7 GiB を保持したままだと
+    #   llama.cpp 側は Bonsai (PTQ1_0, 5.6 GiB) をロードできません。
+    #   両方を「定義」はできても「同時に動かす」意味がないため、
+    #   切り替え時に ollama を止めます。
+    #
+    #   下の設定 (loadModels / environmentVariables / port など) は、
+    #   戻せるように残してあります。戻すときは enable の行だけ復活させて
+    #   ください。ただし llama-cpp.service を先に止めること。
+    #
+    #   ★ enable を false にすると一緒に止まるもの ★
+    #     - OpenViking (modules/openviking.nix) の vlm / query_planner /
+    #       embedding。移行先は llama.cpp の bonsai / embedding プリセット。
+    #       ov.conf の api_base を 8888 に向けるまで OpenViking は
+    #       /embeddings のリトライループに入ります。
+    #     - Open WebUI のチャットと RAG (下の RAG_EMBEDDING_ENGINE)。
+    #       接続先は PersistentConfig で DB 側が持っているため、
+    #       Admin Panel → Settings → Connections で手動変更が必要です。
+    #     - n8n の 4 つの HTTP ワークフローと Task Partner Brain。
+    ########################################################################
+    # enable = true;
+    enable = false;
 
     # unstable の CUDA 版を使う。
     #
@@ -212,10 +237,16 @@ in
 
   # GPU が使える状態になってから起動する。
   # nvidia-persistenced が上がっていればドライバは初期化済みです。
-  systemd.services.ollama = {
-    after = [ "nvidia-persistenced.service" ];
-    wants = [ "nvidia-persistenced.service" ];
-  };
+  #
+  # ★ 2026-09-21: 上の enable = false に合わせてコメントアウト ★
+  #   services.ollama.enable = false のとき ollama.service は生成されません。
+  #   ここだけ残すと after/wants しか持たない (ExecStart の無い) ユニットを
+  #   こちらで作ってしまうため、一緒に無効化します。
+  #   enable を戻すときはここも戻すこと。
+  # systemd.services.ollama = {
+  #   after = [ "nvidia-persistenced.service" ];
+  #   wants = [ "nvidia-persistenced.service" ];
+  # };
 
   ############################################################################
   # Open WebUI
