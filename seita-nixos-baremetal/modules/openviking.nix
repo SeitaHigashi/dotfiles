@@ -186,7 +186,7 @@ let
       api_base = inferenceBaseUrl;
       api_key = "llamacpp";
       # models.ini の [bonsai] プリセット = Ternary-Bonsai-2-27B (PTQ1_0,
-      # 三値量子化)。3060 Ti 単体、context 16384、実測 33.4-33.8 tok/s。
+      # 三値量子化)。3060 Ti 単体、context 81920 (KV q4_0)、実測 32.75 tok/s。
       #
       # ★ ツール呼び出しの遵守性が gemma4:12b より高いことを実測 ★
       #   下のコメントにある「gemma4 が tool_choice="auto" のもとでツール
@@ -234,8 +234,9 @@ let
       # 既定値すら超えておらず、context 超過による切り詰めは起きていなかった)。
       # ★ 2026-09-21: llama.cpp 移行にあわせて options.num_ctx を削除 ★
       #   llama.cpp にはリクエスト単位の context 指定がありません。context は
-      #   プリセットごとにサーバー起動時に固定され、[bonsai] は 16384 です —
-      #   つまりここで指定していた値がそのまま実現されています。
+      #   プリセットごとにサーバー起動時に固定されます。[bonsai] は当時
+      #   16384 で、ここで指定していた値がそのまま実現されていました
+      #   (2026-09-22 に 81920 へ拡張済み。正は modules/llama-cpp.nix)。
       #   送っても無視されるだけですが、効かない設定を残すと次に読む人が
       #   「効いている」と誤読するので消します。
       #
