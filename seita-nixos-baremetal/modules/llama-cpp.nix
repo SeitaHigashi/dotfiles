@@ -193,13 +193,15 @@
 #
 #   Pipe のペイロードも Ollama 形式から OpenAI 形式に直す必要があります。
 #   移行作業側と n8n 側が実測で詰めた結果:
-#     - モデル名は ollama のタグではなくプリセット名。
-#       gemma4:12b -> gemma4 (16K) または gemma4-32k (32K)。
+#     - モデル名は ollama のタグではなく llama-swap のモデル ID。
+#       ★ gemma4 系は 2026-09-22 に環境から削除しました ★ 移行先は
+#       bonsai (80K) です。n8n の固定パイプラインと OpenViking は既に
+#       bonsai に移っており (~/seita-n8n-workflows/docs/workflows.md:216、
+#       modules/openviking.nix)、Pipe だけが取り残されています。
 #     - options.temperature -> トップレベルの temperature。
 #     - options.num_ctx に相当するものはありません。context はプリセット
-#       ごとにサーバー起動時に固定されます (だから 32K 版を別プリセットに
-#       しています)。task_num_ctx = 163840 は行き場が無いので、
-#       gemma4-32k を指す形に読み替えてください。
+#       ごとにサーバー起動時に固定されます。task_num_ctx = 163840 は
+#       行き場が無いので捨ててください (bonsai は 80K 固定です)。
 #     - think は不要。llama.cpp は推論部分を常に reasoning_content として
 #       別に返します。
 #     - ★ 構造化出力の罠 ★
@@ -350,9 +352,11 @@ let
   #       index 0 = GTX 1660 SUPER (00000000:04:00.0, 6144 MiB, sm_75)
   #       index 1 = RTX 3060 Ti    (00000000:06:00.0, 8192 MiB, sm_86)
   #     したがって CUDA_VISIBLE_DEVICES は
-  #       "1"   = 3060 Ti のみ    (bonsai 系)
-  #       "0,1" = 2 枚とも        (gemma4 系)
-  #       ""    = GPU を見せない  (埋め込み。CUDA を一切初期化しない)
+  #       "1" = 3060 Ti のみ      (bonsai 系)
+  #       "0" = 1660 SUPER のみ   (埋め込み 2 つ)
+  #     "0,1" (2 枚とも) や "" (GPU を見せない = CUDA を初期化しない) も
+  #     有効です。前者は削除した gemma4 が、後者は CPU 実行時代の埋め込みが
+  #     使っていました。
   #     GPU を載せ替えたらこの対応表を実測し直すこと。
   #
   #   ★ 1660 SUPER には fukurou (whisper.cpp) が約 479 MiB 常駐しています ★
@@ -362,7 +366,6 @@ let
   # ------------------------------------------------------------------------
   ##########################################################################
   bonsaiModel = "${modelsDir}/Ternary-Bonsai-2-27B-gguf/Ternary-Bonsai-2-27B-PTQ1_0.gguf";
-  gemmaDir = "${modelsDir}/gemma-4-12B-it-GGUF";
 
   swapConfig = pkgs.writeText "llama-swap.yaml" ''
     # このファイルは Nix が生成しています。直接編集しないこと
@@ -451,86 +454,40 @@ let
           --top-k 20
 
       # ----------------------------------------------------------------
-      # Gemma 4 12B (ggml-org の標準 GGUF。ollama の blob は独自形式で
-      # 互換レイヤが要るため、ここからは再利用できません)。
+      # 埋め込みは 2 つとも GTX 1660 SUPER (CUDA_VISIBLE_DEVICES=0) です。
       #
-      # ★ 2 枚必要です。1 枚には収まりません ★
-      #   2026-09-22 実測。重みが 7.22 GB (6.72 GiB) あり、1660 SUPER の
-      #   6144 MiB には入りません。-ngl 99 も -ngl 36 も -ngl 30 も
-      #   cudaMalloc failed で落ちます。ngl を指定しなければフォークの
-      #   common_fit_params が空き VRAM に合わせて自動で減らしてくれますが、
-      #   その結果は 20/49 層だけ GPU (CUDA0 3343 MiB / CPU 4546 MiB) で、
-      #     生成 8.13 tok/s、プロンプト処理 14.42 tok/s
-      #   でした。n8n の Task Partner Brain は 13 個のツールスキーマを毎回
-      #   送るので、プロンプト処理 14 tok/s は実用になりません。
-      #   したがって gemma4 は 2 枚使う前提のままにし、起動時に bonsai を
-      #   降ろす (下の matrix を参照) 方針にしています。
-      # ----------------------------------------------------------------
-      "gemma4":
-        name: "Gemma 4 12B (16K)"
-        env:
-          - "CUDA_VISIBLE_DEVICES=0,1"
-        cmd: |
-          ''${server}
-          --model ${gemmaDir}/gemma-4-12B-it-Q4_0.gguf
-          --mmproj ${gemmaDir}/mmproj-gemma-4-12B-it-Q8_0.gguf
-          --jinja
-          -np 1
-          -ngl 99
-          -c 16384
-          --split-mode layer
-
-      # 同じ Gemma 4 を 32K context で。KV を q8_0 に量子化してその分を捻出。
-      # 用途は n8n の Task Partner Brain (13 個のツールスキーマ + 8 ターンの
-      # バッファウィンドウ + システムプロンプト) と、Open WebUI の Pipe
-      # (title_generation / follow_up_generation) で 16K では足りない場合。
-      #
-      # 32768 は 2026-08-11 以前にそのワークフローが実際に動いていた値です。
-      # その後 163840 に引き上げられたのは、num_ctx を変えるたびに ollama が
-      # モデルを再ロードするのを止めるためだけの措置でした — llama.cpp には
-      # 無い問題なので、本来の 32768 に戻してあります。
-      "gemma4-32k":
-        name: "Gemma 4 12B (32K)"
-        env:
-          - "CUDA_VISIBLE_DEVICES=0,1"
-        cmd: |
-          ''${server}
-          --model ${gemmaDir}/gemma-4-12B-it-Q4_0.gguf
-          --mmproj ${gemmaDir}/mmproj-gemma-4-12B-it-Q8_0.gguf
-          --jinja
-          -np 1
-          -ngl 99
-          -c 32768
-          --cache-type-k q8_0
-          --cache-type-v q8_0
-          --split-mode layer
-
-      # ----------------------------------------------------------------
-      # 埋め込みは 2 つとも CPU 実行です。
-      #
-      # ★ CUDA_VISIBLE_DEVICES="" が要点です ★
-      #   -ngl 0 だけでは足りません。ggml は見えているデバイスに CUDA
+      # ★ CUDA_VISIBLE_DEVICES で 3060 Ti を見せないことが要点です ★
+      #   -ngl の値だけでは足りません。ggml は見えているデバイスに CUDA
       #   コンテキストを作るので、bonsai が 410 MiB しか残していない 3060 Ti を
       #   踏みます。カードごと見せないことで、bonsai と完全に無関係になります。
       #   これが「embedding が呼ばれても bonsai が落ちない」ことの実体です
       #   (matrix の sets だけでなく、物理的にも干渉しません)。
       #
-      #   CPU 実行の実測は warm で約 66 ms/リクエスト。1660 SUPER に戻せば
-      #   速くはなりますが、そのカードは gemma4 と fukurou が使うので、
-      #   「常に居られる」ことを優先して CPU のままにしています。
+      #   ★ この GPU 配置は未実測です (2026-09-22) ★
+      #     2026-09-22 に gemma4 を環境から削除し、1660 SUPER が空いたので
+      #     CPU 実行から戻しました。直前の CPU 実行の実測は warm で約 66 ms/
+      #     リクエストで、GPU ならこれより速くなるはずですが、測っていません。
+      #     容量も机上です: カードは 6144 MiB、fukurou (whisper.cpp、
+      #     modules/fukurou.nix がこのカードにピン留め) が約 479 MiB 常駐、
+      #     Qwen3-Embedding-4B Q4_K_M が 2.5 GB、nomic-embed-text v1.5 Q8_0 が
+      #     146 MB。2 つ同時に載る計算ですが、context と計算バッファは
+      #     見込んでいません。
+      #     ★ 起動しなくなったら、まず ngl を下げるか、
+      #       CUDA_VISIBLE_DEVICES="" + -ngl 0 の CPU 実行に戻すこと ★
+      #       CPU 実行でも 66 ms/リクエストで実用範囲でした。
       # ----------------------------------------------------------------
 
       # Qwen3-Embedding-4B、2560 次元 (実機のルーターで測定済み)。OpenViking 用。
       "embedding":
         name: "Qwen3 Embedding 4B"
         env:
-          - "CUDA_VISIBLE_DEVICES="
+          - "CUDA_VISIBLE_DEVICES=0"
         cmd: |
           ''${server}
           --model ${modelsDir}/Qwen3-Embedding-4B-GGUF/Qwen3-Embedding-4B-Q4_K_M.gguf
           --embeddings
           --pooling last
-          -ngl 0
+          -ngl 99
           -c 8192
 
       # nomic-embed-text v1.5、768 次元。Open WebUI の RAG が既にこのモデルで
@@ -541,13 +498,13 @@ let
       "embedding-nomic":
         name: "nomic-embed-text v1.5"
         env:
-          - "CUDA_VISIBLE_DEVICES="
+          - "CUDA_VISIBLE_DEVICES=0"
         cmd: |
           ''${server}
           --model ${modelsDir}/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf
           --embeddings
           --pooling mean
-          -ngl 0
+          -ngl 99
           -c 8192
 
     # ----------------------------------------------------------------------
@@ -556,22 +513,26 @@ let
     # matrix は「同時に走ってよい組み合わせ」を sets に列挙します。
     # リクエストが来ると、そのモデルを含む set のうち、追い出す羽目になる
     # 実行中モデルの evict_costs 合計が最小のものを選びます。
-    # set の部分集合も許可されるので、下の 2 本だけで足ります。
+    # set の部分集合も許可されるので、下の 1 本だけで足ります。
     #
     #   generation: bonsai (または bonsai-vision) + 埋め込み 2 つ
-    #   heavy:      gemma4 (または gemma4-32k)   + 埋め込み 2 つ
     #
-    # 埋め込みは両方の set に入っているので、embedding が呼ばれても
-    # 「bonsai + embedding」は generation の部分集合として成立し、
-    # ★ bonsai は降りません ★。これが当初の LRU 方式との決定的な差です。
+    # ★ 2026-09-22 に gemma4 / gemma4-32k を削除したので、set は 1 本です ★
+    #   結果として「bonsai が追い出される経路」が存在しなくなりました。
+    #   埋め込みが呼ばれても「bonsai + embedding」は generation の部分集合
+    #   として成立し、そもそも別のカードに載っています。当初の LRU 方式
+    #   (枠数だけを見て、CUDA1 が空いていても CUDA0 の bonsai を落とす) との
+    #   決定的な差がここです。
     #
-    # 逆に gemma4 が呼ばれたときは、bonsai を含む set が存在しないので
-    # bonsai が降ります。これは VRAM の制約 (上の gemma4 のコメント参照) で
-    # あって設定の都合ではなく、避ける方法がありません。evict_costs で
-    # bonsai を高くしてあるのは、選択の余地があるときに bonsai を残すためです。
+    #   gemma4 を戻すときは set をもう 1 本足すことになりますが、あれは
+    #   2 枚とも要る (1660 SUPER 単体では 20/49 層しか載らず、プロンプト処理
+    #   14.42 tok/s で実用外。2026-09-22 実測) ので、必然的に bonsai を
+    #   追い出す set になります。
     #
     # bonsai と bonsai-vision が同じ set の別の枝にあるのは、どちらも
     # 3060 Ti を占有するため同居できないからです。
+    # evict_costs は現状どれも選択の余地が無いので効きませんが、set を
+    # 増やしたときに bonsai が残るよう高くしてあります。
     # ----------------------------------------------------------------------
     routing:
       router:
@@ -582,14 +543,11 @@ let
               # 27B + 80K の KV。ロードが重いので最後まで残す。
               bonsai: 50
               bonsai-vision: 50
-              gemma4: 10
-              gemma4-32k: 10
-              # 埋め込みは CPU で軽く、そもそも追い出す理由が無い。
+              # 埋め込みは軽く、別のカードなので追い出す理由が無い。
               embedding: 1
               embedding-nomic: 1
             sets:
               generation: "(bonsai | bonsai-vision) & embedding & embedding-nomic"
-              heavy: "(gemma4 | gemma4-32k) & embedding & embedding-nomic"
   '';
 in
 {
