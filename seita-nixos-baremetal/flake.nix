@@ -109,6 +109,7 @@
         ./modules/nix-info.nix         # インストール済みパッケージ一覧 / Hydra ビルド状況のメトリクス
         ./modules/alerting.nix         # Grafana のアラート (通知は n8n Webhook)
         ./modules/ollama.nix           # ローカル LLM (Ollama + Open WebUI)
+        ./modules/llama-cpp.nix        # ローカル LLM (llama.cpp PrismML フォークのルーター、Ollama の置き換え候補・既定では停止)
         ./modules/n8n.nix              # ワークフロー自動化 (unstable 追従)
         ./modules/comfyui.nix          # 画像生成 (ComfyUI, comfy-cli 経由の venv)
         ./modules/multica.nix          # Multica (AI エージェント管理) を podman で自前ホスト

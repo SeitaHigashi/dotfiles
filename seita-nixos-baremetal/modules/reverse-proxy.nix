@@ -51,6 +51,8 @@ let
   fukurouWebuiUrl = "https://${fqdn}:9446";
   # fukurou-server の wss:// 経由の口 (理由は下の routes のコメント)
   fukurouServerWssUrl = "wss://${fqdn}:9447";
+  # llama.cpp のルーター (Web UI + OpenAI 互換 API)。理由は下の routes のコメント。
+  llamaCppUrl = "https://${fqdn}:9448";
 
   # modules/multica.nix の backendHostPort と同じ値。GitHub Webhook 中継用の
   # nginx (下記) がバックエンドへ転送する先として必要なため、ここでも持つ。
@@ -166,9 +168,24 @@ let
   #   用意し、webui/index.html 側もページが https のときはこちらを既定値に
   #   する (2026-08-30 実機で ws:// 接続が失敗することを確認して追加)。
   #   ws://:7878 直結はブラウザ以外のクライアント用にそのまま残す。
+  #
+  # ★ llama.cpp も別ポート (9448) のルートにしています (2026-09-21 追加) ★
+  #   modules/llama-cpp.nix のルーターは 127.0.0.1:8888 で待ち受けており、
+  #   llama-server には Web UI が同梱されています (SvelteKit の静的ビルド)。
+  #   サブパスに載せない理由は open-webui と同じで、OpenAI 互換 API の
+  #   クライアントがベース URL にパスを含められないケースがあるためです。
+  #   ルート (443) は open-webui が使っているので別ポートにします。
+  #
+  #   ★ 認証がありません ★
+  #     llama-server は Ollama と同様に認証機構を持ちません。tailnet 限定
+  #     (funnel = false) なので tailnet 参加者だけが到達できますが、到達
+  #     できる人は誰でもモデルを使えます。Ollama を Serve に載せていなかった
+  #     のはこの理由でしたが、2026-09-21 にユーザーの明示的な指示で公開に
+  #     切り替えました。公開インターネットには出さないこと。
   ############################################################################
   routes = [
     { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
+    { path = null;       httpsPort = 9448;  port = 8888;                          note = "llama.cpp (認証なし、tailnet 限定)"; }
     { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
     { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
     { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
@@ -394,7 +411,12 @@ in
   #                          GitHub App の Webhook URL に設定する値 (公開インターネットから到達可能)
   #     ${fukurouWebuiUrl}/ fukurou-webui (ブラウザ push-to-talk テストページ)
   #     ${fukurouServerWssUrl}/ fukurou-server (wss、fukurou-webui からの接続用)
-  #     Ollama API は Serve を通しません: http://<tailscale IP>:11434/
+  #     ${llamaCppUrl}/      llama.cpp の Web UI と OpenAI 互換 API
+  #                          (/v1/chat/completions, /v1/embeddings, /v1/models)
+  #                          ★ 認証がないので tailnet 限定。Funnel に出さないこと ★
+  #     Ollama は 2026-09-21 に廃止しました (modules/ollama.nix の enable = false)。
+  #     以前はここに「Ollama API は Serve を通しません: http://<tailscale IP>:11434/」
+  #     と書いていましたが、11434 で待ち受けているものはもうありません。
   #     fukurou-server は ws://<tailscale IP>:7878/ にも直結しています (ブラウザ以外のクライアント用)
   #
   #   全部剥がして元に戻す:
