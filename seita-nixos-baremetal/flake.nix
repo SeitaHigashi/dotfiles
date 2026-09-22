@@ -18,7 +18,35 @@
     # カーネルモジュール (ZFS 等) をここから引いてはいけません。
     # カーネル本体と同じ nixpkgs でビルドされている必要があるためです。
     ############################################################################
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # ★ リビジョンを明示的に固定しています。nixos-unstable に戻さないこと ★
+    #
+    #   このホストは nodejs をソースからビルドできません。Nix のサンドボックス内で
+    #   nodejs のテスト parallel/test-fs-cp-async-file-modes が setuid ビットの
+    #   chmod に失敗します:
+    #     Error: EPERM: operation not permitted, chmod '.../copy_%1/suid'
+    #   (/tmp と / の ZFS は nosuid ではなく setuid=on なので、マウントオプション
+    #    側の問題ではありません。2026-09-21 に切り分け済み。)
+    #
+    #   nixpkgs の llama-cpp (modules/llama-cpp.nix) は Web UI を npm でビルド
+    #   するため nodejs_latest に無条件で依存します。したがって nodejs-slim が
+    #   バイナリキャッシュに無いリビジョンを掴むと、システム全体がビルド不能に
+    #   なります。nixos-unstable は動くブランチなので、固定しないと「ある日突然
+    #   rebuild が通らなくなる」形でこれを踏みます。実際 2026-09-21 に旧 pin
+    #   (e554fab7, 2026-09-17) で踏みました。hydra はチャンネルのリビジョンしか
+    #   ビルドしないため、キャッシュの有無はリビジョンの新旧とは無関係です。
+    #
+    #   ★ このリビジョンを上げるときの必須チェック ★
+    #     キャッシュに nodejs-slim があることを確認してから上げること。
+    #       nix path-info --store https://cache.nixos.org <nodejs-slim の out パス>
+    #     null が返るリビジョンは採用しないこと。
+    #
+    #   20b1ddd (2026-09-19) を選んだ理由: nodejs-slim 26.9.0 がキャッシュ済みで、
+    #   この構成の toplevel ビルドが実機で通ることを確認済み。旧 pin との差分は
+    #   opencode 1.18.30 -> 1.18.31 と ollama-cuda 0.34.0 -> 0.34.2 のみ
+    #   (両リビジョンを eval して比較)。
+    #
+    # nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/20b1ddd1aa5ace70c9468305030aa4f9ef79671b";
 
     disko = {
       url = "github:nix-community/disko/latest";
