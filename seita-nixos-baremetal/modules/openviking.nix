@@ -100,7 +100,8 @@ let
   #   modules/ollama.nix は enable = false になりました。推論のバックエンドは
   #   llama-server のルーター (127.0.0.1:8888) で、こちらも OpenAI 互換なので
   #   provider = "openai" のまま api_base とモデル名だけ差し替えます。
-  #   model は Ollama のタグではなく models.ini のプリセット名です。
+  #   model は Ollama のタグではなく llama-swap のモデル ID です
+  #   (modules/llama-cpp.nix の swapConfig)。
   #
   #   ★ llama-cpp.service は wantedBy = [] の手動起動です ★
   #     起動していないと OpenViking は /embeddings のリトライループに入ります。
@@ -134,11 +135,11 @@ let
         provider = "openai";
         api_base = inferenceBaseUrl;
         api_key = "llamacpp"; # llama.cpp も認証しないためダミー値
-        # models.ini の [embedding] プリセット。中身は同じ Qwen3-Embedding-4B
+        # llama-swap の "embedding" モデル。中身は同じ Qwen3-Embedding-4B
         # (Q4_K_M) です。以前は 1660 SUPER (CUDA1) に固定していましたが、
         # 2026-09-22 に CPU 実行 (device = none / ngl = 0) へ移しました
         # (実測 warm 66 ms/リクエスト)。理由は modules/llama-cpp.nix の
-        # [embedding] プリセットのコメント参照。
+        # swapConfig 内 "embedding" のコメント参照。
         # model = "qwen3-embedding:4b";
         model = "embedding";
         # ★ 2048 のままで正しい。再インデックスは不要 ★

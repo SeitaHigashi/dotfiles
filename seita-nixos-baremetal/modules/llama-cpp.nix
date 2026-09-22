@@ -5,10 +5,14 @@
 #
 # 何のために入れるか:
 #   ~/bonsai-workspaces で seita が検証してきた Bonsai-2 27B (三値量子化) を
-#   常駐サービスにする。llama-server に -m を渡さず --models-preset だけを
-#   渡すと「ルーター」として動き、リクエストの "model" フィールドを見て
-#   モデルごとの子プロセスを必要に応じて起動する (= ollama serve 相当)。
+#   常駐サービスにする。前段に llama-swap を置き、リクエストの "model"
+#   フィールドを見てモデルごとの llama-server を子プロセスとして起動・
+#   切り替えします (= ollama serve 相当)。
 #   OpenAI 互換 API (/v1/chat/completions, /v1/embeddings, /v1/models)。
+#
+#   ★ フォーク自身のルーターモード (--models-preset) は使っていません ★
+#     追い出しが枠数ベースの LRU しか無く、このホストの VRAM 制約を
+#     表現できないためです。経緯は swapConfig のコメントを参照。
 #
 # ★ 既定では起動しません (wantedBy = [])。★
 #   VRAM は 2 枚合計で約 13.6 GiB しかなく、ollama が OpenViking 用に
@@ -83,25 +87,23 @@
 #   unfree 許可は modules/unfree.nix の "cuda" / "libcu" 接頭辞で既に通って
 #   いるので、あちらへの追記は不要です (確認済み)。
 #
-# ★ CUDA_DEVICE_ORDER = FASTEST_FIRST を必ず明示する ★
-#   models.ini はモデルを CUDA0 / CUDA1 というデバイス名で GPU に固定して
-#   います。この番号は CUDA ランタイムの列挙順であって nvidia-smi の順とは
-#   別物で、このホストでは両者が逆です:
-#     nvidia-smi 0 = GTX 1660 SUPER (bus 04:00) = CUDA1 (sm_75, テンソルコア無し)
-#     nvidia-smi 1 = RTX 3060 Ti    (bus 06:00) = CUDA0 (sm_86)
-#   CUDA の既定は「速い順」(FASTEST_FIRST) なので、既定のままでも意図した
-#   割り当てになりますが、環境によって変わりうるものを黙って前提にしないため
-#   明示的に固定します。
+# ★ CUDA_DEVICE_ORDER = PCI_BUS_ID を必ず明示する ★
+#   GPU の割り当ては swapConfig のモデルごとの CUDA_VISIBLE_DEVICES で
+#   行っており、その番号は PCI バス順です。このホストの実測:
+#     index 0 = GTX 1660 SUPER (00000000:04:00.0, 6144 MiB, sm_75, テンソルコア無し)
+#     index 1 = RTX 3060 Ti    (00000000:06:00.0, 8192 MiB, sm_86)
 #
-#   ここで PCI_BUS_ID にしてはいけません。models.ini の CUDA0/CUDA1 が
-#   そっくり入れ替わり、3060 Ti に載せるつもりの 27B が 5.7 GiB しかない
-#   1660 SUPER に行って OOM します。
+#   ★ 2026-09-22 以前はここが FASTEST_FIRST で、「PCI_BUS_ID にしては
+#     いけない」と書いてありました。逆転しています ★
+#     当時は models.ini が device = CUDA0 / CUDA1 という「速い順」前提の
+#     名前でカードを指していたため、PCI 順にすると 27B が 1660 SUPER に
+#     行って OOM しました。llama-swap 方式ではデバイス名で指さず、
+#     プロセスごとに CUDA_VISIBLE_DEVICES でカードを見せる/見せないので、
+#     ヒューリスティック (どちらが「速い」か) に依存しない PCI 順のほうが
+#     安定します。GPU を載せ替えたら上の対応表を実測し直すこと。
 #
-#   modules/ollama.nix:117-122 が CUDA_DEVICE_ORDER = "PCI_BUS_ID" を
-#   設定していますが矛盾しません。環境変数はユニットごとなので互いに
-#   影響せず、あちらは「PCI 順に固定したうえで CUDA_VISIBLE_DEVICES = "1,0"
-#   で 3060 Ti を先頭に持ってくる」という別の組み立て方をしているだけです。
-#   結果としてどちらも 3060 Ti 優先で、狙いは同じです。
+#   modules/ollama.nix:117-122 も CUDA_DEVICE_ORDER = "PCI_BUS_ID" です。
+#   環境変数はユニットごとなので互いに影響しません。
 #
 # モデルの置き場:
 #   /home/seita/bonsai-workspaces/models (27 GiB) をそのまま使い、
@@ -292,181 +294,302 @@ let
       });
 
   ##########################################################################
-  # プリセット INI。~/bonsai-workspaces/models.ini の内容を Nix 側に持ち込み、
-  # モデルのパスだけ modelsDir から組み立てています
-  # (modules/openviking.nix の ovConfTemplate と同じ方針)。
+  # llama-swap の設定 YAML。
+  #
+  # ★ 2026-09-22: PrismML フォーク自身のルーターモード (--models-preset +
+  #   --models-max) から llama-swap に置き換えました ★
+  #
+  #   理由は 1 つで、フォークのルーターの追い出しが「枠数ベースの LRU」
+  #   だけだったことです。VRAM もデバイスも見ていないため:
+  #     - CUDA1 が空いていても CUDA0 の [bonsai] が追い出される
+  #     - CPU 実行の [embedding] が LRU で選ばれると、追い出しても VRAM が
+  #       1 バイトも空かず、結局 OOM する (実測。これが --models-max 1 まで
+  #       下げる羽目になった直接の原因)
+  #   どちらも「どのモデルとどのモデルが同居できるか」を表現する手段が
+  #   無いことに起因していて、パラメータの調整では消せません。
+  #
+  #   llama-swap (mostlygeek/llama-swap、Go、OpenAI/Anthropic 互換の前段
+  #   プロキシ) はモデルごとに llama-server を子プロセスとして起動し、
+  #   同居の可否を設定として書けます。フォークのバイナリをそのまま
+  #   cmd に書けるので、PrismML 依存はまったく損ないません。
+  #
+  #   ★ routing engine は matrix を選んでいます ★
+  #     もう一方の group エンジン (swap / exclusive / persistent) でも
+  #     「embedding は bonsai を追い出さない」までは表現できますが、
+  #     このホストの制約は本質的に「どの組み合わせなら VRAM に載るか」
+  #     であって、グループの階層ではありません。matrix は載る組み合わせを
+  #     sets に列挙し、evict_costs の小さいものから追い出すソルバなので、
+  #     制約をそのまま書けます。
   #
   # ★ np = 1 は消さないこと ★
   #   llama-server の既定は並列スロット 4 で、再帰状態のキャッシュを
   #   スロットごとに確保します。llama-cli と同じ context でも VRAM 消費が
   #   数倍になり、27B はこのホストで OOM します。
+  #   埋め込みモデルだけは例外で、スロットごとに増える再帰状態が無いため
+  #   既定の 4 のままにしてあります (同時リクエストに有利)。
   #
   # 数値の根拠 (tok/s、context の上限など) は移行作業側の実測です。
   # 変更するときは ~/bonsai-workspaces/models.ini 側のコメントも見てください。
+  #
+  # ------------------------------------------------------------------------
+  # ★ GPU の割り当ては CUDA_VISIBLE_DEVICES で、モデルごとに行います ★
+  #
+  #   以前は models.ini の device = CUDA0 / CUDA1 で指定していましたが、
+  #   この方式には穴があります。ggml は --device で「使わない」と指定した
+  #   デバイスにも、見えている限り CUDA コンテキストを作る (数百 MiB) ため、
+  #   [bonsai] が CUDA0 を 410 MiB しか残さない状態では、CPU 実行のはずの
+  #   埋め込みプロセスですら CUDA0 を踏んで落ちる可能性があります。
+  #   llama-swap はモデルごとに別プロセスなので、env でカードそのものを
+  #   見えなくできます。これは 1 プロセスのルーターには原理的にできません。
+  #
+  #   ★ CUDA_DEVICE_ORDER は PCI_BUS_ID にしました (以前は FASTEST_FIRST) ★
+  #     以前 PCI_BUS_ID を禁じていたのは、models.ini が CUDA0/CUDA1 という
+  #     「速い順」前提の名前でカードを指していたからです。その名前を使うのを
+  #     やめた今は逆で、PCI バス番号のほうがヒューリスティックに依存しない
+  #     ぶん安定します。このホストの実測 (nvidia-smi --query-gpu=pci.bus_id):
+  #       index 0 = GTX 1660 SUPER (00000000:04:00.0, 6144 MiB, sm_75)
+  #       index 1 = RTX 3060 Ti    (00000000:06:00.0, 8192 MiB, sm_86)
+  #     したがって CUDA_VISIBLE_DEVICES は
+  #       "1"   = 3060 Ti のみ    (bonsai 系)
+  #       "0,1" = 2 枚とも        (gemma4 系)
+  #       ""    = GPU を見せない  (埋め込み。CUDA を一切初期化しない)
+  #     GPU を載せ替えたらこの対応表を実測し直すこと。
+  #
+  #   ★ 1660 SUPER には fukurou (whisper.cpp) が約 479 MiB 常駐しています ★
+  #     modules/fukurou.nix がこのカードにピン留めしているためです
+  #     (2026-09-22 実測、6144 MiB 中 489 MiB 使用)。下の数値はこれを
+  #     含んだ状態で取っています。
+  # ------------------------------------------------------------------------
   ##########################################################################
   bonsaiModel = "${modelsDir}/Ternary-Bonsai-2-27B-gguf/Ternary-Bonsai-2-27B-PTQ1_0.gguf";
+  gemmaDir = "${modelsDir}/gemma-4-12B-it-GGUF";
 
-  modelsPreset = pkgs.writeText "llama-cpp-models.ini" ''
-    version = 1
+  swapConfig = pkgs.writeText "llama-swap.yaml" ''
+    # このファイルは Nix が生成しています。直接編集しないこと
+    # (modules/llama-cpp.nix が正)。
 
-    ; デバイス名は llama-server --list-devices の表示で、
-    ; CUDA_VISIBLE_DEVICES のインデックスより安定しています。
-    ;   CUDA0 = RTX 3060 Ti    (7839 MiB, sm_86, テンソルコア有り)
-    ;   CUDA1 = GTX 1660 SUPER (5749 MiB, sm_75, テンソルコア無し = プロンプト処理が非常に遅い)
-    [*]
-    jinja = true
+    # 子プロセスの llama-server が使うポートの開始番号。8888 (llama-swap 本体)
+    # や 8080 (Open WebUI)、5678 (n8n) と衝突しない帯を選んでいます。
+    startPort: 18900
 
-    ; ------------------------------------------------------------------
-    ; Bonsai 2 / PTQ1_0 を 3060 Ti 単体で。このホストでの最良構成の実測値:
-    ; 33.6-33.8 tok/s。1660 SUPER に 1 層も載せないことが生成で 1.3-1.5 倍、
-    ; プロンプト処理で 2.5-3.7 倍に効きます。
-    ;
-    ; ★ c = 81920 は KV を q4_0 にしたときの CUDA0 単体の上限です ★
-    ;   2026-09-22 実測 (llama-cpp を止めて 3060 Ti を空にした状態、
-    ;   ctk = ctv = q4_0、np = 1、ngl = 99):
-    ;     32768 OK (6674 MiB)   65536 OK (7410 MiB)
-    ;     81920 OK (7778 MiB)   90112 NG   98304 NG
-    ;   NG 側の失敗は OOM ではなく
-    ;     llama_init_from_model: failed to initialize the context:
-    ;     failed to allocate compute pp buffers
-    ;   です (計算バッファが取れない)。ロード後の空きは 81920 で約 410 MiB。
-    ;
-    ;   生成速度は 32.75 tok/s (80K、200 トークン生成の実測)。q8_0 / 32768 の
-    ;   33.4-33.8 tok/s からほぼ落ちていません — KV 量子化は生成の律速では
-    ;   ないためです。代償は KV の精度 (q8_0 → q4_0) だけです。
-    ;
-    ;   経緯: 16384 (2026-09-22 まで) → 32768 (q8_0 での 1 枚上限) →
-    ;   81920。32768 が上限だったのは KV が q8_0 だったからで、q4_0 に
-    ;   落とすと 32K あたり約 736 MiB (q8_0 は約 1.5 GiB) に減り、
-    ;   同じ 1 枚・同じ速度のまま 2.5 倍の context が載ります。
-    ;   2 枚使う [bonsai-long] (144K) と違って生成が 40% 落ちないのが要点です。
-    ;
-    ;   ★ --models-max を 2 に戻すならここを 16384 前後まで下げること ★
-    ;     81920 だと 3060 Ti に約 410 MiB しか残らず、次に起動する
-    ;     llama-server の子プロセスが CUDA コンテキストすら作れません —
-    ;     ggml は --device で使わないと指定したデバイスにも、見えている
-    ;     限りコンテキストを作るためです。
-    ; ------------------------------------------------------------------
-    [bonsai]
-    model = ${bonsaiModel}
-    device = CUDA0
-    np = 1
-    ngl = 99
-    c = 81920
-    ctk = q4_0
-    ctv = q4_0
-    temp = 0.5
-    top-p = 0.85
-    top-k = 20
+    # 27B のロードには時間がかかります。既定の 500 秒で足りていますが、
+    # 明示しておきます。
+    healthCheckTimeout: 500
+    logLevel: info
 
-    ; 同じ重み + vision projector (+600 MB)。その分 context が 8192 に落ちます。
-    [bonsai-vision]
-    model = ${bonsaiModel}
-    mmproj = ${modelsDir}/Ternary-Bonsai-2-27B-gguf/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf
-    device = CUDA0
-    np = 1
-    ngl = 99
-    c = 8192
-    ctk = q8_0
-    ctv = q8_0
-    temp = 0.5
-    top-p = 0.85
-    top-k = 20
+    # 0 = 自動アンロードしない。このホストでは「空いたから降ろす」より
+    # 「必要になったら matrix が追い出す」ほうが素直なので、TTL は使いません。
+    globalTTL: 0
 
-    ; Qwen3 の埋め込みは CPU で回します (device = none / ngl = 0)。
-    ; OpenViking が使う 2560 次元のほう (実機のルーターで測定済み)。
-    ;
-    ; 以前は CUDA1 (1660 SUPER) に置いていましたが、2026-09-22 に CPU へ
-    ; 移しました。当時は models-max 2 のままで [bonsai-long] を載せるためで、
-    ; 埋め込みが 1 枚でも VRAM を握っていると OOM したからです。
-    ;
-    ; ★ ただし同日 models-max は 1 に下げたので、この CPU 配置はもう
-    ;   VRAM のためには効いていません ★ (下の ExecStart の経緯を参照)
-    ;   1 なら同時に載るモデルは 1 つだけで、GPU に戻しても bonsai-long とは
-    ;   衝突しません。CPU のままにしてあるのは実測で warm 66 ms/リクエストと
-    ;   十分速く、戻す積極的な理由が無いからです。短い context の常用に戻して
-    ;   models-max を 2 に上げるときは、ここを CUDA1 に戻すほうが速くなります。
-    ; np は既定の 4 のまま。これは意図的で、埋め込みモデルにはスロットごとに
-    ; 増える再帰状態キャッシュが無く、スロットが多いほうが同時リクエストに
-    ; 有利だからです。np = 1 が要るのは生成側のプリセットだけです。
-    [embedding]
-    model = ${modelsDir}/Qwen3-Embedding-4B-GGUF/Qwen3-Embedding-4B-Q4_K_M.gguf
-    device = none
-    embeddings = true
-    pooling = last
-    ngl = 0
-    c = 8192
+    macros:
+      # フォークの llama-server。PORT は llama-swap がモデルごとに割り当てる
+      # 変数で、Nix の補間ではありません (このファイルでは二重シングルクォートで
+      # エスケープしています)。
+      "server": "${llamaCppPrism}/bin/llama-server --port ''${PORT}"
 
-    ; Gemma 4 12B (ggml-org の標準 GGUF。ollama の blob は独自形式で
-    ; 互換レイヤが要るため、ここからは再利用できません)。2 枚必要。
-    ;
-    ; np = 1 は 2026-09-21 に追加されたものです。それ以前は [gemma4] だけ
-    ; 抜けており (bonsai* にだけ np を足した際の漏れ)、既定の 4 スロットで
-    ; 動いて余計な VRAM を使っていました。Open WebUI の Pipe が指すのが
-    ; この gemma4 系なので、実害のあるほうの漏れでした。消さないこと。
-    [gemma4]
-    model = ${modelsDir}/gemma-4-12B-it-GGUF/gemma-4-12B-it-Q4_0.gguf
-    mmproj = ${modelsDir}/gemma-4-12B-it-GGUF/mmproj-gemma-4-12B-it-Q8_0.gguf
-    np = 1
-    ngl = 99
-    c = 16384
-    split-mode = layer
+    models:
+      # ----------------------------------------------------------------
+      # Bonsai 2 / PTQ1_0 を 3060 Ti 単体で。このホストでの最良構成の実測値:
+      # 33.6-33.8 tok/s。1660 SUPER に 1 層も載せないことが生成で 1.3-1.5 倍、
+      # プロンプト処理で 2.5-3.7 倍に効きます (1660 SUPER にテンソルコアが
+      # 無いため)。
+      #
+      # ★ c = 81920 は KV を q4_0 にしたときの 3060 Ti 単体の上限です ★
+      #   2026-09-22 実測 (カードを空にした状態、ctk = ctv = q4_0、np = 1、
+      #   ngl = 99):
+      #     32768 OK (6674 MiB)   65536 OK (7410 MiB)
+      #     81920 OK (7778 MiB)   90112 NG   98304 NG
+      #   NG 側の失敗は OOM ではなく
+      #     llama_init_from_model: failed to initialize the context:
+      #     failed to allocate compute pp buffers
+      #   です (計算バッファが取れない)。ロード後の空きは 81920 で約 410 MiB。
+      #
+      #   生成速度は 32.75 tok/s (80K、200 トークン生成の実測)。q8_0 / 32768 の
+      #   33.4-33.8 tok/s からほぼ落ちていません — KV 量子化は生成の律速では
+      #   ないためです。代償は KV の精度 (q8_0 → q4_0) だけです。
+      #
+      #   ★ 残り 410 MiB しかないことは、llama-swap 方式では問題になりません ★
+      #     同居しうるのは CUDA を一切見ない埋め込みプロセスだけだからです
+      #     (下の embedding / embedding-nomic の CUDA_VISIBLE_DEVICES="")。
+      #     3060 Ti を使う他のモデルは matrix が必ず bonsai を降ろしてから
+      #     起動します。
+      # ----------------------------------------------------------------
+      "bonsai":
+        name: "Bonsai 2 27B (80K)"
+        env:
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ''${server}
+          --model ${bonsaiModel}
+          --jinja
+          -np 1
+          -ngl 99
+          -c 81920
+          --cache-type-k q4_0
+          --cache-type-v q4_0
+          --temp 0.5
+          --top-p 0.85
+          --top-k 20
 
-    ; 同じ Gemma 4 を 32K context で。KV を q8_0 に量子化してその分を捻出。
-    ; 用途は n8n の Task Partner Brain (13 個のツールスキーマ + 8 ターンの
-    ; バッファウィンドウ + システムプロンプト) と、Open WebUI の Pipe
-    ; (title_generation / follow_up_generation) で 16K では足りない場合。
-    ;
-    ; 32768 は 2026-08-11 以前にそのワークフローが実際に動いていた値です。
-    ; その後 163840 に引き上げられたのは、num_ctx を変えるたびに ollama が
-    ; モデルを再ロードするのを止めるためだけの措置でした — llama.cpp には
-    ; 無い問題なので、本来の 32768 に戻してあります。
-    [gemma4-32k]
-    model = ${modelsDir}/gemma-4-12B-it-GGUF/gemma-4-12B-it-Q4_0.gguf
-    mmproj = ${modelsDir}/gemma-4-12B-it-GGUF/mmproj-gemma-4-12B-it-Q8_0.gguf
-    ngl = 99
-    c = 32768
-    ctk = q8_0
-    ctv = q8_0
-    np = 1
-    split-mode = layer
+      # 同じ重み + vision projector (+600 MB)。その分 context が 8192 に落ちます。
+      "bonsai-vision":
+        name: "Bonsai 2 27B (vision)"
+        env:
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ''${server}
+          --model ${bonsaiModel}
+          --mmproj ${modelsDir}/Ternary-Bonsai-2-27B-gguf/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf
+          --jinja
+          -np 1
+          -ngl 99
+          -c 8192
+          --cache-type-k q8_0
+          --cache-type-v q8_0
+          --temp 0.5
+          --top-p 0.85
+          --top-k 20
 
-    ; nomic-embed-text v1.5、768 次元。Open WebUI の RAG が既にこのモデルで
-    ; インデックスを作っているため (modules/ollama.nix:306 の
-    ; RAG_EMBEDDING_MODEL = "nomic-embed-text")、切り替えで Knowledge の
-    ; 作り直しを迫られないように残してあります。Qwen3 の [embedding] は
-    ; 別モデルかつ別次元なので、そちらを指すと作り直しが必要になります。
-    ;
-    ; 次元数は実機のルーターで測定済み: embedding-nomic = 768、
-    ; embedding = 2560。埋め込みプリセットが 2 つ併存するのは意図的で、
-    ; [embedding] は OpenViking 用、[embedding-nomic] は Open WebUI の RAG 用。
-    ; [embedding] と同じ理由で、どちらも CPU 実行にしてあります。
-    [embedding-nomic]
-    model = ${modelsDir}/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf
-    device = none
-    embeddings = true
-    pooling = mean
-    ngl = 0
-    c = 8192
+      # ----------------------------------------------------------------
+      # Gemma 4 12B (ggml-org の標準 GGUF。ollama の blob は独自形式で
+      # 互換レイヤが要るため、ここからは再利用できません)。
+      #
+      # ★ 2 枚必要です。1 枚には収まりません ★
+      #   2026-09-22 実測。重みが 7.22 GB (6.72 GiB) あり、1660 SUPER の
+      #   6144 MiB には入りません。-ngl 99 も -ngl 36 も -ngl 30 も
+      #   cudaMalloc failed で落ちます。ngl を指定しなければフォークの
+      #   common_fit_params が空き VRAM に合わせて自動で減らしてくれますが、
+      #   その結果は 20/49 層だけ GPU (CUDA0 3343 MiB / CPU 4546 MiB) で、
+      #     生成 8.13 tok/s、プロンプト処理 14.42 tok/s
+      #   でした。n8n の Task Partner Brain は 13 個のツールスキーマを毎回
+      #   送るので、プロンプト処理 14 tok/s は実用になりません。
+      #   したがって gemma4 は 2 枚使う前提のままにし、起動時に bonsai を
+      #   降ろす (下の matrix を参照) 方針にしています。
+      # ----------------------------------------------------------------
+      "gemma4":
+        name: "Gemma 4 12B (16K)"
+        env:
+          - "CUDA_VISIBLE_DEVICES=0,1"
+        cmd: |
+          ''${server}
+          --model ${gemmaDir}/gemma-4-12B-it-Q4_0.gguf
+          --mmproj ${gemmaDir}/mmproj-gemma-4-12B-it-Q8_0.gguf
+          --jinja
+          -np 1
+          -ngl 99
+          -c 16384
+          --split-mode layer
 
-    ; ------------------------------------------------------------------
-    ; 長い context、2 枚使用。144K が GPU に載る上限 (155648 は OOM)。
-    ; 1 枚構成に比べて生成速度は 40% 落ちます (1660 SUPER にテンソルコアが
-    ; 無く、そこに載った層がパイプライン全体を律速するため)。
-    ; これは 2 枚を埋め尽くすので [embedding] の居場所が無くなります。
-    ; ------------------------------------------------------------------
-    [bonsai-long]
-    model = ${bonsaiModel}
-    device = CUDA0,CUDA1
-    split-mode = layer
-    np = 1
-    ngl = 99
-    c = 147456
-    ctk = q8_0
-    ctv = q8_0
-    temp = 0.5
-    top-p = 0.85
-    top-k = 20
+      # 同じ Gemma 4 を 32K context で。KV を q8_0 に量子化してその分を捻出。
+      # 用途は n8n の Task Partner Brain (13 個のツールスキーマ + 8 ターンの
+      # バッファウィンドウ + システムプロンプト) と、Open WebUI の Pipe
+      # (title_generation / follow_up_generation) で 16K では足りない場合。
+      #
+      # 32768 は 2026-08-11 以前にそのワークフローが実際に動いていた値です。
+      # その後 163840 に引き上げられたのは、num_ctx を変えるたびに ollama が
+      # モデルを再ロードするのを止めるためだけの措置でした — llama.cpp には
+      # 無い問題なので、本来の 32768 に戻してあります。
+      "gemma4-32k":
+        name: "Gemma 4 12B (32K)"
+        env:
+          - "CUDA_VISIBLE_DEVICES=0,1"
+        cmd: |
+          ''${server}
+          --model ${gemmaDir}/gemma-4-12B-it-Q4_0.gguf
+          --mmproj ${gemmaDir}/mmproj-gemma-4-12B-it-Q8_0.gguf
+          --jinja
+          -np 1
+          -ngl 99
+          -c 32768
+          --cache-type-k q8_0
+          --cache-type-v q8_0
+          --split-mode layer
+
+      # ----------------------------------------------------------------
+      # 埋め込みは 2 つとも CPU 実行です。
+      #
+      # ★ CUDA_VISIBLE_DEVICES="" が要点です ★
+      #   -ngl 0 だけでは足りません。ggml は見えているデバイスに CUDA
+      #   コンテキストを作るので、bonsai が 410 MiB しか残していない 3060 Ti を
+      #   踏みます。カードごと見せないことで、bonsai と完全に無関係になります。
+      #   これが「embedding が呼ばれても bonsai が落ちない」ことの実体です
+      #   (matrix の sets だけでなく、物理的にも干渉しません)。
+      #
+      #   CPU 実行の実測は warm で約 66 ms/リクエスト。1660 SUPER に戻せば
+      #   速くはなりますが、そのカードは gemma4 と fukurou が使うので、
+      #   「常に居られる」ことを優先して CPU のままにしています。
+      # ----------------------------------------------------------------
+
+      # Qwen3-Embedding-4B、2560 次元 (実機のルーターで測定済み)。OpenViking 用。
+      "embedding":
+        name: "Qwen3 Embedding 4B"
+        env:
+          - "CUDA_VISIBLE_DEVICES="
+        cmd: |
+          ''${server}
+          --model ${modelsDir}/Qwen3-Embedding-4B-GGUF/Qwen3-Embedding-4B-Q4_K_M.gguf
+          --embeddings
+          --pooling last
+          -ngl 0
+          -c 8192
+
+      # nomic-embed-text v1.5、768 次元。Open WebUI の RAG が既にこのモデルで
+      # インデックスを作っているため (modules/ollama.nix:306 の
+      # RAG_EMBEDDING_MODEL = "nomic-embed-text")、切り替えで Knowledge の
+      # 作り直しを迫られないように残してあります。Qwen3 の "embedding" は
+      # 別モデルかつ別次元なので、そちらを指すと作り直しが必要になります。
+      "embedding-nomic":
+        name: "nomic-embed-text v1.5"
+        env:
+          - "CUDA_VISIBLE_DEVICES="
+        cmd: |
+          ''${server}
+          --model ${modelsDir}/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf
+          --embeddings
+          --pooling mean
+          -ngl 0
+          -c 8192
+
+    # ----------------------------------------------------------------------
+    # ★ ここが「CUDA0 は bonsai 専用」を保証している箇所です ★
+    #
+    # matrix は「同時に走ってよい組み合わせ」を sets に列挙します。
+    # リクエストが来ると、そのモデルを含む set のうち、追い出す羽目になる
+    # 実行中モデルの evict_costs 合計が最小のものを選びます。
+    # set の部分集合も許可されるので、下の 2 本だけで足ります。
+    #
+    #   generation: bonsai (または bonsai-vision) + 埋め込み 2 つ
+    #   heavy:      gemma4 (または gemma4-32k)   + 埋め込み 2 つ
+    #
+    # 埋め込みは両方の set に入っているので、embedding が呼ばれても
+    # 「bonsai + embedding」は generation の部分集合として成立し、
+    # ★ bonsai は降りません ★。これが当初の LRU 方式との決定的な差です。
+    #
+    # 逆に gemma4 が呼ばれたときは、bonsai を含む set が存在しないので
+    # bonsai が降ります。これは VRAM の制約 (上の gemma4 のコメント参照) で
+    # あって設定の都合ではなく、避ける方法がありません。evict_costs で
+    # bonsai を高くしてあるのは、選択の余地があるときに bonsai を残すためです。
+    #
+    # bonsai と bonsai-vision が同じ set の別の枝にあるのは、どちらも
+    # 3060 Ti を占有するため同居できないからです。
+    # ----------------------------------------------------------------------
+    routing:
+      router:
+        use: matrix
+        settings:
+          matrix:
+            evict_costs:
+              # 27B + 80K の KV。ロードが重いので最後まで残す。
+              bonsai: 50
+              bonsai-vision: 50
+              gemma4: 10
+              gemma4-32k: 10
+              # 埋め込みは CPU で軽く、そもそも追い出す理由が無い。
+              embedding: 1
+              embedding-nomic: 1
+            sets:
+              generation: "(bonsai | bonsai-vision) & embedding & embedding-nomic"
+              heavy: "(gemma4 | gemma4-32k) & embedding & embedding-nomic"
   '';
 in
 {
@@ -484,7 +607,7 @@ in
   ############################################################################
 
   systemd.services.llama-cpp = {
-    description = "llama.cpp router (PrismML fork) — OpenAI-compatible, multi-model";
+    description = "llama-swap + llama.cpp (PrismML fork) — OpenAI-compatible, multi-model";
 
     # ★ 自動起動しません ★ 上の冒頭コメント参照。ollama と VRAM を取り合う
     # ため、切り替えを決めるまでは手動 (systemctl start llama-cpp) です。
@@ -496,8 +619,12 @@ in
     wants = [ "nvidia-persistenced.service" ];
 
     environment = {
-      # ★ PCI_BUS_ID にしないこと ★ 冒頭の長いコメント参照。
-      CUDA_DEVICE_ORDER = "FASTEST_FIRST";
+      # ★ PCI_BUS_ID です (2026-09-22 に FASTEST_FIRST から変更) ★
+      #   swapConfig の CUDA_VISIBLE_DEVICES は PCI バス順のインデックスで
+      #   書かれています (0 = 1660 SUPER / 1 = 3060 Ti)。理由と実測は
+      #   swapConfig 直前の長いコメントを参照。llama-swap 本体は GPU を
+      #   使いませんが、この環境変数は子プロセスの llama-server に継承されます。
+      CUDA_DEVICE_ORDER = "PCI_BUS_ID";
     };
 
     # クラッシュループの抑止。5 分のうち 3 回失敗したら諦めます。
@@ -521,47 +648,16 @@ in
       Group = "users";
       WorkingDirectory = workDir;
 
+      # llama-swap が前段。子プロセスの llama-server は swapConfig の cmd から
+      # 起動されるので、ここには現れません。
+      #
+      # ★ --watch-config は付けていません ★ 設定は nix store 上の読み取り専用
+      #   ファイルで、変更は必ず rebuild 経由だからです。rebuild すると
+      #   ExecStart の store パスが変わり、systemd が再起動対象と判定します。
       ExecStart = lib.concatStringsSep " " [
-        "${llamaCppPrism}/bin/llama-server"
-        "--models-preset ${modelsPreset}"
-        # 同時常駐は 2 モデルまで。VRAM 13.6 GiB では [bonsai] + [embedding] が
-        # 現実的な上限で、3 つ目を載せると必ずどれかが溢れます。
-        #
-        # ★ models-max は 1 です。[bonsai-long] を常用するための値です ★
-        #   2026-09-22、opencode の接続先を [bonsai-long] (144K) に切り替えた
-        #   際に 1 へ落としました。経緯を残します。
-        #
-        #   [bonsai-long] は 2 枚 13.6 GiB のうち約 12.4 GiB を使うので、
-        #   他の GPU モデルと同時には存在できません。ところがルーターは
-        #   VRAM を見ておらず、枠が埋まっていると LRU でしか追い出しません。
-        #   models-max 2 のままだと枠は [bonsai](GPU) + [embedding](CPU) で
-        #   埋まり、そこへ bonsai-long が来たとき LRU が CPU 側の
-        #   [embedding] を選ぶと VRAM が 1 バイトも空きません。結果、
-        #     E ggml_backend_cuda_buffer_type_alloc_buffer:
-        #       allocating 306.00 MiB on device 0: cudaMalloc failed: OOM
-        #     {"error":{"message":"model name=bonsai-long failed to load"}}
-        #   が頻発します (実測)。埋め込みを CPU に逃がしたことで、逆に
-        #   「追い出しても VRAM が空かないモデル」が生まれたのが効いています。
-        #
-        #   1 にすると必ず全部アンロードしてからロードするので OOM は
-        #   消えます。代償は、[embedding] や [gemma4] が呼ばれるたびに 27B が
-        #   落ち、次の生成で再ロードされること (数十秒)。これは承知の上での
-        #   選択です (2026-09-22、A: 32K に落として共存 / B: 144K + max 1 /
-        #   C: 144K を専有 の 3 択から B を選択)。
-        #
-        #   [bonsai-long] 実測値 (2026-09-22、単独ロード時):
-        #     n_ctx = 147456、CUDA0 5638 + CUDA1 6726 MiB
-        #     生成 20.6 tok/s (1 枚の [bonsai] 33.6 tok/s に対し約 40% 減。
-        #     上の bonsai-long プリセットのコメントの見積もりどおり)
-        #     tool calling も finish_reason = tool_calls で正常
-        #     CPU に降りた [embedding] は warm で約 66 ms/リクエスト
-        #
-        #   ★ 常用モデルを短い context に戻すときは 2 に戻すこと ★
-        #     [bonsai](16K) + [embedding] なら 2 のほうが明らかに快適です。
-        #     1 のままだと埋め込みのたびに無意味な再ロードが走ります。
-        "--models-max 1"
-        "--host 127.0.0.1"
-        "--port ${toString port}"
+        "${pkgs.unstable.llama-swap}/bin/llama-swap"
+        "--config ${swapConfig}"
+        "--listen 127.0.0.1:${toString port}"
       ];
 
       Restart = "on-failure";
