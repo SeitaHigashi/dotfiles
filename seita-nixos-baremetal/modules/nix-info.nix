@@ -205,17 +205,34 @@ let
         echo '# TYPE nixos_package_repology_outdated gauge'
         echo '# HELP nixos_package_repology_version_info Repology が報告している対応チャンネルでのバージョン (値は常に1)'
         echo '# TYPE nixos_package_repology_version_info gauge'
+        echo '# HELP nixos_package_repology_fetch_ok Repology API への問い合わせが1件でも成功したか (1/0)。0 のときは全件が「追跡対象外」に見えるが、実際は判定できていない'
+        echo '# TYPE nixos_package_repology_fetch_ok gauge'
+        echo '# HELP nixos_package_repology_fetch_failures 今回の実行で Repology API への問い合わせに失敗した件数'
+        echo '# TYPE nixos_package_repology_fetch_failures gauge'
+        echo '# HELP nixos_package_repology_queries_total 今回の実行で Repology API に問い合わせた件数'
+        echo '# TYPE nixos_package_repology_queries_total gauge'
+
+        # 「Repology に載っていない」と「Repology に届いていない」は別物。
+        # 区別しないと、API が死んでいるときにダッシュボードが
+        # 「更新あり 0 件」= 全部最新、と嘘をつく (2026-09-23 に実際に発生:
+        #  repology.org がレジストラのサスペンドで到達不能になり、
+        #  217 件すべてが known=0 になっていた)。
+        fetch_failures=0
+        fetch_successes=0
 
         while IFS=$'\t' read -r name installed_version repo; do
           sleep 1
 
           if ! json=$(curl -fsS -m 10 -H "Accept: application/json" -H "User-Agent: $ua" \
             "https://repology.org/api/v1/project/''${name}" 2>/dev/null); then
-            # 問い合わせ自体の失敗 (レート制限・タイムアウト等) は
-            # 「追跡対象外」と区別せず、単に known=0 として静かにスキップする。
+            # 問い合わせ自体の失敗 (レート制限・タイムアウト・名前解決不能等)。
+            # known=0 で出しつつ、下の fetch_failures にも数えておく —
+            # これが無いと「載っていない」と見分けが付かない。
+            fetch_failures=$((fetch_failures + 1))
             echo "nixos_package_repology_known{name=\"''${name}\"} 0"
             continue
           fi
+          fetch_successes=$((fetch_successes + 1))
 
           repology_version=$(echo "$json" | jq -r --arg repo "$repo" --arg name "$name" \
             '[.[] | select(.repo == $repo and (.srcname == $name or .binname == $name))][0].version // empty')
@@ -237,6 +254,14 @@ let
             echo "nixos_package_repology_outdated{name=\"''${name}\"} 1"
           fi
         done < ${packageNamesVersionsTsv}
+
+        if [ "$fetch_successes" -gt 0 ]; then
+          echo "nixos_package_repology_fetch_ok 1"
+        else
+          echo "nixos_package_repology_fetch_ok 0"
+        fi
+        echo "nixos_package_repology_fetch_failures $fetch_failures"
+        echo "nixos_package_repology_queries_total $((fetch_successes + fetch_failures))"
 
         echo "repology_package_metrics_last_run_seconds $(date +%s)"
       } > "$work/out"
