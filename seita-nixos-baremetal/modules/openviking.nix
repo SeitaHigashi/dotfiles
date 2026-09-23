@@ -136,10 +136,13 @@ let
         api_base = inferenceBaseUrl;
         api_key = "llamacpp"; # llama.cpp も認証しないためダミー値
         # llama-swap の "embedding" モデル。中身は同じ Qwen3-Embedding-4B
-        # (Q4_K_M) です。以前は 1660 SUPER (CUDA1) に固定していましたが、
-        # 2026-09-22 に CPU 実行 (device = none / ngl = 0) へ移しました
-        # (実測 warm 66 ms/リクエスト)。理由は modules/llama-cpp.nix の
-        # swapConfig 内 "embedding" のコメント参照。
+        # (Q4_K_M) です。2026-09-21 に一度 CPU 実行 (ngl = 0、実測 warm
+        # 66 ms/リクエスト) へ移しましたが、2026-09-22 の gemma4 削除で
+        # VRAM が空いたため 1660 SUPER (CUDA_VISIBLE_DEVICES=0 / -ngl 99)
+        # に戻しています (実測 warm 16.4-18.6 ms/リクエスト、CPU 比 約4倍)。
+        # CUDA_VISIBLE_DEVICES で 3060 Ti を見せないことが要点で、これにより
+        # bonsai と物理的に干渉しません。正は modules/llama-cpp.nix の
+        # swapConfig 内 "embedding" とその上のコメント。
         # model = "qwen3-embedding:4b";
         model = "embedding";
         # ★ 2048 のままで正しい。再インデックスは不要 ★
