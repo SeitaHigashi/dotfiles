@@ -436,12 +436,16 @@ in
               #
               # ★ 2026-09-21: ollama.service を外しました ★
               #   modules/ollama.nix で enable = false にしたため、常に
-              #   inactive になり鳴りっぱなしになるからです。llama-cpp.service
-              #   はまだ足していません — あちらは wantedBy = [] の手動起動で、
-              #   足すと同じ理由で鳴り続けます。llama-cpp を常時起動に
-              #   切り替えた時点で追加してください。
+              #   inactive になり鳴りっぱなしになるからです。
               #   (元の式: … |n8n.service|ollama.service|open-webui.service| … )
-              expr = ''min by (name) (node_systemd_unit_state{state="active",name=~"grafana.service|victoriametrics.service|n8n.service|open-webui.service|tailscaled.service|podman-ftb-evolution.service|podman-mc-monitor.service"})'';
+              #
+              # ★ 2026-09-23: llama-cpp.service を足しました ★
+              #   modules/llama-cpp.nix が wantedBy = [ "multi-user.target" ]
+              #   の常時起動になったためです。手動起動だった頃にここへ入れると
+              #   常に inactive で鳴りっぱなしになる、というのが従来の除外理由
+              #   でした。llama-cpp を再び手動起動に戻すなら、ここからも
+              #   外してください。
+              expr = ''min by (name) (node_systemd_unit_state{state="active",name=~"grafana.service|victoriametrics.service|n8n.service|open-webui.service|llama-cpp.service|tailscaled.service|podman-ftb-evolution.service|podman-mc-monitor.service"})'';
               op = "lt";
               limit = 1;
               pending = "10m";

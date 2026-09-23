@@ -14,11 +14,14 @@
 #     追い出しが枠数ベースの LRU しか無く、このホストの VRAM 制約を
 #     表現できないためです。経緯は swapConfig のコメントを参照。
 #
-# ★ 既定では起動しません (wantedBy = [])。★
-#   VRAM は 2 枚合計で約 13.6 GiB しかなく、ollama が OpenViking 用に
-#   常駐すると約 4.7 GiB を占めます。その状態では Bonsai は 4K context しか
-#   載りません。つまり両方を「定義」はできても「同時に動かす」意味はない、
-#   というのが移行作業側 (bonsai-workspaces) の実測結論です。
+# ★ 2026-09-23: 常時起動に切り替えました (wantedBy = [ "multi-user.target" ])。★
+#   以前は wantedBy = [] の手動起動でした。理由は ollama との VRAM 競合で、
+#   VRAM が 2 枚合計 13.6 GiB しかないところに ollama が OpenViking 用に
+#   約 4.7 GiB を常駐させると、Bonsai は 4K context しか載らなかったためです。
+#   両方を「定義」はできても「同時に動かす」意味はない、というのが移行作業側
+#   (bonsai-workspaces) の実測結論でした。
+#   2026-09-21 に modules/ollama.nix が enable = false になり ollama.service
+#   自体が生成されなくなったので、この競合は解消しています。
 #
 #   VRAM を食っているのは ollama だけではありません。3060 Ti (8192 MiB) には
 #   ollama とは無関係に常駐しているものがあります (2026-09-21 実測):
@@ -35,11 +38,9 @@
 #     したがってプリセットの数値をこの 2 つのために割り引く必要はありません。
 #     逆に言えば、fukurou や ComfyUI を止めても余裕が増えるだけで、
 #     プリセットを変更する理由にはなりません。
-#   したがって当面は手動起動:
-#     sudo systemctl start llama-cpp
-#   ollama から本当に切り替えるときに、この wantedBy と modules/ollama.nix の
-#   services.ollama.enable、modules/alerting.nix の死活監視 (後述) を
-#   まとめて反転させてください。
+#   切り替え時のチェックリスト (後述「切り替え時に一緒に反転させるもの」) は
+#   2026-09-23 時点ですべて消化済みです。残っているのは OpenViking だけで、
+#   あちらは依然 ollama を向いています (移行作業側がブリーフする予定)。
 #
 # なぜ ollama ではなくこれなのか (そもそもの動機):
 #   Bonsai-2 の PTQ1_0 / PQ2_0 という三値/1bit パッキングを復号できるのは
@@ -213,13 +214,13 @@
 #     - ★ content が空文字でも成功に見えます ★ max_tokens を reasoning が
 #       食い切ると content = "" で 200 が返ります。呼び出し側で空判定を。
 #
-# 切り替え時に一緒に反転させるもの:
-#   - このモジュールの wantedBy = [] -> [ "multi-user.target" ]
-#   - modules/ollama.nix の services.ollama.enable
-#   - modules/alerting.nix の service-inactive ルールの name=~
-#     (llama-cpp.service を足して ollama.service を外す)
-#   - modules/resource-priority.nix の ollama の MemoryHigh 12G を
-#     llama-cpp 側の予算に回す
+# 切り替え時に一緒に反転させるもの (★ 済 = 2026-09-23 時点で対応済み):
+#   - [済] このモジュールの wantedBy = [] -> [ "multi-user.target" ]
+#   - [済] modules/ollama.nix の services.ollama.enable (2026-09-21 に false)
+#   - [済] modules/alerting.nix の service-inactive ルールの name=~
+#          (llama-cpp.service を足して ollama.service を外す)
+#   - [済] modules/resource-priority.nix の ollama の MemoryHigh 12G を
+#          llama-cpp 側の予算に回す (2026-09-21 に ollama 側をコメントアウト)
 #   - OpenViking (modules/openviking.nix) も ollama を使っています。
 #     こちらは移行作業側が別途ブリーフする予定 — 勝手に触らないこと。
 ##############################################################################
@@ -567,9 +568,9 @@ in
   systemd.services.llama-cpp = {
     description = "llama-swap + llama.cpp (PrismML fork) — OpenAI-compatible, multi-model";
 
-    # ★ 自動起動しません ★ 上の冒頭コメント参照。ollama と VRAM を取り合う
-    # ため、切り替えを決めるまでは手動 (systemctl start llama-cpp) です。
-    wantedBy = [ ];
+    # ★ 自動起動します (2026-09-23〜) ★ 上の冒頭コメント参照。以前は ollama と
+    # VRAM を取り合うため手動起動でしたが、ollama を止めたので競合はありません。
+    wantedBy = [ "multi-user.target" ];
 
     # GPU が使える状態になってから。modules/ollama.nix:215-218 と同じ理由で、
     # nvidia-persistenced が上がっていればドライバは初期化済みです。
