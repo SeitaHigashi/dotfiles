@@ -368,8 +368,8 @@
     },
     {
       "type": "stat",
-      "title": "Repology 上で更新が見つかっているパッケージ数",
-      "description": "対応するチャンネルで Repology が報告しているバージョンと、今入っているバージョンが違うパッケージの数。flake update すれば上がる可能性があります。1日1回しか更新されません。【重要】右の「Repology API 到達」が 0 のときは、この 0 は「全部最新」ではなく「1件も判定できていない」という意味です。",
+      "title": "追従先 nixpkgs 上で更新が見つかっているパッケージ数",
+      "description": "追従先チャンネル (unstable 由来なら nixos-unstable、それ以外は使用中の stable チャンネル) を直接 nix eval したバージョンと、今入っているバージョンが違うパッケージの数。flake update すれば上がる可能性があります。1日1回しか更新されません。【重要】右の「チャンネル解決」が 0 のときは、この 0 は「全部最新」ではなく「1件も判定できていない」という意味です。",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -383,7 +383,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(nixos_package_repology_outdated)",
+          "expr": "sum(nixos_package_outdated)",
           "legendFormat": "更新あり"
         }
       ],
@@ -420,8 +420,8 @@
     },
     {
       "type": "stat",
-      "title": "Repology で追跡できなかったパッケージ数",
-      "description": "Repology 上に対応する名前のエントリが見つからなかった (自前/ニッチなパッケージ、または名前が一致しない) 数。これらは更新判定の対象外です。",
+      "title": "attrPath を同定できなかったパッケージ数",
+      "description": "drvPath 一致で nixpkgs 上の attrPath を特定できなかった (自前/ニッチなパッケージ、または候補スコープのどれにも一致しない) 数。これらは更新判定の対象外です。",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -435,7 +435,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(nixos_package_repology_known == 0)",
+          "expr": "count(nixos_package_upstream_attr_resolved == 0)",
           "legendFormat": "追跡不可"
         }
       ],
@@ -459,8 +459,8 @@
     },
     {
       "type": "stat",
-      "title": "Repology API 到達",
-      "description": "直近の実行で Repology API への問い合わせが1件でも成功したか。0 (赤) は API に届いていないことを示し、その場合「更新が見つかっているパッケージ数」は 0、「追跡できなかったパッケージ数」は全件になります — 正常な結果ではありません。2026-09-23 に repology.org はレジストラのサスペンドで到達不能になりました。",
+      "title": "追従先チャンネルの解決",
+      "description": "直近の実行で追従先チャンネル (nixos-25.05 / nixos-unstable) の revision を nix flake metadata で解決できたか。0 (赤) はそのチャンネルの評価に失敗しており、そのチャンネル由来のパッケージすべてが「更新なし」ではなく「判定不能」であることを意味します。2026-09-23 に外部サービス (repology.org) 依存をやめ、nixpkgs を直接評価する方式に切り替えました (repology.org はレジストラのサスペンドで恒久的に到達不能になったため)。",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -474,19 +474,32 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "nixos_package_repology_fetch_ok",
-          "legendFormat": "到達"
-        },
-        {
-          "refId": "B",
-          "expr": "nixos_package_repology_fetch_failures",
-          "legendFormat": "失敗件数"
+          "expr": "nixos_channel_resolve_ok",
+          "legendFormat": "{{channel}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "未解決"
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "OK"
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -501,57 +514,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "到達"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "0": {
-                        "text": "到達不可"
-                      }
-                    }
-                  },
-                  {
-                    "type": "value",
-                    "options": {
-                      "1": {
-                        "text": "OK"
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "失敗件数"
-            },
-            "properties": [
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "text",
-                      "value": null
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
         "colorMode": "background",
@@ -567,7 +530,7 @@
     {
       "type": "table",
       "title": "パッケージ一覧と更新有無",
-      "description": "environment.systemPackages の内容と、Repology から見た更新有無。「更新可能」は対応チャンネルのバージョンといま入っているバージョンが違うことを示すだけで、破壊的変更の有無までは分かりません。「Repology追跡」が「対象外」の行は Repology 側にエントリが見つからず判定していません (自前/ニッチなパッケージや名前の不一致)。",
+      "description": "environment.systemPackages の内容と、追従先 nixpkgs を直接 nix eval した更新有無。「更新可能」は対応チャンネルのバージョンといま入っているバージョンが違うことを示すだけで、破壊的変更の有無までは分かりません。「attrPath追跡」が「対象外」の行は drvPath 一致で nixpkgs 上の attrPath が同定できず判定していません (自前/ニッチなパッケージ、または候補スコープのどれにも一致しないもの)。",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -587,19 +550,19 @@
         },
         {
           "refId": "B",
-          "expr": "nixos_package_repology_known",
+          "expr": "nixos_package_upstream_attr_resolved",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "nixos_package_repology_outdated",
+          "expr": "nixos_package_outdated",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "nixos_package_repology_version_info",
+          "expr": "nixos_package_upstream_version_info",
           "format": "table",
           "instant": true
         }
@@ -642,9 +605,9 @@
             "renameByName": {
               "name": "パッケージ名",
               "version": "バージョン",
-              "Value #B": "Repology追跡",
+              "Value #B": "attrPath追跡",
               "Value #C": "更新可能",
-              "version 1": "Repology 上のバージョン"
+              "version 1": "追従先 nixpkgs 上のバージョン"
             }
           }
         },
@@ -726,7 +689,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Repology追跡"
+              "options": "attrPath追跡"
             },
             "properties": [
               {

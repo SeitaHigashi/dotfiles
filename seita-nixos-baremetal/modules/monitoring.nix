@@ -495,8 +495,8 @@ in
       #   30-nvidia-gpu          Grafana.com ID 14574 (空パネルを削除済み。下記)
       #   40-zfs-replication     自作。スナップショットの世代と syncoid の複製遅延
       #                          (メトリクスの出所は modules/zfs-snapshot-metrics.nix)
-      #   70-nix-info             自作。インストール済みパッケージ一覧、Repology 経由の
-      #                          パッケージ単位の更新有無、Hydra ビルド状況
+      #   70-nix-info             自作。インストール済みパッケージ一覧、追従先 nixpkgs と
+      #                          直接比較したパッケージ単位の更新有無、Hydra ビルド状況
       #                          (メトリクスの出所は modules/nix-info.nix)
       #   71-nix-profile-info     自作。user の nix profile (命令的に入れたパッケージ) の
       #                          一覧・世代・追従先 nixpkgs と直接比較した更新有無

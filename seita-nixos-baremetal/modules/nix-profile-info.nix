@@ -49,9 +49,17 @@
 #   - バージョンが「その nixpkgs が実際に出す値」そのもの。第三者のクロール
 #     結果を介さないので、ズレようがありません。
 #
-# 逆に systemPackages (217 件) に同じ手は使えません — 属性を 217 回引く
-# コストと、複数チャンネルの評価キャッシュを抱える負担が釣り合わないため、
-# あちらは Repology 方式のまま据え置いています。
+# systemPackages (216 件) 側も 2026-09-23 に同じ direct-eval 方式へ切り替え
+# 済みです (modules/nix-info.nix)。属性を1件ずつ引く代わりに、チャンネルごと
+# 1回の `nix eval --json <channel>#legacyPackages.x86_64-linux --apply <fn>`
+# にまとめて評価します — 実測 216 属性で 0.6 秒程度 (温まった評価キャッシュの
+# 場合) と軽く、パッケージ数だけ nix を起動するコストは要りません。
+# こちらとの違いは attrPath の取得元です。profile は manifest.json が
+# attrPath を自分で覚えていますが、systemPackages の pname はトップレベル
+# 属性名と一致しないことが多い (実測: 216 件中トップレベル直下で見つかるのは
+# 92 件のみ。残りは kdePackages.* 配下の KDE Plasma コンポーネント等) ため、
+# 候補スコープ (kdePackages, libsForQt5, python3Packages 等) × pkgs/pkgs.unstable
+# の組み合わせを drvPath 完全一致で総当たりして attrPath を同定しています。
 ##############################################################################
 
 let
