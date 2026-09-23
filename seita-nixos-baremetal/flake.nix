@@ -107,6 +107,7 @@
         ./modules/zfs-snapshot-metrics.nix # スナップショット / 複製状況のメトリクス
         ./modules/gpu-xid-metrics.nix  # NVIDIA Xid (GPU fallen off the bus 等) のメトリクス
         ./modules/nix-info.nix         # インストール済みパッケージ一覧 / Hydra ビルド状況のメトリクス
+        ./modules/nix-profile-info.nix # user の nix profile の内容 / 更新有無のメトリクス
         ./modules/alerting.nix         # Grafana のアラート (通知は n8n Webhook)
         ./modules/ollama.nix           # ローカル LLM (Ollama + Open WebUI)
         ./modules/llama-cpp.nix        # ローカル LLM (llama.cpp PrismML フォークのルーター、Ollama の置き換え候補・既定では停止)

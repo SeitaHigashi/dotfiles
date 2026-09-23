@@ -498,6 +498,9 @@ in
       #   70-nix-info             自作。インストール済みパッケージ一覧、Repology 経由の
       #                          パッケージ単位の更新有無、Hydra ビルド状況
       #                          (メトリクスの出所は modules/nix-info.nix)
+      #   71-nix-profile-info     自作。user の nix profile (命令的に入れたパッケージ) の
+      #                          一覧・世代・追従先 nixpkgs と直接比較した更新有無
+      #                          (メトリクスの出所は modules/nix-profile-info.nix)
       #
       # コミュニティ製の 3 つは取り込み時に手を入れてあります:
       #   - __inputs / __requires を削除 (これが残っていると、provisioning
