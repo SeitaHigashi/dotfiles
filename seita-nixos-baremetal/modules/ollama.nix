@@ -217,7 +217,12 @@ in
                           # — modules/openviking.nix の vlm コメント参照)。
                           # tools ケイパビリティを ollama show で確認済み、
                           # ~6.6 GiB
-      "nomic-embed-text" # Open WebUI の RAG_EMBEDDING_MODEL 用。~0.3 GiB と軽い
+      # ★ 2026-09-23: もう誰も使っていません ★
+      #   RAG_EMBEDDING_MODEL 用に入れていましたが、RAG は llama-swap の
+      #   [embedding] (Qwen3) に移りました。ollama を復活させる場合も
+      #   この行は不要です (消していないのは、この loadModels ブロック全体が
+      #   「enable = true に戻すときの原状復帰用」として残されているため)。
+      "nomic-embed-text" # ~0.3 GiB と軽い
       "qwen3-embedding:4b" # OpenViking の embedding 用。Matryoshka 学習済みで
                             # dimensions パラメータにより出力次元を落とせるため、
                             # イメージ同梱のブートストラップコレクションが期待する
@@ -330,10 +335,31 @@ in
       DO_NOT_TRACK = "True";
       SCARF_NO_ANALYTICS = "True";
 
-      # RAG の埋め込みもローカルの Ollama に寄せる。
-      # 既定では HuggingFace から sentence-transformers を落としてきます。
-      RAG_EMBEDDING_ENGINE = "ollama";
-      RAG_EMBEDDING_MODEL = "nomic-embed-text";
+      ########################################################################
+      # RAG の埋め込み (2026-09-23 に ollama → llama-swap へ移行)
+      #
+      # ★ ここが死んだ先を指していました ★
+      #   services.ollama.enable = false にした 2026-09-21 以降も
+      #   RAG_EMBEDDING_ENGINE = "ollama" のままだったため、RAG は
+      #   OLLAMA_BASE_URL (11434、待ち受けなし) を叩き続けており、埋め込みを
+      #   一度も作れていませんでした。エラーにならず「Knowledge に入れても
+      #   何も引っかからない」という形で静かに壊れます。
+      #
+      # 向け先は llama-swap の [embedding] (Qwen3-Embedding-4B, 2560 次元)。
+      # modules/llama-cpp.nix にあった 768 次元の [embedding-nomic] は、
+      # 同日に削除しました (呼ぶ経路が無く、守るべき既存インデックスも
+      # 無かったため。1660 SUPER の VRAM を空ける目的も兼ねています)。
+      #
+      # ★ RAG_EMBEDDING_* は PersistentConfig です ★
+      #   ここに書いた値は初回起動時に DB へ種を蒔くだけで、既に DB がある
+      #   このホストでは反映されません。実際に RAG を使い始めるときは
+      #   Admin Panel → Settings → Documents で同じ値に手で変更すること。
+      #   (2026-09-23 時点で Knowledge は 0 件、RAG 未使用のため未実施)
+      ########################################################################
+      RAG_EMBEDDING_ENGINE = "openai";
+      RAG_OPENAI_API_BASE_URL = "http://127.0.0.1:8888/v1";
+      RAG_OPENAI_API_KEY = "dummy"; # llama-swap は認証しないが、空だと弾かれる
+      RAG_EMBEDDING_MODEL = "embedding";
     };
   };
 

@@ -134,29 +134,25 @@
 # 厄介なところです)。
 #
 #   (1) OLLAMA_BASE_URL              — modules/ollama.nix:291
-#   (2) RAG_EMBEDDING_ENGINE = "ollama" + RAG_EMBEDDING_MODEL =
-#       "nomic-embed-text" — modules/ollama.nix:305-306
-#       RAG (ドキュメント添付) の埋め込みが ollama の nomic-embed-text を
-#       直接呼びます。移行先は [embedding-nomic] プリセットです
-#       ([embedding] ではありません — あちらは Qwen3 で OpenViking 用)。
+#   (2) RAG_EMBEDDING_ENGINE / RAG_EMBEDDING_MODEL — modules/ollama.nix
 #
-#       ★ 再インデックスは「たぶん不要、ただし未証明」★
-#         同じ nomic-embed-text v1.5 系で、次元数も一致します
-#         (実機のルーターで測定: embedding-nomic = 768、embedding = 2560。
-#          ollama の nomic-embed-text タグも v1.5 の 768 次元)。
-#         ただし ollama の実装と llama.cpp の実装でベクトルそのものを
-#         突き合わせた検証はしていません。pooling や正規化の細部が違えば、
-#         ollama が作った既存インデックスに対する検索精度が落ちる可能性は
-#         残ります。確実を取るなら切り替え後に Knowledge を再インデックス
-#         してください (コストは時間だけです)。
+#       ★ 2026-09-23 に解消済み ★
+#         [embedding] (Qwen3-Embedding-4B, 2560 次元) に向け直しました。
+#         当初は 768 次元を維持するため [embedding-nomic] を移行先に
+#         用意していましたが、そちらは削除しました。理由は 2 つで、
+#         どちらも 2026-09-23 に実機で確認しています:
+#           - ollama.service を 2026-09-21 に止めて以降、RAG は死んだ
+#             11434 を指したままで埋め込みを一度も作れていなかった
+#             (ss で 11434 の待ち受けなしを確認)。
+#           - Knowledge のドキュメントが 0 件で、守るべき既存
+#             インデックスが存在しなかった (ユーザー確認)。
+#         次元が 768 → 2560 に変わりますが、再インデックス対象が
+#         無いためコストはゼロです。
 #
-#         2026-09-21 の決定: 再インデックスは方針としては行うが、今回の
-#         切り替えには含めない (先送り)。したがってこのモジュールも
-#         「再インデックス済み」を前提にしていません。切り替え時点の RAG は
-#         embedding-nomic に向けて様子を見るか、当面 ollama に向けたまま
-#         残すかのどちらでも成立します。
-#         ★ [embedding] (Qwen3, 2560 次元) を指した場合は、次元が違うので
-#           再インデックスが「必ず」要ります ★
+#       ★ RAG_EMBEDDING_* は PersistentConfig です ★
+#         environment に書いた値は初回起動時に DB へ入るだけで、既存の
+#         インストールには効きません。実際に RAG を使うときは
+#         Admin Panel → Settings → Documents で同じ値に変更すること。
 #   (3) Open WebUI の Pipe 関数 (Admin Panel → Functions)
 #       ★ これはリポジトリから配備できません ★ Web UI で手編集されたもので、
 #       どの diff にも現れません。__task__ 呼び出し (title_generation /
@@ -413,10 +409,10 @@ let
       #   ないためです。代償は KV の精度 (q8_0 → q4_0) だけです。
       #
       #   ★ 残り 410 MiB しかないことは、llama-swap 方式では問題になりません ★
-      #     同居しうるのは CUDA を一切見ない埋め込みプロセスだけだからです
-      #     (下の embedding / embedding-nomic の CUDA_VISIBLE_DEVICES="")。
-      #     3060 Ti を使う他のモデルは matrix が必ず bonsai を降ろしてから
-      #     起動します。
+      #     3060 Ti を踏みうる他のプロセスが居ないからです。[embedding] は
+      #     CUDA_VISIBLE_DEVICES=0 で 1660 SUPER しか見ておらず、このカードを
+      #     物理的に触れません。3060 Ti を使う他のモデル (bonsai-vision) は
+      #     matrix が必ず bonsai を降ろしてから起動します。
       # ----------------------------------------------------------------
       "bonsai":
         name: "Bonsai 2 27B (80K)"
@@ -464,15 +460,17 @@ let
       #   これが「embedding が呼ばれても bonsai が落ちない」ことの実体です
       #   (matrix の sets だけでなく、物理的にも干渉しません)。
       #
-      #   ★ この GPU 配置は未実測です (2026-09-22) ★
-      #     2026-09-22 に gemma4 を環境から削除し、1660 SUPER が空いたので
-      #     CPU 実行から戻しました。直前の CPU 実行の実測は warm で約 66 ms/
-      #     リクエストで、GPU ならこれより速くなるはずですが、測っていません。
-      #     容量も机上です: カードは 6144 MiB、fukurou (whisper.cpp、
-      #     modules/fukurou.nix がこのカードにピン留め) が約 479 MiB 常駐、
-      #     Qwen3-Embedding-4B Q4_K_M が 2.5 GB、nomic-embed-text v1.5 Q8_0 が
-      #     146 MB。2 つ同時に載る計算ですが、context と計算バッファは
-      #     見込んでいません。
+      #   ★ 1660 SUPER の実測内訳 (2026-09-23) ★
+      #     nvidia-smi の総容量は 6144 MiB ですが、ドライバ予約を引いた
+      #     実効容量は約 5745 MiB です (CUDA 側から見える値。PyTorch が
+      #     "total capacity of 5.61 GiB" と報告するのがこれ)。
+      #       fukurou (whisper.cpp、modules/fukurou.nix がピン留め)  479 MiB
+      #       [embedding] Qwen3-Embedding-4B Q4_K_M, -c 8192        3926 MiB
+      #       ------------------------------------------------------------
+      #       常駐合計                                              4405 MiB
+      #       空き                                                 約1337 MiB
+      #     2026-09-23 に [embedding-nomic] を削除したので、ここに 3 つ目の
+      #     埋め込みが割り込むことは無くなりました。
       #     ★ 起動しなくなったら、まず ngl を下げるか、
       #       CUDA_VISIBLE_DEVICES="" + -ngl 0 の CPU 実行に戻すこと ★
       #       CPU 実行でも 66 ms/リクエストで実用範囲でした。
@@ -491,22 +489,24 @@ let
           -ngl 99
           -c 8192
 
-      # nomic-embed-text v1.5、768 次元。Open WebUI の RAG が既にこのモデルで
-      # インデックスを作っているため (modules/ollama.nix:306 の
-      # RAG_EMBEDDING_MODEL = "nomic-embed-text")、切り替えで Knowledge の
-      # 作り直しを迫られないように残してあります。Qwen3 の "embedding" は
-      # 別モデルかつ別次元なので、そちらを指すと作り直しが必要になります。
-      "embedding-nomic":
-        name: "nomic-embed-text v1.5"
-        env:
-          - "CUDA_VISIBLE_DEVICES=0"
-        cmd: |
-          ''${server}
-          --model ${modelsDir}/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf
-          --embeddings
-          --pooling mean
-          -ngl 99
-          -c 8192
+      # ★ 2026-09-23: [embedding-nomic] を削除しました ★
+      #   768 次元の nomic-embed-text v1.5 を、Open WebUI の RAG が作った
+      #   既存インデックスを壊さないために残していましたが、前提が 2 つとも
+      #   崩れていたため畳みました。
+      #
+      #   (1) 呼ぶ経路が存在しませんでした。RAG_EMBEDDING_ENGINE = "ollama"
+      #       のまま ollama.service を 2026-09-21 に止めたので、Open WebUI の
+      #       RAG は死んだ 11434 を指したままで、埋め込みを一度も作れて
+      #       いません (2026-09-23 に ss で 11434 の待ち受けなしを確認)。
+      #       結果 [embedding-nomic] は一度もロードされたことがない
+      #       死にコードでした。
+      #   (2) 守るべき既存インデックスがありませんでした。Knowledge の
+      #       ドキュメントは 0 件 (2026-09-23 ユーザー確認)。再インデックス
+      #       コストはゼロです。
+      #
+      #   RAG は modules/ollama.nix 側で [embedding] (Qwen3, 2560 次元) に
+      #   向け直しました。1660 SUPER の VRAM をこれ以上の常駐で埋めないための
+      #   削除でもあります (下の sets のコメント参照)。
 
     # ----------------------------------------------------------------------
     # ★ ここが「CUDA0 は bonsai 専用」を保証している箇所です ★
@@ -546,9 +546,8 @@ let
               bonsai-vision: 50
               # 埋め込みは軽く、別のカードなので追い出す理由が無い。
               embedding: 1
-              embedding-nomic: 1
             sets:
-              generation: "(bonsai | bonsai-vision) & embedding & embedding-nomic"
+              generation: "(bonsai | bonsai-vision) & embedding"
   '';
 in
 {
