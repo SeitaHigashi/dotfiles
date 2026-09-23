@@ -296,6 +296,11 @@ in
 {
   systemd.tmpfiles.rules = [
     "d ${textfileDir} 0755 root root -"
+
+    # profile 側を Repology から direct-eval へ移したときの旧出力。
+    # 書き手がいなくなっても textfile collector は *.prom を読み続けるため、
+    # 明示的に消さないと死んだメトリクスが配られ続ける (実機で確認)。
+    "r ${textfileDir}/nix-profile-repology-status.prom - - - -"
   ];
 
   ##############################################################################
