@@ -14,9 +14,23 @@ Uses the same NVIDIA GPUs as the other inference services.
 - GPU: pinned to the RTX 3060 Ti (`gpuIndex = "1"`, `CUDA_VISIBLE_DEVICES`). VRAM
   contention with llama.cpp's `bonsai` model on the same card:
   [GPU and VRAM budget](../gpu-vram-budget.md).
-- **Disabled by default since 2026-09-22** — see
-  [2026-09-22 ComfyUI stopped by default](../decisions/2026-09-22-comfyui-disabled-by-default.md).
-  Start manually with `sudo systemctl start comfyui` when needed.
+- **Disabled since 2026-09-24.** No ComfyUI unit, timer, firewall port or Serve route is
+  generated (`enable = false` in `modules/comfyui.nix`); the `comfyui` user and
+  `/var/lib/comfyui` (venv, models) are kept. Why:
+  [2026-09-24 ComfyUI disabled](../decisions/2026-09-24-comfyui-disabled.md).
+  Earlier it was only stopped by default
+  ([2026-09-22](../decisions/2026-09-22-comfyui-disabled-by-default.md)).
+
+## Re-enabling
+
+1. `modules/comfyui.nix`: `enable = true;`
+2. `modules/resource-priority.nix`: uncomment the `comfyui-setup` / `comfyui` blocks.
+3. `modules/reverse-proxy.nix`: uncomment the `9443` route.
+4. Make room on the 3060 Ti first — with `bonsai` loaded the pre-start guard (85%) refuses
+   to start ComfyUI ([GPU and VRAM budget](../gpu-vram-budget.md)).
+
+Doing 1 without 2 generates a `comfyui.service` with no `ExecStart` (the same breakage as
+[the ollama case](../decisions/2026-09-21-ollama-serviceconfig-broken-unit.md)).
 
 ## Why pip venv, not a nixpkgs package
 

@@ -34,7 +34,7 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - [Ollama](docs/services/ollama.md) — disabled since 2026-09-21; how to re-enable
 - [Open WebUI](docs/services/open-webui.md) — browser chat UI, PersistentConfig gotcha
 - [OpenViking](docs/services/openviking.md) — context DB for AI agents
-- [ComfyUI](docs/services/comfyui.md) — image generation, stopped by default
+- [ComfyUI](docs/services/comfyui.md) — image generation, **disabled** since 2026-09-24; how to re-enable
 - [fukurou](docs/services/fukurou.md) — voice conversation loop (STT → LLM → TTS)
 - [Desktop](docs/services/desktop.md) — KDE Plasma (X11) for the projector
 - [Monitoring](docs/services/monitoring.md) — VictoriaMetrics, Loki, Grafana, dashboards, Grafana MCP
@@ -91,3 +91,4 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - 2026-09-23 [Migration from ollama to llama.cpp](docs/decisions/2026-09-23-ollama-to-llama-cpp.md)
 - 2026-09-23 [3060 Ti power limit for fan noise](docs/decisions/2026-09-23-3060ti-power-limit.md)
 - 2026-09-23 [Repology → direct nix eval](docs/decisions/2026-09-23-repology-to-direct-nix-eval.md)
+- 2026-09-24 [ComfyUI disabled](docs/decisions/2026-09-24-comfyui-disabled.md)

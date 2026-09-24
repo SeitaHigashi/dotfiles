@@ -11,6 +11,7 @@
 #   docs/decisions/2026-08-05-comfyui-pip-venv.md         pip venv / fixed user / dpool dataset
 #   docs/decisions/2026-08-08-comfyui-disable-dynamic-vram.md
 #   docs/decisions/2026-09-22-comfyui-disabled-by-default.md
+#   docs/decisions/2026-09-24-comfyui-disabled.md         why it is disabled now (enable flag below)
 #   docs/decisions/2026-08-25-projector-hdmi-to-3060ti.md  why GPU1 also carries Xorg
 #
 # When you change this file, update the docs above in the same commit.
@@ -20,6 +21,17 @@ let
   port = 8188;
   stateDir = "/var/lib/comfyui";
   gpuIndex = "1"; # RTX 3060 Ti — see docs/gpu-vram-budget.md for the current index table
+
+  # ★ Disabled on 2026-09-24 ★ With bonsai resident the 3060 Ti sits at ~95%
+  #   VRAM, so the pre-start guard below always refuses to start ComfyUI
+  #   (docs/decisions/2026-09-24-comfyui-disabled.md). Every unit and the
+  #   firewall port are gated on this flag; the comfyui user and
+  #   /var/lib/comfyui (venv + models) are kept so re-enabling is cheap.
+  # To re-enable: set this to true, AND uncomment the comfyui blocks in
+  #   modules/resource-priority.nix and the comfyui route in
+  #   modules/reverse-proxy.nix (leaving them active while this is false
+  #   generates a comfyui.service with no ExecStart).
+  enable = false;
 
   # VRAM usage thresholds (%). Hysteresis avoids flapping near the boundary.
   startBlockPct = 85; # pre-start check: refuse to start at/above this
@@ -116,7 +128,7 @@ in
   # Idempotent: creates the venv if missing, always updates comfy-cli (-U),
   # only installs ComfyUI if main.py is missing.
   ############################################################################
-  systemd.services.comfyui-setup = {
+  systemd.services.comfyui-setup = lib.mkIf enable {
     description = "ComfyUI venv setup (comfy-cli)";
     before = [ "comfyui.service" ];
 
@@ -179,7 +191,7 @@ with open(path, "w") as f:
   ############################################################################
   # Server
   ############################################################################
-  systemd.services.comfyui = {
+  systemd.services.comfyui = lib.mkIf enable {
     description = "ComfyUI server";
     after = [ "comfyui-setup.service" "nvidia-persistenced.service" ];
     wants = [ "comfyui-setup.service" "nvidia-persistenced.service" "comfyui-vram-guard.timer" ];
@@ -255,7 +267,7 @@ with open(path, "w") as f:
   # comfyui.service stops (including a guard-triggered stop). comfyui.service's
   # `wants` brings it up together at start.
   ############################################################################
-  systemd.services.comfyui-vram-guard = {
+  systemd.services.comfyui-vram-guard = lib.mkIf enable {
     description = "Stop comfyui if GPU VRAM contention risks a driver hang";
     partOf = [ "comfyui.service" ];
     # RemainAfterExit: without this, cadvisor logged repeated "no such device"
@@ -268,7 +280,7 @@ with open(path, "w") as f:
     };
   };
 
-  systemd.timers.comfyui-vram-guard = {
+  systemd.timers.comfyui-vram-guard = lib.mkIf enable {
     description = "Periodic VRAM contention check for comfyui";
     partOf = [ "comfyui.service" ];
     timerConfig = {
@@ -281,7 +293,7 @@ with open(path, "w") as f:
   # Auto-resume once the GPU is free — lifecycle is independent of
   # comfyui.service (runs continuously; a no-op without the stop-flag).
   ############################################################################
-  systemd.services.comfyui-vram-resume = {
+  systemd.services.comfyui-vram-resume = lib.mkIf enable {
     description = "Resume comfyui once GPU VRAM contention has cleared";
     serviceConfig = {
       Type = "oneshot";
@@ -289,7 +301,7 @@ with open(path, "w") as f:
     };
   };
 
-  systemd.timers.comfyui-vram-resume = {
+  systemd.timers.comfyui-vram-resume = lib.mkIf enable {
     description = "Periodic check to auto-resume comfyui after a guard stop";
     # ★ Disabled to match comfyui.service's default-off state ★ this timer is
     #   the only path that could restart a stopped ComfyUI automatically, so
@@ -306,7 +318,7 @@ with open(path, "w") as f:
   # would go in modules/reverse-proxy.nix if subpath serving turns out
   # unsupported (same reasoning as n8n).
   ############################################################################
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ port ];
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.mkIf enable [ port ];
 
   # Operating notes, model storage layout: docs/services/comfyui.md.
 }

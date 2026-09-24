@@ -74,7 +74,7 @@ test suite.
 | `modules/llama-cpp.nix` | llama-swap + llama.cpp (PrismML fork) on 127.0.0.1:8888, plus Laya; auto-starts | [llama-cpp.md](docs/services/llama-cpp.md) |
 | `modules/ollama.nix` | Ollama (**disabled** since 2026-09-21) + Open WebUI (running) | [ollama.md](docs/services/ollama.md), [open-webui.md](docs/services/open-webui.md) |
 | `modules/openviking.nix` | OpenViking context DB (podman); inference via llama.cpp | [openviking.md](docs/services/openviking.md) |
-| `modules/comfyui.nix` | ComfyUI image generation (pip venv), stopped by default | [comfyui.md](docs/services/comfyui.md) |
+| `modules/comfyui.nix` | ComfyUI image generation (pip venv) — **disabled** since 2026-09-24 (`enable = false`) | [comfyui.md](docs/services/comfyui.md) |
 | `modules/fukurou.nix` | fukurou voice loop (built by hand in `~/fukurou`) | [fukurou.md](docs/services/fukurou.md) |
 | `modules/desktop.nix` | KDE Plasma (X11) for the projector | [desktop.md](docs/services/desktop.md) |
 | `modules/monitoring.nix` | VictoriaMetrics + Loki + Grafana + exporters | [monitoring.md](docs/services/monitoring.md) |

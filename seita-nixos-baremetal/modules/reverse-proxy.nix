@@ -62,7 +62,8 @@ let
     { path = null;       httpsPort = 9448;  port = 8888;                          note = "llama.cpp (no auth, tailnet only)"; }
     { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
     { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
-    { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
+    # Disabled with ComfyUI (2026-09-24, modules/comfyui.nix enable = false); uncomment together.
+    # { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
     { path = null;       httpsPort = 9444;  port = 3001;                          note = "multica-frontend"; }
     { path = null;       httpsPort = 9445;  port = 8082;                          note = "multica-backend"; }
     { path = null;       httpsPort = 9446;  port = 8765;                          note = "fukurou-webui"; }

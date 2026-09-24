@@ -65,8 +65,8 @@ budget.
 | `llama-cpp.service` | 20 | High 20G | see below |
 | `open-webui.service` | 20 | High 4G | mostly idle except RAG embedding |
 | `n8n.service` | 20 | High 2G | Node process spikes during workflow runs |
-| `comfyui.service` | 20 | High 8G | see below |
-| `comfyui-setup.service` | 20 | — | one-shot venv build |
+| `comfyui.service` | (20) | (High 8G) | commented out while ComfyUI is disabled (2026-09-24); see below |
+| `comfyui-setup.service` | (20) | — | same |
 | `cadvisor.service` | 20 | — | periodically heavy scanning all containers |
 | `syncoid-*` (per `services.syncoid.commands`) | 20 | — | nightly bulk transfer, delays are harmless |
 | `minecraft.slice` (podman `--cgroup-parent`) | 1000 | Low 10G | `MemoryLow` not `MemoryMax` — a hard cap makes the JVM fail to allocate heap and crash |
@@ -105,6 +105,10 @@ llama-cpp are not expected to run concurrently under load (VRAM runs out first),
 their `MemoryHigh` budgets aren't meant to be summed while ollama is enabled.
 
 ### comfyui.service budget
+
+Commented out in `modules/resource-priority.nix` since 2026-09-24 because ComfyUI is disabled;
+keeping them active would generate comfyui units with no `ExecStart`. Restore them together with
+`enable = true` in `modules/comfyui.nix`.
 
 2026-08-08: raised 6G → 8G. Measured RSS for `main.py` reached 8.1 GiB during image
 generation; at 6G the unit was hitting `MemoryHigh` continuously, and

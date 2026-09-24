@@ -71,11 +71,14 @@ in
 
     # ComfyUI — same "only busy while generating" shape as n8n.
     # Budget history: docs/resource-priority.md.
-    comfyui-setup.serviceConfig.CPUWeight = 20;
-    comfyui.serviceConfig = {
-      CPUWeight = 20;
-      MemoryHigh = "8G";
-    };
+    # ★ Commented out while ComfyUI is disabled (2026-09-24,
+    #   modules/comfyui.nix enable = false). Leaving these active would create
+    #   comfyui units with no ExecStart. Uncomment together with that flag.
+    # comfyui-setup.serviceConfig.CPUWeight = 20;
+    # comfyui.serviceConfig = {
+    #   CPUWeight = 20;
+    #   MemoryHigh = "8G";
+    # };
 
     # Monitoring — light, but should keep running especially during an
     # incident, so not pushed too low. cadvisor is the exception: it scans

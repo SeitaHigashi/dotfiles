@@ -83,7 +83,7 @@
         ./modules/ollama.nix           # local LLM (Ollama + Open WebUI) — disabled, see modules/ollama.nix
         ./modules/llama-cpp.nix        # local LLM (llama.cpp PrismML fork router) — replaces ollama, auto-starts (systemctl is-enabled llama-cpp: enabled, verified 2026-09-24)
         ./modules/n8n.nix              # workflow automation (tracks unstable)
-        ./modules/comfyui.nix          # image generation (ComfyUI, venv via comfy-cli)
+        ./modules/comfyui.nix          # image generation (ComfyUI) — disabled, see enable flag in the module
         ./modules/multica.nix          # Multica (AI agent management) self-hosted via podman
         ./modules/openviking.nix       # OpenViking (context DB for AI agents) self-hosted via podman
         ./modules/reverse-proxy.nix    # consolidates HTTP services behind Tailscale Serve

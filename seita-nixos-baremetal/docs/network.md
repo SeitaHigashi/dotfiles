@@ -50,7 +50,7 @@ the Serve root instead.
 | Open WebUI | `443` root | No `root_path`/subpath support at all — checked source (open-webui 0.6.9's `open_webui/main.py`, no `root_path` in the whole codebase). Static assets and API calls break under any subpath. |
 | Grafana | `/grafana` under `443` | `root_url` absolute + `serve_from_sub_path = false` makes Grafana listen at `/` but generate `/grafana/...` URLs — matches the prefix-stripping proxy. Setting `serve_from_sub_path = true` causes an infinite redirect loop (verified: `curl -L` hits `--max-redirs`). |
 | n8n | `8443` root (separate port) | `N8N_PATH` only rewrites the frontend's `window.BASE_PATH`; the backend keeps listening at `/`. Under a prefix-stripping proxy that alone works, but it breaks the LAN's direct `http://<LAN IP>:5678/` access — the HTML references `/n8n/assets/*.js` but the backend serves its catch-all HTML there instead (verified on hardware: white screen). Since n8n must stay open on the LAN too, it gets its own port with no `N8N_PATH` set. |
-| ComfyUI | `9443` root (separate port) | Frontend calls the API via absolute paths; no reverse-proxy subpath support. `443`/`8443` are taken. |
+| ComfyUI (disabled since 2026-09-24, route commented out) | `9443` root (separate port) | Frontend calls the API via absolute paths; no reverse-proxy subpath support. `443`/`8443` are taken. |
 | Multica (frontend) | `9444` root (separate port) | Next.js frontend assumes `window.origin`-relative absolute paths (`/api`, `/ws`); incompatible with prefix stripping. |
 | Multica (backend) | `9445` root (separate port) | See "Multica has two Serve ports" below. |
 | fukurou-webui | `9446` root (separate port) | Single dev test page, `index.html` embedded in the binary — no subpath awareness. |
@@ -134,7 +134,6 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 |---|---|---|
 | 443 | Open WebUI (`/`), Grafana (`/grafana/`) via Serve | `modules/reverse-proxy.nix` (`routes`) |
 | 8443 | n8n via Serve | `modules/reverse-proxy.nix` |
-| 9443 | ComfyUI via Serve | `modules/reverse-proxy.nix` |
 | 9444 | Multica frontend via Serve | `modules/reverse-proxy.nix` |
 | 9445 | Multica backend via Serve | `modules/reverse-proxy.nix` |
 | 9446 | fukurou-webui via Serve | `modules/reverse-proxy.nix` |
@@ -143,8 +142,10 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 | 10000 | Multica GitHub webhook (Funnel, public internet) | `modules/reverse-proxy.nix` |
 | 1933 | OpenViking (direct) | `modules/openviking.nix` |
 | 7878 | fukurou-server (direct WebSocket) | `modules/fukurou.nix` |
-| 8188 | ComfyUI (direct) | `modules/comfyui.nix` |
 | 11434 | Ollama (direct) — **no listener** while Ollama is disabled | `modules/ollama.nix` |
+
+ComfyUI's `9443` (Serve) and `8188` (direct) are closed while ComfyUI is disabled
+(2026-09-24); they come back with its `enable` flag and route.
 
 **Grafana `3000` and Open WebUI `8080` are not open on tailscale0** — use Serve, or `ssh -L`
 for troubleshooting.
