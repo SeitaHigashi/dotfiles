@@ -1,104 +1,122 @@
-# GPU と VRAM の予算
+# GPU and VRAM budget
 
-このホストの GPU 2 枚に、どのサービスがどれだけ載っているか。複数のモジュール
-(`modules/llama-cpp.nix`、`modules/fukurou.nix`、`modules/comfyui.nix`、`modules/openviking.nix`)
-にまたがる話なので、ここを唯一の置き場にします。
+Which service uses how much of this host's 2 GPUs. Spans several modules
+(`modules/llama-cpp.nix`, `modules/fukurou.nix`, `modules/comfyui.nix`,
+`modules/openviking.nix`), so this is the single place for it.
 
-**このカードに何かを足すとき・プリセットの数値を変えるときは、必ず先に実測すること。**
-数値はすべて実測値で、推定で動かしてよいものはありません。
+**Always measure before adding anything to a card or changing a preset's numbers.**
+Every number here is measured; none of them are safe to run on an estimate.
 
-## カードの対応表
+## Card mapping
 
-`CUDA_DEVICE_ORDER=PCI_BUS_ID` での番号 (`nvidia-smi --query-gpu=pci.bus_id` で実測):
+Index under `CUDA_DEVICE_ORDER=PCI_BUS_ID` (measured with
+`nvidia-smi --query-gpu=pci.bus_id`):
 
-| index | カード | PCI | VRAM | SM |
+| index | card | PCI | VRAM | SM |
 |---|---|---|---|---|
-| 0 | GTX 1660 SUPER | 00000000:04:00.0 | 6144 MiB (実効 約 5745 MiB) | sm_75、テンソルコア無し |
+| 0 | GTX 1660 SUPER | 00000000:04:00.0 | 6144 MiB (effective ~5745 MiB) | sm_75, no tensor cores |
 | 1 | RTX 3060 Ti | 00000000:06:00.0 | 8192 MiB | sm_86 |
 
-llama.cpp のモデルは `CUDA_VISIBLE_DEVICES` でカードごと見せる/見せないを決めています:
+llama.cpp models decide which card is shown/hidden per model via `CUDA_VISIBLE_DEVICES`:
 
-- `"1"` = 3060 Ti のみ (bonsai 系)
-- `"0"` = 1660 SUPER のみ (embedding と laya)
-- `"0,1"` (2 枚とも) や `""` (CUDA を初期化しない) も有効。前者は削除した gemma4 が、
-  後者は CPU 実行時代の埋め込みが使っていました。
+- `"1"` = 3060 Ti only (bonsai family)
+- `"0"` = 1660 SUPER only (embedding and laya)
+- `"0,1"` (both) and `""` (don't initialize CUDA) are also valid values. The
+  former was used by the now-removed gemma4; the latter by embedding back
+  when it ran on CPU.
 
-**GPU を載せ替えたら**、この表を実測し直し、あわせて `modules/llama-cpp.nix` の
-`CMAKE_CUDA_ARCHITECTURES` (`75;86`) も更新すること。合わない SM の GPU では起動時に CUDA エラーになります。
+**When you swap a GPU**, re-measure this table and also update
+`CMAKE_CUDA_ARCHITECTURES` (`75;86`) in `modules/llama-cpp.nix`. A GPU with a
+mismatched SM fails with a CUDA error at startup.
 
-`-ngl` や `--device` での指定では足りない理由: ggml は見えているデバイスすべてに CUDA コンテキスト
-(数百 MiB) を作るため、`bonsai` が 410 MiB しか残していない 3060 Ti を、CPU 実行のはずのプロセスでも
-踏みます。カードそのものを見せないのが確実で、これはモデルごとに別プロセスの llama-swap だから
-できることです ([経緯](decisions/2026-09-22-llama-swap-matrix.md))。
+Why `-ngl`/`--device` alone aren't enough: ggml creates a CUDA context
+(a few hundred MiB) on every visible device, so `bonsai`, which leaves only
+410 MiB free on the 3060 Ti, gets hit even by a process that is supposedly
+running on CPU. Hiding the card entirely is the reliable fix, and that's only
+possible because llama-swap runs each model as a separate process
+([background](decisions/2026-09-22-llama-swap-matrix.md)).
 
 ## RTX 3060 Ti (index 1)
 
-| 常駐 | 量 | 出所 |
+| resident | amount | source |
 |---|---|---|
-| ComfyUI (`modules/comfyui.nix`、`gpuIndex = "1"`) | 130 MiB | 2026-09-21 実測 |
-| `bonsai` (80K ctx, KV q4_0) | 残りほぼすべて (ロード後の空き 約 410 MiB) | 2026-09-22 実測 |
+| ComfyUI (`modules/comfyui.nix`, `gpuIndex = "1"`) | 130 MiB | measured 2026-09-21 |
+| `bonsai` (80K ctx, KV q4_0) | almost everything left (~410 MiB free after load) | measured 2026-09-22 |
 
-fukurou-server (478 MiB) は 2026-09-21 時点ではこのカードに居ましたが、2026-09-22 に
-`GGML_VK_VISIBLE_DEVICES` で 1660 SUPER へ寄せています (`modules/fukurou.nix`)。
-投影用 HDMI もこのカードに繋がっているため、投影中は Xorg の VRAM 消費も乗ります (`modules/comfyui.nix` の冒頭)。
+fukurou-server (478 MiB) was on this card as of 2026-09-21, but was moved to
+the 1660 SUPER on 2026-09-22 via `GGML_VK_VISIBLE_DEVICES`
+(`modules/fukurou.nix`). The projector HDMI is also wired to this card, so
+Xorg's VRAM use adds on top while projecting (see the top of
+`modules/comfyui.nix`).
 
-### bonsai の context 上限
+### bonsai's context ceiling
 
-3060 Ti 単体、`ctk = ctv = q4_0`、`np = 1`、`ngl = 99` (2026-09-22、カードを空にした状態):
+3060 Ti alone, `ctk = ctv = q4_0`, `np = 1`, `ngl = 99` (2026-09-22, card otherwise empty):
 
-| context | 結果 | 使用量 |
+| context | result | usage |
 |---|---|---|
 | 32768 | OK | 6674 MiB |
 | 65536 | OK | 7410 MiB |
 | 81920 | OK | 7778 MiB |
-| 90112 | NG | |
-| 98304 | NG | |
+| 90112 | fails | |
+| 98304 | fails | |
 
-NG 側は OOM ではなく `llama_init_from_model: failed to initialize the context: failed to allocate compute pp buffers`
-(計算バッファが取れない)。**81920 は実測上限なので、他の常駐が減っても上げないこと。**
+The failure is not OOM but
+`llama_init_from_model: failed to initialize the context: failed to allocate compute pp buffers`
+(can't allocate the compute buffer). **81920 is the measured ceiling — do not
+raise it even if other resident usage drops.**
 
-- 生成速度: 32.75 tok/s (80K、200 トークン生成)。q8_0 / 32768 の 33.4-33.8 tok/s からほぼ落ちない
-  (KV 量子化は生成の律速ではない)。代償は KV の精度 (q8_0 → q4_0) だけ。
-- 1660 SUPER に 1 層も載せないことが、生成で 1.3-1.5 倍、プロンプト処理で 2.5-3.7 倍に効きます
-  (1660 SUPER にテンソルコアが無いため)。
-- `bonsai-vision` は mmproj の +600 MB のぶん context が 8192 に落ちます。
-- **`-np 1` は消さないこと。** `llama-server` の既定は並列スロット 4 で、再帰状態のキャッシュを
-  スロットごとに確保するため、同じ context でも VRAM 消費が数倍になり 27B は OOM します。
-  埋め込みモデルはスロットごとに増える状態が無いので既定の 4 のままです。
+- Generation speed: 32.75 tok/s (80K, 200 tokens generated). Barely below the
+  33.4-33.8 tok/s of q8_0 / 32768 (KV quantization doesn't bottleneck
+  generation). The only cost is KV precision (q8_0 -> q4_0).
+- Putting zero layers on the 1660 SUPER is worth 1.3-1.5x on generation and
+  2.5-3.7x on prompt processing (the 1660 SUPER has no tensor cores).
+- `bonsai-vision` drops context to 8192 because of the mmproj's +600 MB.
+- **Do not drop `-np 1`.** `llama-server`'s default of 4 parallel slots
+  allocates recurrent-state cache per slot, multiplying VRAM use several
+  times over even at the same context, and OOMs the 27B. The embedding model
+  keeps the default of 4 since it has no per-slot growing state.
 
-### 空き 410 MiB で問題ない理由
+### Why 410 MiB free is fine
 
-3060 Ti を踏みうる他のプロセスが居ないからです。`embedding` / `laya` は `CUDA_VISIBLE_DEVICES=0` で
-このカードを物理的に触れず、3060 Ti を使う他のモデル (`bonsai-vision`) は matrix が必ず `bonsai` を
-降ろしてから起動します。
+Because no other process can touch the 3060 Ti. `embedding`/`laya` physically
+can't see this card (`CUDA_VISIBLE_DEVICES=0`), and the only other model that
+uses the 3060 Ti (`bonsai-vision`) is always started by the matrix only after
+evicting `bonsai`.
 
-### fukurou / ComfyUI の常駐は「見落とされた目減り」ではない (2026-09-21 時点の検証)
+### fukurou/ComfyUI's residency is not "overlooked headroom" (verified as of 2026-09-21)
 
-移行作業側の実測値 (33.6 tok/s、32768 OK / 36864 OOM といった当時の上限) は、すべて
-この 2 つが常駐した状態のカードで取られたものです。2026-09-21 に fukurou / ComfyUI を載せたまま
-`bonsai` をロードし直し、33.8 tok/s を再現しています (ロード後 7330/8192 MiB)。
+The migration work's measurements (33.6 tok/s, ceilings like 32768 OK / 36864
+OOM at the time) were all taken with both of these resident on the card. On
+2026-09-21, `bonsai` was reloaded with fukurou/ComfyUI still resident and
+reproduced 33.8 tok/s (7330/8192 MiB after load).
 
-したがってプリセットの数値をこの 2 つのために割り引く必要はありません。逆に、fukurou や ComfyUI を
-止めても余裕が増えるだけで、**プリセットを上げる理由にはなりません**。
+So the presets don't need to be discounted for these two. Conversely, stopping
+fukurou or ComfyUI only adds headroom — **that is not a reason to raise a
+preset.**
 
 ## GTX 1660 SUPER (index 0)
 
-2026-09-23 実測。nvidia-smi の総容量は 6144 MiB ですが、ドライバ予約を引いた実効容量は約 5745 MiB
-(PyTorch が "total capacity of 5.61 GiB" と報告する値)。
+Measured 2026-09-23. nvidia-smi reports 6144 MiB total capacity, but after
+driver reservation the effective capacity is ~5745 MiB (what PyTorch reports
+as "total capacity of 5.61 GiB").
 
-| 常駐 | 量 |
+| resident | amount |
 |---|---|
-| fukurou (whisper.cpp、`modules/fukurou.nix` がピン留め) | 479 MiB |
+| fukurou (whisper.cpp, pinned by `modules/fukurou.nix`) | 479 MiB |
 | `embedding` (Qwen3-Embedding-4B Q4_K_M, `-c 8192`) | 3926 MiB |
 | `laya` (Laya multilingual 322M, fp16) | 748 MiB |
-| **合計** | **5153 MiB** |
-| 空き | 約 590 MiB |
+| **total** | **5153 MiB** |
+| free | ~590 MiB |
 
-- **未調査の食い違い (2026-09-24)**: `nvidia-smi --query-compute-apps` で `laya` の python が
-  **1128 MiB** を使っているのを観測しました (上の表の 748 MiB と合わない)。この値だと空きは約 210 MiB です。
-  リクエスト処理後に PyTorch のキャッシュアロケータが確保したまま、という可能性がありますが確認していません。
-- 残り 590 MiB は薄いので、このカードに何かを足すときは必ず先に実測すること。
-- 起動しなくなったら、まず `embedding` の `ngl` を下げるか、`CUDA_VISIBLE_DEVICES=""` + `-ngl 0` の
-  CPU 実行に戻すこと。CPU 実行でも 66 ms/リクエストで実用範囲でした。
-- `laya` は fp32 だと 1318 MiB で、ここには載りません。fp16 化の事情は
-  [Laya の判断記録](decisions/2026-09-23-laya-in-llama-swap.md)。
+- **Unverified discrepancy (2026-09-24)**: `nvidia-smi --query-compute-apps`
+  showed laya's python process using **1128 MiB** (doesn't match the 748 MiB
+  above). Free would be ~210 MiB at that value. One possibility is PyTorch's
+  caching allocator holding memory after handling a request, but this has not
+  been confirmed.
+- The remaining 590 MiB is thin, so always measure before adding anything to this card.
+- If something stops starting, first lower `embedding`'s `ngl`, or fall back
+  to CPU with `CUDA_VISIBLE_DEVICES=""` + `-ngl 0`. CPU execution was still
+  usable at 66 ms/request.
+- `laya` at fp32 is 1318 MiB and does not fit here. Why it runs at fp16:
+  [Laya's decision record](decisions/2026-09-23-laya-in-llama-swap.md).

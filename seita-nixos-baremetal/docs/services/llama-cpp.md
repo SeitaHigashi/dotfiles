@@ -1,61 +1,73 @@
-# llama.cpp (llama-swap + PrismML フォーク)
+# llama.cpp (llama-swap + PrismML fork)
 
-実装: [`modules/llama-cpp.nix`](../../modules/llama-cpp.nix)
+Implementation: [`modules/llama-cpp.nix`](../../modules/llama-cpp.nix)
 
-## 何か
+## What it is
 
-`~/bonsai-workspaces` で検証してきた Bonsai-2 27B (三値量子化) を常駐サービスにしたもの。
-前段に [llama-swap](https://github.com/mostlygeek/llama-swap) を置き、リクエストの `"model"`
-フィールドを見てモデルごとの `llama-server` を子プロセスとして起動・切り替えます (= `ollama serve` 相当)。
+Turns the Bonsai-2 27B (ternary-quantized) model, validated in
+`~/bonsai-workspaces`, into a resident service. Puts
+[llama-swap](https://github.com/mostlygeek/llama-swap) in front, which reads
+the `"model"` field of a request and starts/switches the matching
+`llama-server` as a child process (equivalent to `ollama serve`).
 
-- 待ち受け: `127.0.0.1:8888` (8080 は Open WebUI なので使えない)。tailnet / LAN には出していません。
-  外から使う段階になったら `modules/reverse-proxy.nix` の `routes` に足します。OpenAI 互換のベース URL は
-  パスを含められるので、Ollama ほどサブパス配下で困らないはずです (未検証)。
-- API: OpenAI 互換 (`/v1/chat/completions`, `/v1/embeddings`, `/v1/models`)。**Ollama 互換ではありません。**
-- 自動起動します (2026-09-23〜)。経緯は [ollama からの移行](../decisions/2026-09-23-ollama-to-llama-cpp.md)。
-- ユニット: `llama-cpp.service` (本体)、`laya-setup.service` ([laya] の venv と重みの準備、oneshot)。
+- Listens on `127.0.0.1:8888` (8080 is taken by Open WebUI). Not exposed to
+  the tailnet or LAN. When it's time to expose it externally, add it to
+  `modules/reverse-proxy.nix`'s `routes`. An OpenAI-compatible base URL can
+  include a path, so this shouldn't have the subpath trouble Ollama had
+  (unverified).
+- API: OpenAI-compatible (`/v1/chat/completions`, `/v1/embeddings`,
+  `/v1/models`). **Not Ollama-compatible.**
+- Auto-starts (2026-09-23~). Background:
+  [migration from ollama](../decisions/2026-09-23-ollama-to-llama-cpp.md).
+- Units: `llama-cpp.service` (the router itself), `laya-setup.service`
+  (prepares `[laya]`'s venv and weights, oneshot).
 
-設計判断の経緯:
+Design decision records:
 
-- [PrismML フォークのビルド方式](../decisions/2026-09-21-llama-cpp-prism-build.md)
-- [llama-swap (matrix) を前段に置く理由](../decisions/2026-09-22-llama-swap-matrix.md)
-- [Laya を llama-swap に同居させる理由](../decisions/2026-09-23-laya-in-llama-swap.md)
-- [ollama からの移行](../decisions/2026-09-23-ollama-to-llama-cpp.md)
+- [PrismML fork build method](../decisions/2026-09-21-llama-cpp-prism-build.md)
+- [Why llama-swap (matrix) sits in front](../decisions/2026-09-22-llama-swap-matrix.md)
+- [Why Laya is colocated in llama-swap](../decisions/2026-09-23-laya-in-llama-swap.md)
+- [Migration from ollama](../decisions/2026-09-23-ollama-to-llama-cpp.md)
 
-GPU / VRAM の割り当てと実測値は [GPU と VRAM の予算](../gpu-vram-budget.md) にまとめています。
+GPU/VRAM allocation and measurements are collected in
+[GPU and VRAM budget](../gpu-vram-budget.md).
 
-## モデル
+## Models
 
-| ID | 中身 | GPU | 用途 |
+| ID | contents | GPU | use |
 |---|---|---|---|
-| `bonsai` | Ternary-Bonsai-2-27B PTQ1_0、80K ctx、KV q4_0 | 3060 Ti | 汎用生成 (n8n、OpenViking の VLM) |
-| `bonsai-vision` | 同じ重み + mmproj (+600 MB)、8K ctx、KV q8_0 | 3060 Ti | 画像入力 |
-| `embedding` | Qwen3-Embedding-4B Q4_K_M、2560 次元 | 1660 SUPER | OpenViking、Open WebUI の RAG |
-| `laya` | Laya multilingual 322M (PyTorch, fp16) | 1660 SUPER | n8n のフロー分岐用の決定モデル |
+| `bonsai` | Ternary-Bonsai-2-27B PTQ1_0, 80K ctx, KV q4_0 | 3060 Ti | general generation (n8n, OpenViking's VLM) |
+| `bonsai-vision` | same weights + mmproj (+600 MB), 8K ctx, KV q8_0 | 3060 Ti | image input |
+| `embedding` | Qwen3-Embedding-4B Q4_K_M, 2560 dims | 1660 SUPER | OpenViking, Open WebUI's RAG |
+| `laya` | Laya multilingual 322M (PyTorch, fp16) | 1660 SUPER | decision model for n8n's flow branching |
 
-`bonsai` と `bonsai-vision` は同じ 3060 Ti を占有するので同居しません (matrix が入れ替えます)。
-それ以外の組み合わせは同時に載ります。
+`bonsai` and `bonsai-vision` occupy the same 3060 Ti so they never coexist
+(the matrix swaps between them). Every other combination can be loaded at
+the same time.
 
-## 呼び出し側の注意
+## Caller-facing notes
 
-Ollama 形式から OpenAI 形式に移すとき、移行作業側と n8n 側が実測で詰めた結果:
+Things the migration work and n8n side nailed down by measurement when
+moving from the Ollama format to the OpenAI format:
 
-- **モデル名は llama-swap のモデル ID** (`bonsai` など)。ollama のタグではありません。
-- `options.temperature` → トップレベルの `temperature`。
-- `options.num_ctx` に相当するものは**ありません**。context はプリセットごとにサーバー起動時に固定です
-  (`bonsai` は 80K)。
-- `think` は不要。推論部分は常に `reasoning_content` として別に返ります。
-- **構造化出力の罠**:
-  - `{"type":"json_schema","schema":{...}}` → HTTP 200 で通るが **schema は黙って無視される**
-    (3/3 で無関係なキーが返った実測)
-  - `{"type":"json_schema","json_schema":{"name":"x","schema":{...}}}` → 正しい形 (3/3 成功)
-- **`content` が空文字でも成功に見える**。`max_tokens` を reasoning が食い切ると `content = ""` で
-  200 が返ります。呼び出し側で空判定をしてください。
+- **The model name is the llama-swap model ID** (e.g. `bonsai`), not an ollama tag.
+- `options.temperature` -> top-level `temperature`.
+- There is **no** equivalent of `options.num_ctx`. Context is fixed per
+  preset at server startup (`bonsai` is 80K).
+- `think` is not needed. The reasoning part always comes back separately as `reasoning_content`.
+- **Structured-output traps**:
+  - `{"type":"json_schema","schema":{...}}` -> returns HTTP 200 but the
+    **schema is silently ignored** (measured: unrelated keys returned in 3/3 tries).
+  - `{"type":"json_schema","json_schema":{"name":"x","schema":{...}}}` -> the
+    correct shape (succeeded 3/3).
+- **An empty `content` can still look like a success.** If `max_tokens` is
+  entirely consumed by reasoning, `content = ""` still comes back with a 200.
+  Callers must check for empty content themselves.
 
-### Laya の呼び出し
+### Calling Laya
 
-Laya の API は OpenAI 形ではないので `/v1/*` ではなく `/upstream/:model_id` (任意パスを upstream に
-そのまま流す) を使います:
+Laya's API is not OpenAI-shaped, so use `/upstream/:model_id` (passes any
+path straight through to the upstream) instead of `/v1/*`:
 
 ```
 POST http://127.0.0.1:8888/upstream/laya/decide
@@ -63,45 +75,51 @@ POST http://127.0.0.1:8888/upstream/laya/decide
   "instructions": "...", "criteria": {"A": "...", "B": "..."}}}}
 ```
 
-`criteria` のキーがそのまま choice として返ります。同時実行は llama-swap 側で 1 に直列化しています
-(GPU 上のモデルは 1 つで、並列にしても速くならず VRAM の山が高くなるだけのため)。
+The keys of `criteria` come back as-is as the choice. Concurrent calls are
+serialized to 1 on the llama-swap side (only one model lives on that GPU, and
+running them in parallel wouldn't speed things up, only raise the VRAM peak).
 
-実測 (2026-09-23、1660 SUPER, fp16):
+Measured (2026-09-23, 1660 SUPER, fp16):
 
 | | GPU | CPU |
 |---|---|---|
-| 短文 (median, 25 回) | 71.06 ms | 111.69 ms |
-| 長文 (median, 25 回) | 195.09 ms | 448.35 ms |
+| short input (median, 25 runs) | 71.06 ms | 111.69 ms |
+| long input (median, 25 runs) | 195.09 ms | 448.35 ms |
 
-日本語 4 択で 5/5 正解。外れかけた 1 件も確信度 0.15 と低く、act-or-escalate が設計通りに効いています。
-CUDA が使えないときは CPU で動き続けます (落ちるより遅いほうがよい、という判断)。
+5/5 correct on a Japanese 4-choice test. The one near-miss also had a low
+confidence (0.15), so act-or-escalate is working as designed. Keeps serving
+on CPU when CUDA is unavailable (a slower answer beats a dead branch).
 
-## モデルの置き場
+## Where models live
 
-`/home/seita/bonsai-workspaces/models` (27 GiB) をそのまま使い、disko にデータセットを足していません。
+Uses `/home/seita/bonsai-workspaces/models` (27 GiB) as-is; no disko dataset was added.
 
-1. `/home` は既に `dpool/home` (HDD ミラー) 上で、冗長性の観点では新設不要。
-2. 稼働中システムへのデータセット追加は手順を誤ると emergency mode に落ちる
-   (CLAUDE.md の disko の項、2026-08-25 の openviking の事例)。得るものに対してリスクが見合わない。
-3. `User=seita` で動かすので DynamicUser の `/var/lib/private` 問題
-   (`disko/default.nix` の EBUSY) がそもそも発生しない。
+1. `/home` is already on `dpool/home` (HDD mirror), so there's no redundancy
+   gain from a new dataset.
+2. Adding a dataset to a running system risks falling into emergency mode if
+   done wrong (see the disko section of CLAUDE.md, and the 2026-08-25
+   openviking incident). Not worth the risk for what's gained.
+3. Runs as `User=seita`, so the DynamicUser `/var/lib/private` problem
+   (the EBUSY case in `disko/default.nix`) doesn't come up in the first place.
 
-ただし `dpool/home` は auto-snapshot の対象なので、再ダウンロード可能な 27 GiB の GGUF が
-スナップショットに乗っています。専用データセット (`recordsize=1M` / `compression=off` /
-`auto-snapshot=false`、`var/lib/ollama` と同じ設定) に移すのは将来の改善候補です。
-移すときは switch 前に手で `zfs create` する手順 (CLAUDE.md) を必ず踏むこと。
+That said, `dpool/home` is subject to auto-snapshot, so 27 GiB of
+re-downloadable GGUFs are being snapshotted. Moving to a dedicated dataset
+(`recordsize=1M` / `compression=off` / `auto-snapshot=false`, same settings as
+`var/lib/ollama`) is a future improvement candidate. If you do move it, be
+sure to follow the manual `zfs create` procedure before switching (CLAUDE.md).
 
-モデルの取得は宣言しません (27 GiB を nix store に入れる選択肢は無い)。手動で
-`~/bonsai-workspaces/scripts/download-model.sh`。
+Fetching models is not declarative (putting 27 GiB in the nix store isn't an
+option). Done manually via `~/bonsai-workspaces/scripts/download-model.sh`.
 
-## 対話的に使う
+## Using it interactively
 
-パッケージは `environment.systemPackages` に入れていません。`llama` という一般的すぎる名前の
-バイナリを含み、PATH で衝突しうるためです。対話的には bonsai-workspaces の flake を使います:
+The package is not in `environment.systemPackages` — it ships a binary named
+`llama`, generic enough to collide on PATH. Interactively, use the
+bonsai-workspaces flake instead:
 
 ```sh
-cd ~/bonsai-workspaces && nix develop        # llama-cli / llama-bench 等
+cd ~/bonsai-workspaces && nix develop        # llama-cli / llama-bench etc.
 nix run ~/bonsai-workspaces#bench -- ...
 ```
 
-運用手順は [runbooks/llama-cpp.md](../runbooks/llama-cpp.md)。
+Operational procedures: [runbooks/llama-cpp.md](../runbooks/llama-cpp.md).

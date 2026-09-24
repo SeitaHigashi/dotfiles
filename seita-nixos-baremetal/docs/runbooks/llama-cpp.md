@@ -1,51 +1,60 @@
-# llama.cpp の運用手順
+# llama.cpp operations
 
-サービスの概要は [services/llama-cpp.md](../services/llama-cpp.md)。
+Service overview: [services/llama-cpp.md](../services/llama-cpp.md).
 
-## PrismML フォークを更新する
+## Updating the PrismML fork
 
-1. `~/bonsai-workspaces` 側の `flake.lock` を先に上げる (**正は向こう側**)。
-2. `modules/llama-cpp.nix` の `prismRev` / `prismHash` を向こうの lock と同じ値に合わせる。
-   hash は lock の `narHash` をそのまま使えます。食い違ったら nix が期待値を出すので、それに差し替える。
-3. 下の「switch 前にビルドを通す」を行う。
+1. Bump `~/bonsai-workspaces`' `flake.lock` first (**it is the source of truth**).
+2. Set `prismRev`/`prismHash` in `modules/llama-cpp.nix` to match that lock.
+   The hash can be the lock's `narHash` verbatim. If it's wrong, nix prints
+   the expected value — use that.
+3. Do the "make sure the build passes before switching" step below.
 
-## switch 前にビルドを通す
+## Make sure the build passes before switching
 
-CUDA 付きのソースビルドでバイナリキャッシュが効かず、初回や更新時は長くかかります。
-bonsai-workspaces で `nix build .#llama-cpp-prism-cuda` 済みのものが store にあっても、nixpkgs のピンが違うため
-(向こうは向こうのピン、こちらは `modules/unstable.nix` の nixpkgs-unstable) store パスは一致せず再ビルドになります。
+The CUDA source build doesn't benefit from a binary cache, and first builds
+or updates take a while. Even if `nix build .#llama-cpp-prism-cuda` was
+already built in bonsai-workspaces, the nixpkgs pin differs (theirs vs. this
+host's `modules/unstable.nix` nixpkgs-unstable), so the store path won't
+match and it rebuilds.
 
 ```sh
 nix build --no-link \
   .#nixosConfigurations.seita-nixos-baremetal.config.system.build.toplevel
 ```
 
-## Laya の初回セットアップを見る
+## Watching Laya's first-run setup
 
-torch (cu121) の wheel が約 2.5 GB あり初回は数分かかります。`nixos-rebuild switch` 自体は待たずに終わり、
-`laya-setup.service` が裏で走ります (タイムアウト 30 分)。
+The torch (cu121) wheel is about 2.5 GB, so the first run takes a few
+minutes. `nixos-rebuild switch` itself returns without waiting; `laya-setup.service`
+runs in the background (30 min timeout).
 
 ```sh
 journalctl -u laya-setup -f
 ```
 
-冪等です。venv が無ければ作り、あれば pip で追随し、重みが HF キャッシュにあれば再ダウンロードしません。
+Idempotent: creates the venv if missing, updates it via pip if present, and
+skips re-downloading weights already in the HF cache.
 
-## GPU を載せ替えた
+## After swapping a GPU
 
-1. `nvidia-smi --query-gpu=index,name,pci.bus_id --format=csv` で対応表を実測し直し、
-   [GPU と VRAM の予算](../gpu-vram-budget.md) を更新する。
-2. `modules/llama-cpp.nix` の各モデルの `CUDA_VISIBLE_DEVICES` を合わせる。
-3. `CMAKE_CUDA_ARCHITECTURES` (`75;86`) を新しいカードの SM に合わせる
-   (合わない SM の GPU では起動時に CUDA エラー。対応表は NVIDIA の CUDA GPUs)。
-4. fukurou は Vulkan の列挙順で別系統です (`modules/fukurou.nix` の `GGML_VK_VISIBLE_DEVICES`)。
+1. Re-measure the mapping with
+   `nvidia-smi --query-gpu=index,name,pci.bus_id --format=csv` and update
+   [GPU and VRAM budget](../gpu-vram-budget.md).
+2. Match each model's `CUDA_VISIBLE_DEVICES` in `modules/llama-cpp.nix` to the new mapping.
+3. Match `CMAKE_CUDA_ARCHITECTURES` (`75;86`) to the new card's SM (a
+   mismatched SM fails with a CUDA error at startup; see NVIDIA's CUDA GPUs page).
+4. fukurou is on a separate track via Vulkan's enumeration order
+   (`GGML_VK_VISIBLE_DEVICES` in `modules/fukurou.nix`).
 
-## 1660 SUPER 側のモデルが起動しなくなった
+## A model on the 1660 SUPER stops starting
 
-まず `embedding` の `-ngl` を下げるか、`CUDA_VISIBLE_DEVICES=""` + `-ngl 0` の CPU 実行に戻す
-(CPU でも 66 ms/リクエストで実用範囲)。内訳は [GPU と VRAM の予算](../gpu-vram-budget.md#gtx-1660-super-index-0)。
+First try lowering `embedding`'s `-ngl`, or fall back to CPU with
+`CUDA_VISIBLE_DEVICES=""` + `-ngl 0` (still usable at 66 ms/request on CPU).
+Breakdown: [GPU and VRAM budget](../gpu-vram-budget.md#gtx-1660-super-index-0).
 
-## クラッシュループ
+## Crash loop
 
-`startLimitBurst = 3` / `startLimitIntervalSec = 300` で、5 分に 3 回失敗したら諦めます。
-止まっていたら `systemctl reset-failed llama-cpp` のうえで原因 (多くは VRAM 不足) を直してから start。
+`startLimitBurst = 3` / `startLimitIntervalSec = 300`: gives up after 3
+failures in 5 minutes. If it's stopped, run `systemctl reset-failed llama-cpp`
+and fix the root cause (usually a VRAM shortage) before starting it again.

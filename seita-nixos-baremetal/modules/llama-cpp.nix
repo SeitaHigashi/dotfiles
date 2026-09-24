@@ -1,16 +1,16 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# llama.cpp (PrismML フォーク) を llama-swap の後ろに並べたローカル LLM ルーター。
-# OpenAI 互換 API を 127.0.0.1:8888 で待ち受けます (8080 は Open WebUI)。
+# llama.cpp (PrismML fork) behind llama-swap, as a local LLM router.
+# OpenAI-compatible API on 127.0.0.1:8888 (8080 is Open WebUI).
 #
-# ドキュメント (経緯・実測値・呼び出し側の注意はコメントではなくこちら):
-#   docs/services/llama-cpp.md    概要、モデル一覧、呼び出し側の注意
-#   docs/gpu-vram-budget.md       GPU の対応表と VRAM の実測内訳
-#   docs/runbooks/llama-cpp.md    フォーク更新、GPU 載せ替えなどの手順
-#   docs/decisions/2026-09-2*-*   ビルド方式、llama-swap/matrix、Laya、ollama からの移行
+# Docs (history, measurements, caller-facing notes live there, not in comments):
+#   docs/services/llama-cpp.md    overview, model list, caller-facing notes
+#   docs/gpu-vram-budget.md       GPU mapping and measured VRAM breakdown
+#   docs/runbooks/llama-cpp.md    fork updates, GPU swap, other procedures
+#   docs/decisions/2026-09-2*-*   build method, llama-swap/matrix, Laya, migration from ollama
 #
-# ここを変えたら、上の docs の該当箇所も同じコミットで直すこと。
+# When you change this file, update the docs above in the same commit.
 ##############################################################################
 
 let
@@ -18,33 +18,34 @@ let
 
   port = 8888;
 
-  # モデルとルーターの作業ディレクトリ。bonsai-workspaces のチェックアウト。
-  # モデルを disko のデータセットに置かない理由は docs/services/llama-cpp.md。
+  # Working directory for models and the router. A checkout of bonsai-workspaces.
+  # Why models aren't on a disko dataset: docs/services/llama-cpp.md.
   workDir = "/home/${m.userName}/bonsai-workspaces";
   modelsDir = "${workDir}/models";
 
   ##########################################################################
-  # Laya (PyTorch の決定モデル) — llama.cpp ではないが、1660 SUPER の VRAM を
-  # matrix で一元管理するためにここに同居させています。pip venv で動かす理由も含め
-  # docs/decisions/2026-09-23-laya-in-llama-swap.md。
+  # Laya (a PyTorch decision model) — not llama.cpp, but colocated here so the
+  # 1660 SUPER's VRAM is managed by the matrix in one place. Why it runs from
+  # a pip venv: docs/decisions/2026-09-23-laya-in-llama-swap.md.
   ##########################################################################
   layaDir = "${workDir}/laya";
   layaVenv = "${layaDir}/venv";
   layaHfHome = "${layaDir}/hf";
   layaRepo = "convaiinnovations/laya";
-  layaSubfolder = "multilingual"; # 322M, mmBERT-base, 1024 ctx。日本語のため
+  layaSubfolder = "multilingual"; # 322M, mmBERT-base, 1024 ctx, for Japanese
 
-  # 実測で動いた組み合わせに固定 (2026-09-23)。torch は cu121 wheel。
+  # Pinned to the combination measured to work (2026-09-23). torch is the cu121 wheel.
   layaTorchVersion = "2.5.1";
   layaVersion = "0.3.6";
 
-  # pip の torch wheel を NixOS で動かすのに要る 3 つ: libstdc++ (stdenv.cc.cc)、
-  # zlib、libcuda.so の在処 /run/opengl-driver/lib (どれが欠けても動かない、実測)。
+  # Three things pip's torch wheel needs to run on NixOS: libstdc++ (stdenv.cc.cc),
+  # zlib, and libcuda.so's location /run/opengl-driver/lib (missing any one of
+  # them fails, measured).
   layaLdPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc pkgs.zlib ] + ":/run/opengl-driver/lib";
 
-  # Laya の HTTP ラッパー (標準ライブラリのみ)。
-  # ★ ロード順「CPU でロード → half() → GPU」は変えないこと ★ fp32 のまま GPU に
-  #   載せた時点で 1660 SUPER が OOM します (実測は docs の Laya の判断記録)。
+  # Laya's HTTP wrapper (standard library only).
+  # ** Do not change the load order "load on CPU -> half() -> GPU" ** loading the
+  #   fp32 weights onto the GPU OOMs the 1660 SUPER (measured; see the Laya decision record in docs).
   layaServer = pkgs.writeText "laya-server.py" ''
     """Minimal HTTP wrapper around the laya decision model, for llama-swap.
 
@@ -153,10 +154,10 @@ let
   '';
 
   ##########################################################################
-  # PrismML フォークのソース。rev / hash は ~/bonsai-workspaces/flake.lock と
-  # 同一で、正は向こう側です (更新手順は docs/runbooks/llama-cpp.md)。
-  # フォークを使う理由と、flake input にしない理由は
-  # docs/decisions/2026-09-21-llama-cpp-prism-build.md。
+  # Source of the PrismML fork. rev / hash must match
+  # ~/bonsai-workspaces/flake.lock, which is the source of truth (update
+  # procedure: docs/runbooks/llama-cpp.md). Why the fork, and why not a
+  # flake input: docs/decisions/2026-09-21-llama-cpp-prism-build.md.
   ##########################################################################
   prismRev = "9a9394a895b96003ca842a6041cb28ac49a108f7";
   prismHash = "sha256-KDecY+v9S/193mLGse5EsJPugZR1wxWzOlOU7GuMd5Y=";
@@ -168,9 +169,10 @@ let
     hash = prismHash;
   };
 
-  # nixpkgs の llama-cpp をフォークのソースで差し替える。cudaSupport は
-  # nixpkgs 全体ではなくここで名指し (CLAUDE.md の cudaSupport の項)。
-  # patches = [] は、nixpkgs 側のパッチが本家の行番号前提でフォークに当たらないため。
+  # Swap nixpkgs' llama-cpp for the fork's source. cudaSupport is named here,
+  # not set nixpkgs-wide (see CLAUDE.md's cudaSupport section).
+  # patches = [] because nixpkgs' patches assume upstream line numbers and
+  # don't apply to the fork.
   llamaCppPrism =
     (pkgs.unstable.llama-cpp.override { cudaSupport = true; }).overrideAttrs
       (old: {
@@ -180,9 +182,10 @@ let
         patches = [ ];
         doCheck = false;
 
-        # このホストの 2 枚だけ: 75 = GTX 1660 SUPER / 86 = RTX 3060 Ti。
-        # nixpkgs 既定の 9 アーキテクチャ分だと初回ビルドが数倍かかります。
-        # ★ GPU を載せ替えたら更新すること ★ 合わない SM では起動時に CUDA エラー。
+        # Only this host's 2 cards: 75 = GTX 1660 SUPER / 86 = RTX 3060 Ti.
+        # nixpkgs' default of 9 architectures makes the first build several
+        # times longer.
+        # ** Update this when you swap a GPU ** a mismatched SM fails with a CUDA error at startup.
         cmakeFlags =
           (builtins.filter
             (f: !(lib.hasPrefix "-DCMAKE_CUDA_ARCHITECTURES" f))
@@ -191,43 +194,42 @@ let
       });
 
   ##########################################################################
-  # llama-swap の設定 YAML。モデルごとに llama-server を子プロセスで起動し、
-  # 同居できる組み合わせを matrix の sets で書きます
-  # (フォーク自身のルーターを使わない理由は
-  #  docs/decisions/2026-09-22-llama-swap-matrix.md)。
+  # llama-swap's config YAML. Each model starts llama-server as a child
+  # process, and the combinations that can coexist are written as matrix
+  # sets (why not the fork's own router:
+  #  docs/decisions/2026-09-22-llama-swap-matrix.md).
   #
-  # GPU はモデルごとの CUDA_VISIBLE_DEVICES で割り当てます。番号は PCI バス順:
-  #   "1" = RTX 3060 Ti (bonsai 系)   "0" = GTX 1660 SUPER (embedding / laya)
-  # 数値 (context 上限、VRAM 内訳) はすべて実測で、docs/gpu-vram-budget.md に
-  # あります。★ 実測せずに数値を上げないこと ★
+  # GPUs are assigned per model via CUDA_VISIBLE_DEVICES. Numbers follow PCI bus order:
+  #   "1" = RTX 3060 Ti (bonsai family)   "0" = GTX 1660 SUPER (embedding / laya)
+  # All numbers (context ceilings, VRAM breakdown) are measured; see
+  # docs/gpu-vram-budget.md. ** Do not raise a number without measuring it **
   ##########################################################################
   bonsaiModel = "${modelsDir}/Ternary-Bonsai-2-27B-gguf/Ternary-Bonsai-2-27B-PTQ1_0.gguf";
 
   swapConfig = pkgs.writeText "llama-swap.yaml" ''
-    # このファイルは Nix が生成しています。直接編集しないこと
-    # (modules/llama-cpp.nix が正)。
+    # This file is generated by Nix. Do not edit it directly
+    # (modules/llama-cpp.nix is the source of truth).
 
-    # 子プロセスの llama-server が使うポートの開始番号。8888 (llama-swap 本体)
-    # や 8080 (Open WebUI)、5678 (n8n) と衝突しない帯を選んでいます。
+    # Starting port number for the child llama-server processes. Chosen to
+    # avoid 8888 (llama-swap itself), 8080 (Open WebUI), and 5678 (n8n).
     startPort: 18900
 
-    # 27B のロードには時間がかかります。既定の 500 秒で足りていますが、
-    # 明示しておきます。
+    # Loading the 27B takes a while. The default of 500s is enough, but made explicit.
     healthCheckTimeout: 500
     logLevel: info
 
-    # 0 = 自動アンロードしない。追い出しは matrix に任せます。
+    # 0 = no automatic unload. Eviction is left to the matrix.
     globalTTL: 0
 
     macros:
-      # PORT は llama-swap がモデルごとに割り当てる変数で、Nix の補間ではありません
-      # (二重シングルクォートでエスケープしています)。
+      # PORT is a variable llama-swap assigns per model, not Nix interpolation
+      # (escaped with a doubled single quote).
       "server": "${llamaCppPrism}/bin/llama-server --port ''${PORT}"
 
     models:
-      # Bonsai 2 / PTQ1_0 を 3060 Ti 単体で。
-      # -c 81920 は KV q4_0 での実測上限 (90112 は NG)。上げないこと。
-      # -np 1 は消さないこと (既定の 4 スロットだと 27B が OOM する)。
+      # Bonsai 2 / PTQ1_0, alone on the 3060 Ti.
+      # -c 81920 is the measured ceiling with KV q4_0 (90112 fails). Do not raise it.
+      # Do not drop -np 1 (the default of 4 slots OOMs the 27B).
       "bonsai":
         name: "Bonsai 2 27B (80K)"
         env:
@@ -245,7 +247,7 @@ let
           --top-p 0.85
           --top-k 20
 
-      # 同じ重み + vision projector (+600 MB)。その分 context が 8192 に落ちます。
+      # Same weights + a vision projector (+600 MB). Context drops to 8192 accordingly.
       "bonsai-vision":
         name: "Bonsai 2 27B (vision)"
         env:
@@ -264,11 +266,12 @@ let
           --top-p 0.85
           --top-k 20
 
-      # ここから下は 1660 SUPER。CUDA_VISIBLE_DEVICES=0 で 3060 Ti をカードごと
-      # 見せないことが、bonsai と干渉しないことの実体です (-ngl だけでは足りない)。
-      # このカードの空きは数百 MiB しかありません。足す前に必ず実測すること。
+      # Everything below runs on the 1660 SUPER. Not interfering with bonsai
+      # comes down to hiding the 3060 Ti entirely via CUDA_VISIBLE_DEVICES=0
+      # (-ngl alone isn't enough). This card only has a few hundred MiB free.
+      # Always measure before adding anything.
 
-      # Qwen3-Embedding-4B、2560 次元 (実機のルーターで測定済み)。OpenViking 用。
+      # Qwen3-Embedding-4B, 2560 dims (measured on this router). Used by OpenViking.
       "embedding":
         name: "Qwen3 Embedding 4B"
         env:
@@ -281,10 +284,10 @@ let
           -ngl 99
           -c 8192
 
-      # Laya multilingual (322M) — n8n のフロー分岐用の決定モデル (PyTorch)。
-      # 呼び出しは POST /upstream/laya/decide (docs/services/llama-cpp.md)。
-      # concurrencyLimit 1: GPU 上のモデルは 1 つで、並列にしても VRAM の山が
-      # 高くなるだけなので直列化します。
+      # Laya multilingual (322M) — decision model (PyTorch) for n8n's flow branching.
+      # Called via POST /upstream/laya/decide (docs/services/llama-cpp.md).
+      # concurrencyLimit 1: only one model on the GPU; running requests in
+      # parallel would only raise the VRAM peak, so serialize them.
       "laya":
         name: "Laya multilingual (decision)"
         checkEndpoint: /health
@@ -293,73 +296,79 @@ let
           - "CUDA_VISIBLE_DEVICES=0"
           - "LD_LIBRARY_PATH=${layaLdPath}"
           - "HF_HOME=${layaHfHome}"
-          # 実行時にネットワークへ出させない。重みは laya-setup.service が
-          # 事前に取得しています。取り損ねていればここで即座に失敗します。
+          # Do not let it reach the network at runtime. laya-setup.service
+          # fetches the weights ahead of time; if that failed, this fails
+          # immediately instead.
           - "HF_HUB_OFFLINE=1"
         cmd: |
           ${layaVenv}/bin/python ${layaServer} --port ''${PORT}
 
-    # 同時に走ってよい組み合わせ。set の部分集合も許可されるので 1 本で足ります。
-    # bonsai と bonsai-vision は同じ 3060 Ti を占有するため別の枝です。
+    # Combinations allowed to run at the same time. Subsets of a set are also
+    # allowed, so one is enough. bonsai and bonsai-vision are separate
+    # branches because they occupy the same 3060 Ti.
     routing:
       router:
         use: matrix
         settings:
           matrix:
             evict_costs:
-              # 27B + 80K の KV。ロードが重いので最後まで残す。
+              # 27B + 80K KV. Loading is expensive, so keep it resident longest.
               bonsai: 50
               bonsai-vision: 50
-              # 埋め込みは軽く、別のカードなので追い出す理由が無い。
+              # Embedding is light and on a different card, no reason to evict it.
               embedding: 1
-              # n8n の分岐を同期で待たせるので埋め込みより残す。bonsai よりは安い。
+              # Keep it longer than embedding because it blocks n8n's branching
+              # synchronously; cheaper to evict than bonsai.
               laya: 30
             sets:
               generation: "(bonsai | bonsai-vision) & embedding & laya"
   '';
 in
 {
-  # environment.systemPackages にはあえて入れていません。`llama` という一般的
-  # すぎる名前のバイナリを含み、PATH で衝突しうるためです。対話的に使う方法は
-  # docs/services/llama-cpp.md。
+  # Deliberately not in environment.systemPackages: it ships a binary named
+  # `llama`, generic enough to collide on PATH. How to use it interactively:
+  # docs/services/llama-cpp.md.
 
   systemd.services.llama-cpp = {
     description = "llama-swap + llama.cpp (PrismML fork) — OpenAI-compatible, multi-model";
 
-    # 自動起動 (2026-09-23〜)。以前は ollama との VRAM 競合で手動起動でした
-    # (docs/decisions/2026-09-23-ollama-to-llama-cpp.md)。
+    # Auto-starts (2026-09-23~). Was manual-start before, due to VRAM
+    # contention with ollama (docs/decisions/2026-09-23-ollama-to-llama-cpp.md).
     wantedBy = [ "multi-user.target" ];
 
-    # nvidia-persistenced が上がっていればドライバは初期化済み。
-    # laya-setup は requires ではなく wants: Laya の準備が失敗しても bonsai と
-    # embedding は動くべきで、ルーター全体を道連れにしないため。
+    # If nvidia-persistenced is up, the driver is already initialized.
+    # laya-setup is a `wants`, not `requires`: bonsai and embedding should
+    # keep working even if Laya's setup fails, so it shouldn't take the
+    # whole router down with it.
     after = [ "nvidia-persistenced.service" "network.target" "laya-setup.service" ];
     wants = [ "nvidia-persistenced.service" "laya-setup.service" ];
 
     environment = {
-      # ★ PCI_BUS_ID から変えないこと ★ swapConfig の CUDA_VISIBLE_DEVICES は
-      #   PCI バス順の番号です。2026-09-22 以前は FASTEST_FIRST で逆の注意書きが
-      #   ありました (docs/decisions/2026-09-22-llama-swap-matrix.md)。
-      #   子プロセスの llama-server に継承されます。
+      # ** Do not change from PCI_BUS_ID ** swapConfig's CUDA_VISIBLE_DEVICES
+      #   numbers follow PCI bus order. Before 2026-09-22 this was
+      #   FASTEST_FIRST with the opposite warning
+      #   (docs/decisions/2026-09-22-llama-swap-matrix.md).
+      #   Inherited by the child llama-server processes.
       CUDA_DEVICE_ORDER = "PCI_BUS_ID";
     };
 
-    # クラッシュループの抑止。5 分のうち 3 回失敗したら諦めます。
-    # ★ serviceConfig ではなくトップレベルに書くこと ★ StartLimit* は [Unit] の
-    #   ディレクティブで、[Service] に書くと systemd が黙って捨て、OOM する 27B が
-    #   10 秒ごとに永久に再起動し続けます。
+    # Suppress crash loops: give up after 3 failures in 5 minutes.
+    # ** Keep these top-level, not inside serviceConfig ** StartLimit* are
+    #   [Unit] directives; putting them under [Service] makes systemd
+    #   silently drop them, so an OOMing 27B restarts forever every 10s.
     startLimitBurst = 3;
     startLimitIntervalSec = 300;
 
     serviceConfig = {
-      # DynamicUser ではなく seita 本人。モデルが seita のホーム配下にあるため
-      # (modules/fukurou.nix と同じ理由)。
+      # Runs as seita, not DynamicUser, because the models live under
+      # seita's home (same reason as modules/fukurou.nix).
       User = m.userName;
       Group = "users";
       WorkingDirectory = workDir;
 
-      # --watch-config は付けない。設定は nix store 上の読み取り専用ファイルで、
-      # 変更は rebuild → ExecStart の store パス変化 → 再起動、で反映されます。
+      # No --watch-config: the config is a read-only file in the nix store;
+      # changes only take effect via rebuild -> ExecStart's store path
+      # changes -> restart.
       ExecStart = lib.concatStringsSep " " [
         "${pkgs.unstable.llama-swap}/bin/llama-swap"
         "--config ${swapConfig}"
@@ -371,16 +380,16 @@ in
     };
   };
 
-  # laya-setup: [laya] の venv と重みを用意する冪等な oneshot ユニット。
-  # 重みはここで取得し、実行時は HF_HUB_OFFLINE=1 で閉じます (初回に 647 MB を
-  # 落とすと healthCheckTimeout を食い潰すため)。初回は torch の wheel 約 2.5 GB で
-  # 数分かかります: journalctl -u laya-setup -f
+  # laya-setup: an idempotent oneshot unit that prepares [laya]'s venv and weights.
+  # Weights are fetched here and closed off at runtime with HF_HUB_OFFLINE=1
+  # (fetching 647 MB on first request would eat up healthCheckTimeout). First
+  # run takes a few minutes for the ~2.5 GB torch wheel: journalctl -u laya-setup -f
   systemd.services.laya-setup = {
     description = "Laya venv + checkpoint setup (for llama-swap's [laya])";
     wantedBy = [ "multi-user.target" ];
 
-    # pip も HuggingFace も外に出ます。network.target では「設定済み」を
-    # 保証しないので online のほうを待ちます。
+    # Both pip and HuggingFace reach out to the network. network.target
+    # doesn't guarantee "configured", so wait for online instead.
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
 
@@ -395,8 +404,8 @@ in
       User = m.userName;
       Group = "users";
 
-      # 初回は torch の DL とインストールで数分かかります。既定の
-      # 90 秒では足りません。
+      # First run takes a few minutes to download and install torch. The
+      # default 90s isn't enough.
       TimeoutStartSec = "30min";
     };
 
@@ -409,19 +418,19 @@ in
         ${pkgs.uv}/bin/uv venv --python ${pkgs.python3}/bin/python3 ${layaVenv}
       fi
 
-      # torch は PyTorch 公式の cu121 インデックスから。PyPI の torch は
-      # CUDA 版ではないので、--index-url を外さないこと。
+      # torch comes from PyTorch's own cu121 index. PyPI's torch isn't the
+      # CUDA build, so don't drop --index-url.
       ${pkgs.uv}/bin/uv pip install --python ${layaVenv}/bin/python \
         --index-url https://download.pytorch.org/whl/cu121 \
         "torch==${layaTorchVersion}"
 
-      # laya 本体 (transformers 等はこれが引きます) は通常の PyPI から。
+      # laya itself (pulls in transformers etc.) comes from regular PyPI.
       ${pkgs.uv}/bin/uv pip install --python ${layaVenv}/bin/python \
         "laya==${layaVersion}"
 
-      # 重みの事前取得。CPU でロードするので VRAM は使いません。ここで
-      # 落としておけば、実行時は HF_HUB_OFFLINE=1 で足ります。
-      # 同時に「venv が実際に import できるか」の検証も兼ねています。
+      # Pre-fetch the weights. Loaded on CPU, so no VRAM is used. Fetching
+      # here means HF_HUB_OFFLINE=1 is enough at runtime. This also doubles
+      # as a check that the venv can actually import the package.
       ${layaVenv}/bin/python -c '
 import laya
 laya.load("${layaRepo}", subfolder="${layaSubfolder}", device="cpu")
