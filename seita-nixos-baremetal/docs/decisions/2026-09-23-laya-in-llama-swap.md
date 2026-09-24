@@ -64,6 +64,10 @@ the weight dtype. Measured (2026-09-23):
 | fp32 | 1318 MiB | OOMs on the 1660 SUPER, which only has 1337 MiB free |
 | fp16 | 748 MiB | Fits. No accuracy loss (probabilities match to 3 decimal places) |
 
+These are right-after-load figures. The fp16 footprint grows with the requests being
+handled (1128 MiB observed on 2026-09-24), so 748 MiB is a reference value, not a budget
+line ([GPU and VRAM budget](../gpu-vram-budget.md)).
+
 And since it OOMs the moment the fp32 weights touch the GPU, **the order
 "load on CPU -> `half()` -> move to GPU" is mandatory**. Calling `half()`
 after `load(..., device="cuda")` is already too late.

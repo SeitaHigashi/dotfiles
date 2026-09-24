@@ -40,14 +40,18 @@ possible because llama-swap runs each model as a separate process
 
 | resident | amount | source |
 |---|---|---|
-| ComfyUI (`modules/comfyui.nix`, `gpuIndex = "1"`) | 130 MiB | measured 2026-09-21 |
 | `bonsai` (80K ctx, KV q4_0) | almost everything left (~410 MiB free after load) | measured 2026-09-22 |
 
 fukurou-server (478 MiB) was on this card as of 2026-09-21, but was moved to
 the 1660 SUPER on 2026-09-22 via `GGML_VK_VISIBLE_DEVICES`
 (`modules/fukurou.nix`). The projector HDMI is also wired to this card, so
-Xorg's VRAM use adds on top while projecting (see the top of
-`modules/comfyui.nix`).
+Xorg's VRAM use adds on top while projecting
+([projector decision](decisions/2026-08-25-projector-hdmi-to-3060ti.md)).
+
+ComfyUI (130 MiB idle, measured 2026-09-21) was also pinned to this card; it is
+**disabled since 2026-09-24** because with `bonsai` loaded the card sits at ~95%
+and ComfyUI's VRAM guard never lets it start
+([decision](decisions/2026-09-24-comfyui-disabled.md)).
 
 ### bonsai's context ceiling
 
@@ -105,16 +109,15 @@ as "total capacity of 5.61 GiB").
 |---|---|
 | fukurou (whisper.cpp, pinned by `modules/fukurou.nix`) | 479 MiB |
 | `embedding` (Qwen3-Embedding-4B Q4_K_M, `-c 8192`) | 3926 MiB |
-| `laya` (Laya multilingual 322M, fp16) | 748 MiB |
-| **total** | **5153 MiB** |
-| free | ~590 MiB |
+| `laya` (Laya multilingual 322M, fp16) | ~748 MiB (reference value, varies) |
+| **total** | **~5153 MiB** |
+| free | ~590 MiB (less while Laya is busy) |
 
-- **Unverified discrepancy (2026-09-24)**: `nvidia-smi --query-compute-apps`
-  showed laya's python process using **1128 MiB** (doesn't match the 748 MiB
-  above). Free would be ~210 MiB at that value. One possibility is PyTorch's
-  caching allocator holding memory after handling a request, but this has not
-  been confirmed.
-- The remaining 590 MiB is thin, so always measure before adding anything to this card.
+- **Laya's figure is a reference value, not a fixed size.** 748 MiB was measured right
+  after loading (2026-09-23); its footprint changes with the requests it handles
+  (1128 MiB was observed on 2026-09-24 after use, leaving ~210 MiB free). Treat the
+  free space on this card as a range, not a number.
+- The remaining headroom is thin, so always measure before adding anything to this card.
 - If something stops starting, first lower `embedding`'s `ngl`, or fall back
   to CPU with `CUDA_VISIBLE_DEVICES=""` + `-ngl 0`. CPU execution was still
   usable at 66 ms/request.
