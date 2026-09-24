@@ -1,47 +1,24 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# NVIDIA の Xid エラー (カーネルログにしか出ない致命的な GPU 異常) を
-# node_exporter の textfile として出し、Grafana アラートで拾えるようにする。
+# Exposes NVIDIA Xid errors (fatal GPU faults that only ever appear in the
+# kernel log) as a node_exporter textfile, so Grafana alerting can catch them.
 #
-# 何のためか (2026-08-28 実機の障害):
-#   GPU1 (0000:06:00.0) が "GPU has fallen off the bus" (Xid 79) で脱落し、
-#   ドライバが両 GPU に "Node Reboot Required" (Xid 154) を立てた。
-#   nvidia-smi は GPU1 を列挙できなくなり、ollama はモデルを CPU
-#   フォールバックで動かし続け (nvidia-gpu-exporter のスクレイプ自体は
-#   生き続けるため scrape-target-down は発報しない)、OpenViking の
-#   summary/extract タスクが APITimeoutError で全滅した。気づいたのは
-#   「昨夜から summary task が全部失敗している」とユーザーが言い出した
-#   翌朝で、実際の発生からは数時間ズレていた。
+# Docs: docs/services/textfile-metrics.md#gpu-xid-metricsnix--nvidia-xid-fatal-error-detection
+#       docs/decisions/2026-08-28-gpu-xid-monitoring.md
+#       docs/runbooks/textfile-metrics.md
 #
-#   modules/monitoring.nix の nvidia-gpu-exporter (nvidia_smi ベース) は
-#   Xid を一切出さない (README.md の「NVIDIA は MIG / XID / ... が出ません」
-#   の通り、utkuozdemir 版・mindprince 版どちらも Xid 非対応)。
-#   Xid はカーネルログにしか出ないため、journalctl を読む以外に検知経路が無い。
-#
-# なぜ textfile collector か:
-#   modules/zfs-snapshot-metrics.nix と同じ理由。専用 exporter が無く、
-#   5 分間隔なら journalctl を読む負荷は無視できる。
-#
-# なぜ「今のブートで見えているか」で判定するか (差分カウンタにしない):
-#   Xid 79 / 154 は「直った」と自動では分からない致命的な異常で、
-#   ドライバ自身が要求する回復手段は再起動のみ。つまり実質的には
-#   zfs_pool_health と同じ「状態」であり、cursor を持ち回して新規行だけ
-#   数えるカウンタにする理由がない。`journalctl -k -b 0` を毎回読み直す
-#   だけなら状態が壊れる (cursor ファイル破損、収集の取りこぼし) 心配も無い。
-#   `-b 0` (今のブートに限定) なので、過去の障害を再起動後まで
-#   延々と誤検知し続けることもない。
+# Update the docs above in the same commit when you change this file.
 ##############################################################################
 
 let
   textfileDir = "/var/lib/prometheus-node-exporter-text-files";
 
-  # 致命的 (再起動が必要、または GPU が実質使用不能になる) と判断できる Xid。
-  #   79  = GPU has fallen off the bus (実機で確認)
-  #   154 = GPU recovery action changed to Node Reboot Required (実機で確認)
-  # 他の Xid (13 の Graphics Engine Exception 等) はゲームのシェーダバグ等
-  # 良性の要因でも出るため、ここには含めない。誤検知よりも「これが出たら
-  # 確実に再起動が要る」ものだけに絞る。
+  # Xids treated as fatal (reboot required, or the GPU is effectively
+  # unusable). 79 = GPU has fallen off the bus, 154 = GPU recovery action
+  # changed to Node Reboot Required (both confirmed on this host,
+  # 2026-08-28). Other Xids deliberately excluded — see
+  # docs/decisions/2026-08-28-gpu-xid-monitoring.md.
   fatalXids = [ "79" "154" ];
 
   collector = pkgs.writeShellApplication {
@@ -52,7 +29,7 @@ let
       work=$(mktemp -d)
       trap 'rm -rf "$work"' EXIT
 
-      # 今のブートのカーネルログだけを対象にする (理由は上のコメント)。
+      # Current boot's kernel log only -- see docs/decisions/2026-08-28-gpu-xid-monitoring.md.
       journalctl -k -b 0 -g 'NVRM: Xid' -o cat > "$work/xid-lines" || true
 
       gawk -v fatal="${lib.concatStringsSep " " fatalXids}" '
@@ -60,7 +37,7 @@ let
           split(fatal, arr, " ")
           for (i in arr) isFatal[arr[i]] = 1
         }
-        # 例: "NVRM: Xid (PCI:0000:06:00): 79, pid=... GPU has fallen off the bus."
+        # e.g. "NVRM: Xid (PCI:0000:06:00): 79, pid=... GPU has fallen off the bus."
         match($0, /Xid \(PCI:([0-9a-fA-F:.]+)\): ([0-9]+)/, m) {
           pci = m[1]
           xid = m[2]
@@ -69,14 +46,14 @@ let
           if (xid in isFatal) rebootRequired[pci] = 1
         }
         END {
-          print "# HELP gpu_xid_events_current_boot 今のブートで観測した Xid の件数"
+          print "# HELP gpu_xid_events_current_boot Number of Xid events observed in the current boot"
           print "# TYPE gpu_xid_events_current_boot counter"
           for (key in count) {
             split(key, parts, SUBSEP)
             printf "gpu_xid_events_current_boot{pci=\"%s\",xid=\"%s\"} %d\n", parts[1], parts[2], count[key]
           }
 
-          print "# HELP gpu_reboot_required 致命的な Xid (fallen off the bus 等) が今のブートで出ているなら 1"
+          print "# HELP gpu_reboot_required 1 if a fatal Xid (fallen off the bus, etc.) has appeared in the current boot"
           print "# TYPE gpu_reboot_required gauge"
           for (pci in seen) {
             bad = (pci in rebootRequired) ? 1 : 0
@@ -86,12 +63,12 @@ let
       ' "$work/xid-lines" > "$work/out"
 
       {
-        echo "# HELP gpu_xid_metrics_last_run_seconds この収集が最後に成功した時刻 (unix 秒)"
+        echo "# HELP gpu_xid_metrics_last_run_seconds When this collection last succeeded (unix seconds)"
         echo "# TYPE gpu_xid_metrics_last_run_seconds gauge"
         echo "gpu_xid_metrics_last_run_seconds $(date +%s)"
       } >> "$work/out"
 
-      # mv による原子的な置き換え (zfs-snapshot-metrics.nix と同じ理由)。
+      # Atomic replace via mv (same reasoning as zfs-snapshot-metrics.nix).
       staging=$(mktemp "${textfileDir}/.gpu-xid.XXXXXX")
       cat "$work/out" > "$staging"
       chmod 0444 "$staging"
@@ -105,15 +82,16 @@ in
   ];
 
   systemd.services.gpu-xid-metrics = {
-    description = "NVIDIA Xid エラーを node_exporter の textfile として出力する";
+    description = "Export NVIDIA Xid errors as a node_exporter textfile";
 
     serviceConfig = {
       Type = "oneshot";
       ExecStart = lib.getExe collector;
 
-      # journalctl -k は特権無しでも読めるが (SystemdJournalGatewayd 等の
-      # ACL は使っていない)、確実性を優先してここも zfs-snapshot-metrics と
-      # 同じ短命 root ユニットにしている。書き込み先だけを絞る。
+      # journalctl -k is readable without privilege (no SystemdJournalGatewayd
+      # ACL in use), but this runs as the same short-lived root unit pattern
+      # as zfs-snapshot-metrics for consistency, with write access narrowed
+      # to the textfile directory only.
       ProtectSystem = "strict";
       ReadWritePaths = [ textfileDir ];
       ProtectHome = true;
@@ -126,9 +104,9 @@ in
   systemd.timers.gpu-xid-metrics = {
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # 致命的な GPU 異常は「気づくまでの時間」がそのまま被害時間になるため、
-      # ZFS 系 (5 分) より短くしている。journalctl -k -b 0 は今のブート分
-      # だけなので 2 分間隔でも負荷は無視できる。
+      # Tighter than the ZFS collectors (5min) because for a fatal GPU fault,
+      # time-to-detection directly becomes outage duration. journalctl -k -b 0
+      # only reads the current boot, so 2-minute polling is negligible load.
       OnBootSec = "1min";
       OnUnitActiveSec = "2min";
       RandomizedDelaySec = "15s";
@@ -136,15 +114,5 @@ in
     };
   };
 
-  ############################################################################
-  # 動作確認
-  #
-  #   systemctl start gpu-xid-metrics
-  #   cat /var/lib/prometheus-node-exporter-text-files/gpu-xid.prom
-  #   curl -s localhost:9100/metrics | grep -E '^gpu_(xid|reboot)'
-  #
-  #   疑似的に発報させたい場合 (実機の Xid を待たずに経路を確認する):
-  #     一時的に modules/alerting.nix 側のルールを vector(1) にする方が安全
-  #     (本物の Xid ログを流し込むテストは避ける)。
-  ############################################################################
+  # Manual verification: docs/runbooks/textfile-metrics.md
 }

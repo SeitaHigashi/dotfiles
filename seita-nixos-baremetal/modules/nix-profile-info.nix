@@ -1,100 +1,53 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# user の `nix profile` (命令的にインストールしたパッケージ) を Grafana から
-# 見えるようにする。
+# Exposes the contents of user's `nix profile` (imperatively installed
+# packages) to Grafana, plus a per-package upstream-update check.
 #
-# modules/nix-info.nix (= environment.systemPackages) との決定的な違いは、
-# profile の中身が **Nix 評価時には分からない** ことです。
-# `nix profile install` は switch を経由せず、いつでも profile の世代を
-# 増やせるため、nix-info.nix のように「systemPackages が変わると textfile の
-# 内容が変わり、switch のたびに systemd が再実行する」という仕掛けが使えません。
-# したがってここだけは周期タイマーで manifest を読み直します。
+# Unlike modules/nix-info.nix (environment.systemPackages), profile contents
+# are not known at Nix eval time, so this module polls manifest.json on a
+# timer rather than relying on switch to re-trigger a unit.
 #
-# 情報源は profile の manifest.json ただ1つです:
+# Docs:
+#   docs/services/textfile-metrics.md#nix-profile-infonix--nix-profile-imperative-installs
+#   docs/decisions/2026-09-23-repology-to-direct-nix-eval.md
+#   docs/runbooks/textfile-metrics.md
 #
-#   ~/.local/state/nix/profiles/profile/manifest.json
-#
-# `nix profile list --json` でも同じ内容が取れますが、それは nix デーモンに
-# 評価を投げる分だけ重く、root から他ユーザーの profile を読む用途には
-# 向きません (HOME・XDG_STATE_HOME を偽装する必要がある)。manifest.json は
-# ただの JSON なので jq だけで完結します。
-#
-# manifest.json から取れるもの (2026-09-23 に実機で確認):
-#   - 要素名          … elements のキー (例 "claude-code")
-#   - バージョン      … storePaths[0] の basename から
-#                       「32文字のハッシュ-」と「要素名-」を剥がした残り
-#                       (例 ".../ag6i0c0...-claude-code-2.1.278" -> "2.1.278")
-#   - 追従先チャンネル … originalUrl の末尾
-#                       (例 "github:NixOS/nixpkgs/nixos-unstable" -> "nixos-unstable")
-#
-#   - attrPath        … .attrPath (例 "legacyPackages.x86_64-linux.ccusage")
-#
-# 更新の有無は、nix-info.nix のように Repology (外部サービス) を経由せず、
-# **追従先の nixpkgs を直接引いて**判定します。profile に限ってこれができる
-# のは、要素数が二桁少なく (実測 4)、かつ各要素が originalUrl と attrPath を
-# 自分で覚えているため、チャンネル全体を評価せず 1 属性だけ引けば済むからです:
-#
-#   nix eval --raw 'github:NixOS/nixpkgs/nixos-unstable#legacyPackages.x86_64-linux.claude-code.version'
-#
-# 実測 0.3 秒 (store が温まっている場合)。Repology 方式に対する利点:
-#   - 名前のマッチング問題が消える。Repology の "project 名" は upstream 名
-#     ベースで nixpkgs の pname と一致しないことがあり、rtk / llmfit のような
-#     自前・ニッチなパッケージは追跡対象にすら入りません。
-#     attrPath で引けば、そもそも同定の問題が発生しません。
-#   - 外部サービスの生死に依存しない。2026-09-23 に repology.org は
-#     レジストラのサスペンド (.org の委任先が parkpage 系、A レコードが
-#     127.0.0.1) で到達不能になり、systemPackages 側のコレクタは 217 件
-#     すべてを「追跡対象外」として報告していました。
-#   - バージョンが「その nixpkgs が実際に出す値」そのもの。第三者のクロール
-#     結果を介さないので、ズレようがありません。
-#
-# systemPackages (216 件) 側も 2026-09-23 に同じ direct-eval 方式へ切り替え
-# 済みです (modules/nix-info.nix)。属性を1件ずつ引く代わりに、チャンネルごと
-# 1回の `nix eval --json <channel>#legacyPackages.x86_64-linux --apply <fn>`
-# にまとめて評価します — 実測 216 属性で 0.6 秒程度 (温まった評価キャッシュの
-# 場合) と軽く、パッケージ数だけ nix を起動するコストは要りません。
-# こちらとの違いは attrPath の取得元です。profile は manifest.json が
-# attrPath を自分で覚えていますが、systemPackages の pname はトップレベル
-# 属性名と一致しないことが多い (実測: 216 件中トップレベル直下で見つかるのは
-# 92 件のみ。残りは kdePackages.* 配下の KDE Plasma コンポーネント等) ため、
-# 候補スコープ (kdePackages, libsForQt5, python3Packages 等) × pkgs/pkgs.unstable
-# の組み合わせを drvPath 完全一致で総当たりして attrPath を同定しています。
+# Update the docs above in the same commit when you change this file.
 ##############################################################################
 
 let
-  # node_exporter の textfile collector が読むディレクトリ。
-  # modules/nix-info.nix / modules/zfs-snapshot-metrics.nix と同じ場所です。
+  # Directory read by node_exporter's textfile collector. Same path as
+  # modules/nix-info.nix / modules/zfs-snapshot-metrics.nix.
   textfileDir = "/var/lib/prometheus-node-exporter-text-files";
 
-  # 監視対象のユーザー。profile はユーザーごとに独立しているため、
-  # 増やしたければここに足すだけで両方のコレクタが追従します。
+  # Monitored users. Profiles are per-user, so adding a user here is enough
+  # for both collectors to pick them up.
   profileUsers = [ "seita" ];
 
-  # ユーザー名 -> profile の manifest.json のパス。
-  # ホームディレクトリは users.users.<name>.home を唯一の正として引きます
-  # (/home/<name> と決め打ちしない)。
+  # Username -> path to that profile's manifest.json. Home directory is taken
+  # from users.users.<name>.home as the single source of truth, never
+  # hardcoded as /home/<name>.
   manifestPathFor = user:
     "${config.users.users.${user}.home}/.local/state/nix/profiles/profile/manifest.json";
 
-  ##############################################################################
-  # manifest.json -> "要素名\tバージョン\t追従先ref\tattrPath\toriginalUrl" の TSV。
-  # パッケージ一覧のコレクタと更新チェックのコレクタの両方がこれを使うので、
-  # バージョンの剥がし方が2箇所でズレません。
-  ##############################################################################
+  # manifest.json -> "name\tversion\ttracked-ref\tattrPath\toriginalUrl" TSV.
+  # Used by both the package-list collector and the update-check collector, so
+  # version-string parsing can't disagree between the two.
   manifestToTsv = pkgs.writeText "nix-profile-manifest-to-tsv.jq" ''
     .elements | to_entries[]
     | .key as $name
     | ((.value.storePaths // [])[0] // "") as $storePath
-    # nix の store path のハッシュは常に 32 文字の [a-z0-9]。
-    # 長さを固定しないと ^[a-z0-9]+- が貪欲に "...-ccusage-" まで食べてしまい、
-    # 要素名との突き合わせができなくなる。
+    # A nix store path's hash is always 32 [a-z0-9] characters. Without fixing
+    # the length, ^[a-z0-9]+- greedily eats up to "...-ccusage-", breaking the
+    # match against the element name.
     | ($storePath | split("/") | last | sub("^[a-z0-9]{32}-"; "")) as $base
     | (if ($base | startswith($name + "-")) then
          ($base | ltrimstr($name + "-"))
        else
-         # 要素名と store path の pname が食い違う場合 (別名で install した等)
-         # は、最初に現れる「-数字」以降をバージョンとみなす。
+         # Element name and the store path's pname disagree (e.g. installed
+         # under a different attribute name) -- treat everything from the
+         # first "-<digit>" onward as the version.
          ([$base | capture("-(?<v>[0-9][^/]*)$")] | (.[0].v // "unknown"))
        end) as $version
     | (.value.originalUrl // "") as $originalUrl
@@ -103,9 +56,9 @@ let
     | [$name, $version, $ref, $attrPath, $originalUrl] | @tsv
   '';
 
-  # Prometheus のラベル値に紛れ込むと壊れる文字を落とす shell 関数。
-  # nix-info.nix の escapeLabel と同じ役割ですが、あちらは Nix 評価時、
-  # こちらは実行時に効かせる必要があります。
+  # Strip characters that would break a Prometheus label value. Same role as
+  # nix-info.nix's escapeLabel, but that one runs at Nix eval time; this one
+  # has to run at run time instead.
   sanitizeLabelSh = ''
     sanitize_label() {
       printf '%s' "$1" | tr -d '\\"' | tr '\n' ' '
@@ -123,23 +76,24 @@ let
       ${sanitizeLabelSh}
 
       {
-        echo '# HELP nix_profile_collector_ok このユーザーの profile の manifest.json を読めたか (1/0)'
+        echo '# HELP nix_profile_collector_ok Whether this user'"'"'s profile manifest.json could be read (1/0)'
         echo '# TYPE nix_profile_collector_ok gauge'
-        echo '# HELP nix_profile_package_info user の nix profile に入っているパッケージ (値は常に1)'
+        echo '# HELP nix_profile_package_info Packages in user'"'"'s nix profile (value is always 1)'
         echo '# TYPE nix_profile_package_info gauge'
-        echo '# HELP nix_profile_package_count user の nix profile に入っているパッケージの総数'
+        echo '# HELP nix_profile_package_count Total number of packages in user'"'"'s nix profile'
         echo '# TYPE nix_profile_package_count gauge'
-        echo '# HELP nix_profile_generation 現在アクティブな profile の世代番号'
+        echo '# HELP nix_profile_generation Currently active profile generation number'
         echo '# TYPE nix_profile_generation gauge'
-        echo '# HELP nix_profile_generation_mtime_seconds 現在アクティブな profile の世代が作られた時刻 (unix秒)'
+        echo '# HELP nix_profile_generation_mtime_seconds When the currently active profile generation was created (unix seconds)'
         echo '# TYPE nix_profile_generation_mtime_seconds gauge'
 
         ${lib.concatMapStringsSep "\n" (user: ''
           manifest="${manifestPathFor user}"
 
           if [ ! -r "$manifest" ]; then
-            # profile を一度も作っていないユーザーもありうるので、これは異常ではない。
-            # 「0 パッケージ」と「読めなかった」を取り違えないよう、count は出さない。
+            # A user who has never created a profile is not an error case.
+            # Omit count rather than reporting 0, so "no packages" and
+            # "couldn't read" aren't confused.
             echo 'nix_profile_collector_ok{user="${user}"} 0'
           else
             echo 'nix_profile_collector_ok{user="${user}"} 1'
@@ -156,8 +110,8 @@ let
 
             echo "nix_profile_package_count{user=\"${user}\"} $count"
 
-            # profile は profile-N-link への symlink。N が世代番号で、
-            # nix profile install / rollback のたびに増減する。
+            # profile is a symlink to profile-N-link. N is the generation
+            # number, which changes with every nix profile install/rollback.
             profileLink="${config.users.users.${user}.home}/.local/state/nix/profiles/profile"
             link=$(readlink "$profileLink" || true)
             generation=''${link#profile-}
@@ -166,10 +120,11 @@ let
               ""|*[!0-9]*) ;;
               *)
                 echo "nix_profile_generation{user=\"${user}\"} $generation"
-                # 「いつ入れ替えたか」は manifest.json の mtime では取れない —
-                # あれは /nix/store の実体なので常に 1 (epoch+1) に正規化されており、
-                # 実際 stat すると 1 が返る (2026-09-23 に実機で確認)。
-                # 本物の時刻を持っているのは世代 symlink 自身の lstat mtime。
+                # manifest.json's mtime does NOT tell you "when was this
+                # swapped in" -- it's a /nix/store artifact, always
+                # normalized to 1 (epoch+1); confirmed by stat on the live
+                # host, 2026-09-23. The real timestamp lives on the
+                # generation symlink itself (its own lstat mtime).
                 gen_mtime=$(stat -c %Y "$(dirname "$profileLink")/$link")
                 echo "nix_profile_generation_mtime_seconds{user=\"${user}\"} $gen_mtime"
                 ;;
@@ -180,7 +135,8 @@ let
         echo "nix_profile_metrics_last_run_seconds $(date +%s)"
       } > "$work/out"
 
-      # 書きかけを node_exporter に読まれないよう、textfileDir 上で作ってから rename する。
+      # Build on textfileDir before renaming, so node_exporter never reads a
+      # partial write.
       staging=$(mktemp "${textfileDir}/.nix-profile-packages.XXXXXX")
       cat "$work/out" > "$staging"
       chmod 0444 "$staging"
@@ -188,18 +144,9 @@ let
     '';
   };
 
-  ##############################################################################
-  # 追従先チャンネルの現在のバージョンと突き合わせるコレクタ。
-  #
-  # systemd unit から nix を呼ぶうえでの前提が3つあります:
-  #   - HOME が要る。nix はフレークの評価キャッシュを ~/.cache/nix に置くため、
-  #     HOME 未設定だと毎回ゼロから評価し直す (あるいは失敗する)。
-  #     StateDirectory で専用のディレクトリを与えています。
-  #   - NIX_REMOTE=daemon を明示する。対話シェルでは環境から入りますが、
-  #     unit には継承されません。ProtectSystem=strict 下では /nix が
-  #     read-only なので、デーモン経由でないとストアに書けません。
-  #   - ネットワークが要る (チャンネルの tarball 取得)。
-  ##############################################################################
+  # Collector that diffs installed versions against the tracked channel's
+  # current version. Sandboxing notes:
+  # docs/services/textfile-metrics.md#systemd-sandboxing-notes-both-nix-infonix-and-nix-profile-infonix-upstream-collectors
   upstreamCollector = pkgs.writeShellApplication {
     name = "nix-profile-upstream-metrics";
     runtimeInputs = [ config.nix.package pkgs.jq pkgs.coreutils ];
@@ -210,19 +157,20 @@ let
 
       ${sanitizeLabelSh}
 
-      # originalUrl -> 解決済みかどうか。同じチャンネルを何度も再解決しない。
+      # originalUrl -> already resolved this run? Avoid re-resolving the same
+      # channel repeatedly.
       declare -A channel_done=()
 
       {
-        echo '# HELP nix_profile_package_upstream_known 追従先チャンネルからこのパッケージの version を引けたか (1/0)'
+        echo '# HELP nix_profile_package_upstream_known Whether the tracked channel'"'"'s version for this package could be looked up (1/0)'
         echo '# TYPE nix_profile_package_upstream_known gauge'
-        echo '# HELP nix_profile_package_upstream_version_info 追従先チャンネルの現在のバージョン (値は常に1)'
+        echo '# HELP nix_profile_package_upstream_version_info Current version on the tracked channel (value is always 1)'
         echo '# TYPE nix_profile_package_upstream_version_info gauge'
-        echo '# HELP nix_profile_package_outdated 追従先チャンネルのバージョンと、いま入っているバージョンが違うか (1 = 違う。nix profile upgrade で上がる)'
+        echo '# HELP nix_profile_package_outdated Whether the tracked channel'"'"'s version differs from the installed version (1 = differs, raised by nix profile upgrade)'
         echo '# TYPE nix_profile_package_outdated gauge'
-        echo '# HELP nix_profile_channel_resolve_ok 追従先チャンネルの現在の revision を解決できたか (1/0)'
+        echo '# HELP nix_profile_channel_resolve_ok Whether the tracked channel'"'"'s current revision could be resolved (1/0)'
         echo '# TYPE nix_profile_channel_resolve_ok gauge'
-        echo '# HELP nix_profile_channel_revision_info 追従先チャンネルがいま指している nixpkgs revision (値は常に1)'
+        echo '# HELP nix_profile_channel_revision_info nixpkgs revision the tracked channel currently points at (value is always 1)'
         echo '# TYPE nix_profile_channel_revision_info gauge'
 
         ${lib.concatMapStringsSep "\n" (user: ''
@@ -236,15 +184,16 @@ let
               ref=$(sanitize_label "$ref")
 
               if [ -z "$attrPath" ] || [ -z "$originalUrl" ]; then
-                # manifest に attrPath / originalUrl が無い要素
-                # (古い形式で入れたもの、store path 直指定など) は引きようがない。
+                # Elements without attrPath/originalUrl in the manifest (old
+                # install format, direct store-path install) have nothing to
+                # look up.
                 echo "nix_profile_package_upstream_known{user=\"${user}\",name=\"$name\"} 0"
                 continue
               fi
 
-              # チャンネルの現在位置を1回だけ解決する。
-              # --refresh を付けないと tarball-ttl (既定1時間) のキャッシュで
-              # 古い評価を掴み、「更新なし」と誤報告しうる。
+              # Resolve the channel's current position only once.
+              # Without --refresh, the tarball-ttl cache (1h default) can
+              # return a stale evaluation and under-report "no update".
               if [ -z "''${channel_done[$originalUrl]+set}" ]; then
                 channel_done[$originalUrl]=1
                 if meta=$(nix flake metadata --json --refresh "$originalUrl" 2>/dev/null); then
@@ -255,15 +204,16 @@ let
                     echo "nix_profile_channel_revision_info{channel=\"$ref\",rev=\"$rev\"} 1"
                   fi
                 else
-                  # 解決に失敗した場合、この後の nix eval は古いキャッシュを
-                  # 使う可能性がある。誤報告を黙って出さないよう、
-                  # resolve_ok=0 をダッシュボード側で見えるようにしている。
+                  # If resolution fails, the following nix eval may use a
+                  # stale cache. Surface resolve_ok=0 on the dashboard rather
+                  # than silently reporting a possibly-wrong result.
                   echo "nix_profile_channel_resolve_ok{channel=\"$ref\"} 0"
                 fi
               fi
 
-              # ここでは --refresh を付けない。直前の flake metadata --refresh が
-              # 同じ originalUrl のキャッシュを更新済みで、二重に取りに行く意味がない。
+              # No --refresh here: the flake metadata --refresh above already
+              # refreshed this originalUrl's cache, so refreshing twice is
+              # wasted.
               if upstream_version=$(nix eval --raw "''${originalUrl}#''${attrPath}.version" 2>/dev/null) \
                 && [ -n "$upstream_version" ]; then
                 upstream_version=$(sanitize_label "$upstream_version")
@@ -275,8 +225,8 @@ let
                   echo "nix_profile_package_outdated{user=\"${user}\",name=\"$name\"} 1"
                 fi
               else
-                # 属性が消えた (rename / removal) か、評価に失敗した。
-                # どちらも「更新なし」ではないので outdated は出さない。
+                # The attribute disappeared (renamed/removed), or evaluation
+                # failed. Neither is "no update", so no outdated either.
                 echo "nix_profile_package_upstream_known{user=\"${user}\",name=\"$name\"} 0"
               fi
             done < <(jq -r -f ${manifestToTsv} "$manifest")
@@ -297,22 +247,22 @@ in
   systemd.tmpfiles.rules = [
     "d ${textfileDir} 0755 root root -"
 
-    # profile 側を Repology から direct-eval へ移したときの旧出力。
-    # 書き手がいなくなっても textfile collector は *.prom を読み続けるため、
-    # 明示的に消さないと死んだメトリクスが配られ続ける (実機で確認)。
+    # Old output from when the profile side moved from Repology to
+    # direct-eval. See
+    # docs/decisions/2026-09-23-repology-to-direct-nix-eval.md.
     "r ${textfileDir}/nix-profile-repology-status.prom - - - -"
   ];
 
-  ##############################################################################
-  # profile の中身: `nix profile install` は switch を経由しないため、
-  # nix-info.nix のような「switch で自動再実行」が使えない。周期タイマーで見る。
-  # manifest.json を1つ読むだけなので 15 分おきでも負荷は無視できる。
+  # Profile contents: `nix profile install` doesn't go through switch, so the
+  # "switch re-triggers automatically" trick from nix-info.nix doesn't apply
+  # here -- a timer is needed instead. Reading one manifest.json is cheap
+  # enough that 15 minutes is negligible load.
   #
-  # ProtectHome は true にできない — 見に行く先がまさにユーザーのホームのため。
-  # 代わりに read-only にして、profile 配下を書き換える事故を防ぐ。
-  ##############################################################################
+  # ProtectHome can't be true here -- the whole point is reading into the
+  # user's home. Set to read-only instead, to prevent accidental writes into
+  # the profile.
   systemd.services.nix-profile-metrics = {
-    description = "user の nix profile の内容を node_exporter の textfile として出力する";
+    description = "Export the contents of the user's nix profile as a node_exporter textfile";
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Type = "oneshot";
@@ -336,19 +286,18 @@ in
     };
   };
 
-  ##############################################################################
-  # 追従先チャンネルとの突き合わせ: 1 要素あたり nix eval 1回 (実測 0.3 秒)。
-  # チャンネル自体は1日に数回しか動かないので1日1回で十分。
+  # Diff against the tracked channel: one nix eval per element (measured
+  # ~0.3s). The channel itself moves only a few times a day, so once a day
+  # is enough.
   #
-  # ProtectSystem=strict 下でも動かすため、HOME を StateDirectory に逃がし、
-  # NIX_REMOTE=daemon を明示してストア操作をデーモンに任せています。
-  ##############################################################################
+  # Runs under ProtectSystem=strict, so HOME is redirected to StateDirectory
+  # and NIX_REMOTE=daemon delegates store writes to the daemon.
   systemd.services.nix-profile-upstream-metrics = {
-    description = "user の nix profile のパッケージ更新有無 (追従先 nixpkgs と直接比較) を node_exporter の textfile として出力する";
+    description = "Export whether packages in the user's nix profile are outdated (compared directly against the tracked nixpkgs) as a node_exporter textfile";
     serviceConfig = {
       Type = "oneshot";
       ExecStart = lib.getExe upstreamCollector;
-      # チャンネルの tarball を取り直す場合があるので余裕を取る。
+      # Extra headroom in case the channel tarball needs re-fetching.
       TimeoutStartSec = "30min";
       StateDirectory = "nix-profile-upstream";
       Environment = [
@@ -360,7 +309,7 @@ in
       ProtectHome = "read-only";
       PrivateTmp = true;
       NoNewPrivileges = true;
-      # AF_UNIX は nix デーモンのソケット、AF_INET/6 はチャンネルの取得。
+      # AF_UNIX is the nix daemon socket, AF_INET/6 is for fetching the channel.
       RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
     };
   };
@@ -375,12 +324,5 @@ in
     };
   };
 
-  ##############################################################################
-  # 動作確認
-  #
-  #   systemctl start nix-profile-metrics nix-profile-upstream-metrics
-  #   cat /var/lib/prometheus-node-exporter-text-files/nix-profile-packages.prom
-  #   cat /var/lib/prometheus-node-exporter-text-files/nix-profile-upstream-status.prom
-  #   curl -s localhost:9100/metrics | grep '^nix_profile_'
-  ##############################################################################
+  # Manual verification: docs/runbooks/textfile-metrics.md
 }
