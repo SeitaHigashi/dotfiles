@@ -52,9 +52,10 @@ reference (services, ZFS/disko layout, GPU assignment, secrets via agenix, known
 
 ## Active Services (seita-nixos-baremetal)
 
-See `seita-nixos-baremetal/CLAUDE.md` for the authoritative, up-to-date list — it covers Ollama,
-ComfyUI, Open WebUI, Home Assistant, Grafana/monitoring, Multica, OpenViking, n8n, Discord bot,
-Tailscale Serve/Funnel, and more, along with the module responsible for each.
+See `seita-nixos-baremetal/CLAUDE.md` for the module table (llama.cpp, Open WebUI, ComfyUI,
+Grafana/monitoring, Multica, OpenViking, n8n, Discord bot, Tailscale Serve/Funnel, …; Ollama is disabled).
+Per-service docs, runbooks and decision records live in `seita-nixos-baremetal/docs/`, indexed by
+`seita-nixos-baremetal/README.md`.
 
 ## Git Conventions
 
