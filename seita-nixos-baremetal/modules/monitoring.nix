@@ -1,33 +1,15 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# 監視スタック (VictoriaMetrics + Loki + Grafana)。
+# Monitoring stack (VictoriaMetrics + Loki + Grafana).
 #
-# 何のために入れるか:
-#   このホストには Minecraft (podman) が常駐しており、今後 n8n と Ollama が
-#   同居します。CPU は Ryzen 3 3300X の 4C/8T しかなく、GPU も世代違いの
-#   2 枚差しです。「Minecraft が重い」と感じたときに *誰が犯人か* を
-#   切り分けられないと、この同居構成は運用できません。そのための土台です。
+# Docs:
+#   - docs/services/monitoring.md    what/how, ports, exporters, dashboards, MCP
+#   - docs/runbooks/monitoring.md    editing a dashboard, adding an exporter
+#   - docs/decisions/2026-08-25-victoriametrics-over-prometheus.md
+#   - docs/decisions/2026-08-25-community-dashboard-panel-cuts.md
 #
-#   メトリクスだけでは「いつから異常か」は分かっても「なぜ異常か」までは
-#   追えないことが多いため、ログも同じ Grafana から見られるようにします
-#   (Loki + Promtail)。podman の既定ログドライバが journald のため、
-#   systemd サービスとコンテナ (Minecraft 含む) のログは journald を
-#   1 箇所収集するだけで揃います。
-#
-# なぜ Prometheus ではなく VictoriaMetrics か:
-#   - PromQL 互換なので Grafana の Prometheus データソースがそのまま使えます。
-#     世に出回っているダッシュボードもほぼ流用できます。
-#   - メモリ消費が Prometheus より大幅に小さく、ディスク書き込み量も少ない。
-#     ZFS + 毎時スナップショットのこのホストでは書き込み量が直接
-#     スナップショット差分の肥大につながるため、ここは効きます。
-#   - prometheusConfig を書けば VictoriaMetrics 単体がスクレイプまで行います。
-#     Prometheus も vmagent も要らず、常駐ユニットが 1 つ減ります。
-#
-# 待ち受けの方針:
-#   exporter と VictoriaMetrics はすべて 127.0.0.1 のみ。
-#   外から見えるのは Grafana だけで、それも tailscale0 インタフェース限定です
-#   (下のファイアウォール節を参照)。LAN にも公開していません。
+# When you change this file, update the docs above in the same commit.
 ##############################################################################
 
 let
@@ -36,78 +18,48 @@ let
   ports = {
     victoriametrics = 8428;
     loki            = 3100;
-    promtail        = 9080;   # 自身のヘルスチェック/メトリクス用 (未指定だと既定の 80 で bind 失敗する)
+    promtail        = 9080;   # own health/metrics; default 80 fails to bind unprivileged
     grafana         = 3000;
     node            = 9100;
     smartctl        = 9633;
     nvidia          = 9835;
-    cadvisor        = 8081;   # 既定の 8080 は将来の Web アプリと衝突しやすいのでずらす
+    cadvisor        = 8081;   # 8080 avoided: likely to collide with a future web app
     minecraft       = 9150;
-    n8n             = 5678;   # modules/n8n.nix と対。Web UI と /metrics が同じポート
+    n8n             = 5678;   # paired with modules/n8n.nix; Web UI and /metrics share it
   };
 
-  # Grafana の admin パスワードを置くファイル。
-  #
-  # このリポジトリには秘密情報の置き場 (sops-nix / agenix) がまだ無く、
-  # .gitignore も実質空です。Nix の式に直接書くと nix store 経由で
-  # 全ユーザーから読めてしまううえ、git にも載ります。
-  # そこで Grafana 自身の $__file{} 展開を使い、値はファイルに逃がします。
-  #
-  # 初回のみ手動で用意してください (このファイルは git 管理外です):
-  #   head -c 24 /dev/urandom | base64 | sudo tee /var/lib/grafana/admin-password
-  #   sudo chown grafana:grafana /var/lib/grafana/admin-password
-  #   sudo chmod 0400 /var/lib/grafana/admin-password
-  #
-  # 所有者を grafana にするのを忘れると、起動時にこう言って落ちます:
-  #   got error while expanding security.admin_password with expander 'file':
-  #   permission denied
+  # Grafana admin password file. No secret store (sops-nix/agenix) in this repo yet,
+  # so the value is kept out of the nix store/git via Grafana's own $__file{}
+  # expansion. First-time setup and the "permission denied" gotcha are in
+  # docs/services/monitoring.md.
   grafanaPasswordFile = "/var/lib/grafana/admin-password";
 
-  # SMART を読ませるデバイス。
-  # machine.nix の by-id パスをそのまま渡します (sda/sdb は起動ごとに入れ替わるため)。
+  # SMART devices, from machine.nix's by-id paths (sda/sdb numbering isn't stable
+  # across boots).
   smartDevices = [ m.ssd m.hdd1 m.hdd2 ];
 
-  # Minecraft の待ち受けアドレス。
-  # modules/ftb-evolution.nix と同じ導出をしています (静的 IP なら LAN IP)。
+  # Minecraft listen address; same derivation as modules/ftb-evolution.nix
+  # (LAN IP if a static IP is configured).
   minecraftHost =
     if m.staticAddress == null
     then "127.0.0.1"
     else lib.head (lib.splitString "/" m.staticAddress);
 in
 {
-  ############################################################################
-  # メトリクスの保存先を専用データセットにする
-  #
-  # 時系列データベースは小さめの書き込みを絶え間なく続けます。
-  # ZFS の既定 recordsize 128K のままだと write amplification が出るため、
-  # disko/default.nix で rpool/var/lib/private/victoriametrics を recordsize=16K
-  # で切っています。マウント先が /var/lib/victoriametrics ではない理由は
-  # そちらのコメントを参照 (DynamicUser との兼ね合い)。
-  #
-  # このデータセットは com.sun:auto-snapshot=false です。メトリクスは
-  # 失っても再取得できない類のデータではなく、毎時スナップショットを取ると
-  # 書き込みの多さがそのまま差分の肥大につながるためです。
-  # syncoid の複製対象からも外れます (rpool/var/lib は recursive = false なので、
-  # 子データセットは自動的に対象外になります)。
-  ############################################################################
+  # Metrics storage is a dedicated ZFS dataset (disko/default.nix,
+  # rpool/var/lib/private/victoriametrics, recordsize=16K, auto-snapshot=false,
+  # excluded from syncoid replication). See docs/services/monitoring.md#storage.
   services.victoriametrics = {
     enable = true;
 
     listenAddress = "127.0.0.1:${toString ports.victoriametrics}";
 
-    # 約 6 か月。
-    # "6m" とは書けません — VictoriaMetrics は月と分の区別が付かないとして
-    # 拒否します。日数で指定してください。
-    # 1 年に伸ばしても本構成のメトリクス量なら数 GiB 程度の見込みですが、
-    # 実際にどれだけ食うか見てから伸ばす方が安全です。
+    # ~6 months. Must be given in days: VictoriaMetrics rejects "6m" as ambiguous
+    # between months and minutes.
     retentionPeriod = "180d";
 
-    ##########################################################################
-    # スクレイプ設定
-    #
-    # 15 秒ではなく 30 秒にしています。4C/8T の機体で、Minecraft の tick から
-    # CPU を奪わないことを優先しました。障害の切り分けには 30 秒粒度で足ります。
-    ##########################################################################
+    # 30s, not 15s: prioritizes not stealing CPU from the Minecraft tick on this
+    # 4C/8T host. See docs/services/monitoring.md.
     prometheusConfig = {
       global.scrape_interval = "30s";
 
@@ -118,8 +70,8 @@ in
         }
         {
           job_name = "smartctl";
-          # SMART の値は分単位でしか動かないので、頻繁に取っても意味がありません。
-          # ディスクを起こしてしまう副作用の方が大きい。
+          # SMART values only move on a minute scale; scraping more often just
+          # risks waking the disk for no benefit.
           scrape_interval = "5m";
           static_configs = [{ targets = [ "127.0.0.1:${toString ports.smartctl}" ]; }];
         }
@@ -137,42 +89,34 @@ in
         }
 
         {
-          # modules/n8n.nix で N8N_METRICS=true にしているのが前提。
-          # (2.x は settings の JSON ではなく環境変数しか読みません)
-          # Web UI と同じポートの /metrics に出ます。
+          # Assumes N8N_METRICS=true in modules/n8n.nix (2.x only reads this from
+          # an env var, not the settings JSON). Same port as the Web UI, /metrics.
           job_name = "n8n";
           static_configs = [{ targets = [ "127.0.0.1:${toString ports.n8n}" ]; }];
         }
 
-        # 将来ここに足すもの (本体を導入したら有効化してください):
+        # To add later, if a service starts emitting Prometheus metrics:
         #
         # {
         #   job_name = "ollama";
-        #   # Ollama 自体は Prometheus 形式のメトリクスを吐きません。
-        #   # GPU 側は上の nvidia ジョブで、プロセス側は cadvisor / node の
-        #   # processes コレクタで見る形になります。
+        #   # Ollama itself does not emit Prometheus-format metrics. GPU side is
+        #   # covered by the nvidia job above, process side by cadvisor / node's
+        #   # processes collector.
         # }
+        #
+        # (Ollama is currently disabled — modules/ollama.nix — in favour of
+        # llama.cpp; this placeholder predates that and is kept only as an example
+        # of the shape a metrics-less-service entry would take.)
       ];
     };
   };
 
-  ############################################################################
-  # ログ (Loki + Promtail)
+  # Logs (Loki + Promtail): whole-journald collection, 127.0.0.1-only, read only
+  # from Grafana. See docs/services/monitoring.md for why journald alone covers
+  # both systemd services and podman containers.
   #
-  # journald を丸ごと収集します。systemd サービスも podman コンテナ
-  # (Minecraft 含む) も journald にログが流れているため、これ 1 本で
-  # 両方カバーできます (podman の既定ログドライバが journald であることを
-  # 実機で確認済み — `podman info --format '{{.Host.LogDriver}}'`)。
-  #
-  # 127.0.0.1 のみで待ち受け、Grafana からのみ参照します。外部公開なし。
-  ############################################################################
-  # loki.service は DynamicUser ではなく固定ユーザー "loki" で動くため、
-  # VictoriaMetrics のような自動 chown が効きません。ZFS のマウントポイントは
-  # root:root 0755 で作られる (zfs create の既定) ため、そのままだと
-  # loki プロセスが chunks/rules/compactor を mkdir できず起動に失敗します
-  # (実機で確認済み: "mkdir /var/lib/loki/rules: permission denied")。
-  # 毎起動時に chown し直すことで、再インストールでデータセットを作り直しても
-  # 手動 chown を忘れる心配が無いようにする。
+  # loki runs as a fixed user, not DynamicUser, so it needs an explicit chown of
+  # its ZFS-backed data dir every boot (see docs/services/monitoring.md#storage).
   systemd.tmpfiles.rules = [
     "d /var/lib/loki 0700 loki loki - -"
   ];
@@ -180,8 +124,8 @@ in
   services.loki = {
     enable = true;
 
-    # このホストの規模では単一バイナリ・単一インスタンスで十分。
-    # filesystem storage (TSDB インデックス + チャンクをローカルディスクに) を使う。
+    # Single binary, single instance, filesystem storage (TSDB index + chunks on
+    # local disk) — plenty for this host's scale.
     configuration = {
       auth_enabled = false;
 
@@ -198,13 +142,10 @@ in
         };
         replication_factor = 1;
         ring.kvstore.store = "inmemory";
-        # 単一バイナリなので querier <-> query-scheduler 等の内部通信は本来
-        # ホスト内で完結してよいが、instance_addr を明示しないと Loki が
-        # デフォルトルートの NIC アドレス (= このホストの LAN 静的 IP,
-        # machine.nix の staticAddress) を自己アドレスとして ring に登録し、
-        # 自分自身への gRPC (9095) をわざわざ LAN 経由で発信する。
-        # LAN 側が瞬断すると "network is unreachable" で失敗し続けていた
-        # (2026-09-02 に実機の journal で確認)。ループバックに固定して回避する。
+        # Pinned to loopback: left unset, Loki registers the default-route NIC
+        # address (this host's LAN static IP) as its ring self-address and dials
+        # its own gRPC (9095) over the LAN, which fails hard on any LAN blip
+        # (docs/services/monitoring.md).
         instance_addr = "127.0.0.1";
       };
 
@@ -221,8 +162,8 @@ in
         }
       ];
 
-      # 保持期間 14 日。SSD の rpool には十分な空きがあり、障害調査には
-      # このくらいの長さがあれば足ります。
+      # 14-day retention; the SSD rpool has plenty of headroom and this is enough
+      # lookback for incident triage.
       compactor = {
         working_directory = "${config.services.loki.dataDir}/compactor";
         retention_enabled = true;
@@ -238,10 +179,9 @@ in
     enable = true;
 
     configuration = {
-      # 自身のヘルスチェック/メトリクス用の待ち受け。他の exporter と同じく
-      # 127.0.0.1 限定 (既定は 0.0.0.0)。ポートも明示する — 省略すると
-      # 既定の 80 番になり、非特権ユーザーの promtail が bind できずに
-      # 起動失敗する (実機で確認済み)。
+      # Own health/metrics listener, 127.0.0.1 only like the other exporters
+      # (default is 0.0.0.0). Port must be explicit — the default is 80, which the
+      # unprivileged promtail user cannot bind (confirmed on hardware).
       server.http_listen_address = "127.0.0.1";
       server.http_listen_port = ports.promtail;
       server.grpc_listen_address = "127.0.0.1";
@@ -261,9 +201,9 @@ in
             max_age = "12h";
             labels.job = "journal";
           };
-          # ユニット名をラベルに昇格させる。Minecraft は
-          # "podman-ftb-evolution.service" のように見えるので、
-          # LogQL 側で {unit=~"podman-.+"} のように絞り込める。
+          # Promote the unit name to a label. Minecraft shows up as
+          # "podman-ftb-evolution.service", so LogQL can filter with
+          # {unit=~"podman-.+"}.
           relabel_configs = [
             {
               source_labels = [ "__journal__systemd_unit" ];
@@ -275,28 +215,20 @@ in
     };
   };
 
-  ############################################################################
-  # exporter 群
-  #
-  # すべて 127.0.0.1 のみで待ち受けます。VictoriaMetrics も同じホスト上に
-  # あるので、これで外部から exporter が叩かれる経路が無くなります。
-  ############################################################################
+  # exporters: all 127.0.0.1-only, same as VictoriaMetrics itself, so nothing here
+  # is reachable from outside this host.
   services.prometheus.exporters.node = {
     enable = true;
     listenAddress = "127.0.0.1";
     port = ports.node;
 
-    # 既定のコレクタに加えて:
-    #   zfs       — ARC のヒット率と使用量。arcMaxBytes (16 GiB) の
-    #               チューニングが妥当だったか後から検証できます。
-    #   systemd   — ユニットの状態。podman-ftb-evolution が落ちたことに気づける。
-    #   processes — プロセス数と状態。Ollama がゾンビを積んでいないか等。
+    # Extra collectors beyond the defaults: zfs, systemd, processes.
+    # See docs/services/monitoring.md for what each is used for.
     enabledCollectors = [ "zfs" "systemd" "processes" ];
 
-    # textfile collector の読み取り先。
-    # 中身は modules/zfs-snapshot-metrics.nix のタイマーが 5 分ごとに書きます。
-    # (textfile collector 自体は既定で有効ですが、ディレクトリを指定しないと
-    #  何も読みません。パスは向こうの textfileDir と対になっています)
+    # textfile collector directory (enabled by default, but reads nothing unless
+    # a directory is given). Written by modules/zfs-snapshot-metrics.nix's timer
+    # every 5 minutes; path must match that module's textfileDir.
     extraFlags = [ "--collector.textfile.directory=/var/lib/prometheus-node-exporter-text-files" ];
   };
 
@@ -306,30 +238,22 @@ in
     port = ports.smartctl;
     devices = smartDevices;
 
-    # スクレイプ間隔 (5m) より短くしておく。
-    # これより長いと同じキャッシュ値を読み続けることになります。
+    # Shorter than the 5m scrape interval, so scrapes don't just re-read a stale
+    # cached value.
     maxInterval = "2m";
   };
 
-  ##########################################################################
-  # NVIDIA GPU
-  #
-  # services.prometheus.exporters.nvidia-gpu というモジュールも存在しますが、
-  # 中身は開発の止まった mindprince 製 (NVML 直叩き) です。ここでは現行の
-  # utkuozdemir 製 (nvidia-smi をパースする実装) を素の systemd ユニットで
-  # 動かしています。GPU を uuid と name でラベル分けするため、
-  # 世代違いの 2 枚を確実に区別できるのが選定理由です。
-  #
-  # DynamicUser で動かしつつ、GPU デバイスにアクセスするため video グループを
-  # 補助グループとして渡しています。
-  ##########################################################################
+  # NVIDIA GPU exporter: utkuozdemir's (parses nvidia-smi), not the
+  # nixpkgs services.prometheus.exporters.nvidia-gpu module (mindprince's,
+  # NVML-based, unmaintained). Run as a plain systemd unit. See
+  # docs/services/monitoring.md for why (per-GPU uuid/name labels) and its limits.
   systemd.services.nvidia-gpu-exporter = {
     description = "NVIDIA GPU Prometheus exporter";
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
 
-    # nvidia-smi は nvidia_x11.bin に入っており、ドライバのバージョンと
-    # 一致している必要があるため config から引きます。
+    # nvidia-smi ships in nvidia_x11.bin and must match the loaded driver version,
+    # hence pulling it from config rather than nixpkgs directly.
     path = [ config.hardware.nvidia.package.bin ];
 
     serviceConfig = {
@@ -341,9 +265,8 @@ in
       RestartSec = "10s";
 
       DynamicUser = true;
-      SupplementaryGroups = [ "video" ];
+      SupplementaryGroups = [ "video" ];  # needed to access the GPU device files
 
-      # nvidia-smi はデバイスファイルを読むだけなので、権限は絞れます。
       NoNewPrivileges = true;
       ProtectSystem = "strict";
       ProtectHome = true;
@@ -352,64 +275,42 @@ in
     };
   };
 
-  ##########################################################################
-  # コンテナ
-  #
-  # cadvisor が podman のコンテナごとの CPU / メモリ / IO を出します。
-  # Minecraft コンテナと将来の n8n コンテナを、ホスト全体の負荷と
-  # 突き合わせて見られるようにするためです。
-  ##########################################################################
+  # cadvisor: per-podman-container CPU/mem/IO (Minecraft today, a future n8n
+  # container). See docs/services/monitoring.md for the container-naming limit.
   services.cadvisor = {
     enable = true;
     listenAddress = "127.0.0.1";
     port = ports.cadvisor;
   };
 
-  ##########################################################################
-  # Minecraft
-  #
-  # itzg/mc-monitor を server list ping (25565) に対して回します。
-  # RCON は使いません。ポートを増やさずに済み、認証情報も要らないためです。
-  #
-  # 取れるのは「起動しているか」「オンライン人数」「応答レイテンシ」です。
-  # TPS は取れません — TPS まで欲しい場合は modpack 側に Forge の
-  # メトリクス mod を入れる必要があり、modpack 更新のたびに壊れる箇所が
-  # 増えるため、まずはここから始めます。
-  # (mc-monitor は nixpkgs に無いので、既存の Minecraft と同じ podman で動かします)
-  ##########################################################################
+  # Minecraft health: itzg/mc-monitor server-list-ping (25565), no RCON.
+  # No TPS — see docs/services/monitoring.md for why.
   virtualisation.oci-containers.containers.mc-monitor = {
     image = "docker.io/itzg/mc-monitor:latest";
 
-    # mc-monitor のフラグは Go 標準の flag パッケージなのでハイフン 1 つです。
-    # --bind のような GNU 風のオプションは受け付けず、終了コード 2 で落ちます。
+    # mc-monitor uses Go's stdlib flag package: single-dash flags only. A
+    # GNU-style "--bind" is rejected (exit code 2).
     cmd = [
       "export-for-prometheus"
       "-servers" "${minecraftHost}:25565"
       "-port" (toString ports.minecraft)
     ];
 
-    # ホスト側は 127.0.0.1 のみに公開する。
     ports = [ "127.0.0.1:${toString ports.minecraft}:${toString ports.minecraft}" ];
 
     autoStart = true;
   };
 
-  # Minecraft 本体が上がってから起動させる。
-  # 先に起動しても ping に失敗し続けるだけで実害はありませんが、
-  # 起動直後のログが無駄に汚れます。
+  # Start only after Minecraft itself is up. Starting earlier wouldn't break
+  # anything (pings just fail until Minecraft answers), but clutters the log.
   systemd.services.podman-mc-monitor = {
     after = [ "podman-ftb-evolution.service" ];
     wants = [ "podman-ftb-evolution.service" ];
   };
 
-  ############################################################################
-  # Grafana
-  #
-  # 待ち受けは 0.0.0.0 ですが、ファイアウォールで tailscale0 のインタフェース
-  # だけを開けているため、実際に到達できるのは tailnet からのみです。
-  # Tailscale の IP はビルド時に決まらないので、http_addr で絞るのではなく
-  # インタフェース単位で絞るこの形にしています。
-  ############################################################################
+  # Grafana listens on 0.0.0.0, but the firewall only opens the tailscale0
+  # interface, so it's reachable only from the tailnet. Filtering by interface
+  # rather than http_addr because the Tailscale IP isn't known at build time.
   services.grafana = {
     enable = true;
 
@@ -417,23 +318,21 @@ in
       server = {
         http_addr = "0.0.0.0";
         http_port = ports.grafana;
-        # 相対 URL の生成に使われるだけなので、ホスト名で十分です。
-        domain = m.hostName;
+        domain = m.hostName;  # only used to build relative URLs; hostname is enough
       };
 
       security = {
         admin_user = "admin";
-        # $__file{} は Grafana 自身の機能で、値をファイルから読みます。
-        # こう書くことでパスワードが nix store にも git にも載りません。
+        # $__file{} is Grafana's own file-expansion; keeps the password out of the
+        # nix store and git. See docs/services/monitoring.md for first-time setup.
         admin_password = "$__file{${grafanaPasswordFile}}";
       };
 
-      # 匿名アクセスとサインアップは無効のまま (既定)。
-      # tailnet 内であっても、端末を貸したときに素通りされるのは避けます。
+      # Anonymous access and sign-up left disabled: even inside the tailnet, a
+      # borrowed device shouldn't get free access.
       "auth.anonymous".enabled = false;
       users.allow_sign_up = false;
 
-      # 使用状況の外部送信を止める。
       analytics = {
         reporting_enabled = false;
         check_for_updates = false;
@@ -445,22 +344,20 @@ in
 
       datasources.settings.datasources = [
         {
-          # VictoriaMetrics は Prometheus 互換 API を持つので、
-          # データソースの型は "prometheus" のままで動きます。
+          # VictoriaMetrics speaks the Prometheus-compatible API, so type
+          # "prometheus" works unchanged.
           name = "VictoriaMetrics";
           type = "prometheus";
           access = "proxy";
 
-          # UID を固定する。
-          # dashboards/ の JSON はこの UID でデータソースを参照しているため、
-          # ここを変えるとダッシュボードが軒並み "No data" になります。
+          # Pinned uid: every dashboards/*.json references the data source by
+          # this uid. Changing it breaks every dashboard with "No data".
           uid = "victoriametrics";
 
           url = "http://127.0.0.1:${toString ports.victoriametrics}";
           isDefault = true;
           jsonData = {
-            # スクレイプ間隔と揃える。グラフの補間がおかしくなるのを防ぎます。
-            timeInterval = "30s";
+            timeInterval = "30s";  # matches the scrape interval; keeps graph interpolation sane
           };
         }
         {
@@ -473,75 +370,15 @@ in
         }
       ];
 
-      ########################################################################
-      # ダッシュボード
-      #
-      # リポジトリの dashboards/ を丸ごと参照します。パスが nix store を
-      # 指すので、ダッシュボードの内容は git が唯一の正になります。
-      # (JSON 自体は巨大なので、Nix の式に埋め込まずファイルのまま置きます)
-      #
-      # allowUiUpdates = false なので UI からは読み取り専用です。
-      # 編集したいときは:
-      #   1. UI で "Save as..." して複製を作り、そちらで試行錯誤する
-      #   2. 気に入ったら Export > "Export for sharing externally" を
-      #      オフのまま JSON をコピー
-      #   3. dashboards/ のファイルを書き換えて nixos-rebuild switch
-      #   4. 複製した方は UI から削除する
-      #
-      # 収録物 (uid はファイル内で固定):
-      #   00-overview            自作。Minecraft・CPU・メモリ・ZFS・GPU を 1 画面に
-      #   10-node-exporter-full  Grafana.com ID 1860 (空パネルを削除済み。下記)
-      #   20-cadvisor            Grafana.com ID 14282 (cgroup 単位に作り替え済み。下記)
-      #   30-nvidia-gpu          Grafana.com ID 14574 (空パネルを削除済み。下記)
-      #   40-zfs-replication     自作。スナップショットの世代と syncoid の複製遅延
-      #                          (メトリクスの出所は modules/zfs-snapshot-metrics.nix)
-      #   70-nix-info             自作。インストール済みパッケージ一覧、追従先 nixpkgs と
-      #                          直接比較したパッケージ単位の更新有無、Hydra ビルド状況
-      #                          (メトリクスの出所は modules/nix-info.nix)
-      #   71-nix-profile-info     自作。user の nix profile (命令的に入れたパッケージ) の
-      #                          一覧・世代・追従先 nixpkgs と直接比較した更新有無
-      #                          (メトリクスの出所は modules/nix-profile-info.nix)
-      #
-      # コミュニティ製の 3 つは取り込み時に手を入れてあります:
-      #   - __inputs / __requires を削除 (これが残っていると、provisioning
-      #     しても「インポートしてください」と言われて表示できません)
-      #   - データソース参照を uid "victoriametrics" に固定
-      #
-      # さらに、この機体では原理的にデータが出ないパネルを外してあります
-      # (放置すると "No data" が画面に混ざり、本当の異常が埋もれるため):
-      #   10-node      IRQ Detail (interrupts コレクタが無効) /
-      #                Power Supply (電源は AC 直結でバッテリが無い) /
-      #                Hardware Fan Speed (hwmon にファンのセンサが出ない) /
-      #                TCP Stat Persistent・Transient・Socket Queue
-      #                (tcpstat コレクタが無効) の 6 枚を削除。
-      #                加えて hwmon の crit_alarm / crit_hyst と
-      #                node_netstat_Tcp_MaxConn の系列を落とし、
-      #                Network Operational Status は operstate ラベルの
-      #                絞り込みを外しました (この版の node_exporter は
-      #                node_network_up に operstate を付けません)。
-      #                CPU パネルの guest 系列は `> 0` で意図的に隠れる
-      #                作りなので残してあります。
-      #   20-cadvisor  cAdvisor は podman のコンテナ名を取れず name ラベルが
-      #                付きません (docker/containerd の API 前提のため)。
-      #                キーを name から cgroup パス (id) に置き換え、
-      #                ネットワークの 2 枚は削除しました — cAdvisor が
-      #                network 系を出すのはルート cgroup "/" だけで、
-      #                コンテナ単位には分かれないためです。
-      #   30-nvidia    MIG・NVSwitch (fabric)・XID・PCIe スループット・
-      #                energy カウンタ・compute app のプロセス一覧を削除。
-      #                いずれもデータセンター GPU か、より新しい exporter
-      #                (nvidia_gpu_exporter は 1.3.1) の機能で、
-      #                GTX 1660 SUPER / RTX 3060 Ti では出ません。
-      #                throttle 系と ECC 系は残しています — クエリが
-      #                clocks_event_reasons_* / ecc_..._sram_* に
-      #                フォールバックする作りで、実データが返るためです。
-      ########################################################################
+      # Dashboards: the whole repo dashboards/ directory, read-only from the UI
+      # (allowUiUpdates = false; git is the single source of truth). Inventory,
+      # edit procedure, and per-dashboard panel cuts are in
+      # docs/services/monitoring.md and docs/runbooks/monitoring.md.
       dashboards.settings.providers = [
         {
           name = "nixos";
           options.path = ../dashboards;
 
-          # UI からの編集と削除を禁じ、git を唯一の正にする。
           allowUiUpdates = false;
           disableDeletion = true;
         }
@@ -549,46 +386,12 @@ in
     };
   };
 
-  ############################################################################
-  # ファイアウォール
-  #
-  # Grafana 用のポートはここでは開けません。到達経路は
-  # modules/reverse-proxy.nix の Tailscale Serve (tailnet の 443) に
-  # 一本化してあり、Grafana 自身の 3000 は tailnet からも直接叩けません。
-  # LAN にも当然公開していません。
-  #
-  # 待ち受けアドレス (http_addr = "0.0.0.0") はそのままですが、
-  # 443 で終端した tailscaled が 127.0.0.1:3000 へ繋ぐため支障ありません。
-  #
-  # 直接 3000 番を叩きたくなったら (プロキシの切り分け等)、SSH の
-  # ポートフォワードを使ってください:
-  #   ssh -L 3000:127.0.0.1:3000 seita-nixos-baremetal
-  ############################################################################
+  # Firewall: no port opened here for Grafana. Reachability goes exclusively
+  # through modules/reverse-proxy.nix's Tailscale Serve (tailnet 443); Grafana's
+  # own 3000 is not directly reachable even from the tailnet, and not on the LAN.
+  # http_addr stays "0.0.0.0" — harmless, since tailscaled terminates 443 and
+  # connects to 127.0.0.1:3000 locally. Direct access (e.g. to isolate a
+  # reverse-proxy issue): `ssh -L 3000:127.0.0.1:3000 seita-nixos-baremetal`.
 
-  ############################################################################
-  # 運用メモ
-  #
-  #   ターゲットの健全性:
-  #     curl -s 'localhost:8428/api/v1/targets' \
-  #       | jq '.data.activeTargets[] | {job: .labels.job, health, lastError}'
-  #
-  #   GPU が 2 枚見えているか (2 行返れば正常):
-  #     curl -s localhost:9835/metrics | grep '^nvidia_smi_gpu_info'
-  #
-  #   Grafana へは tailnet から:
-  #     tailscale ip -4   # で得た IP に対して http://<ip>:3000
-  #
-  #   保存容量の確認:
-  #     zfs list rpool/var/lib/victoriametrics
-  #     du -sh /var/lib/victoriametrics
-  #
-  #   Loki が生きているか:
-  #     curl -s localhost:3100/ready
-  #
-  #   ラベル (unit 等) が出ているか (logcli は loki パッケージに同梱):
-  #     logcli --addr=http://127.0.0.1:3100 labels
-  #
-  #   Promtail が journald を読めているか:
-  #     journalctl -u promtail --no-pager -n 50
-  ############################################################################
+  # Operational checks: see docs/services/monitoring.md#operational-checks.
 }

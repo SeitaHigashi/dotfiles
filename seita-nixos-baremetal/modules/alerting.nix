@@ -1,82 +1,31 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# Grafana のアラート (Unified Alerting)。
+# Grafana alerting (Unified Alerting).
 #
-# 何のためか:
-#   modules/monitoring.nix で集めた数値は dashboards/*.json で見えますが、
-#   見に行かなければ気づけません。ZFS プールの劣化・ディスクの消耗・
-#   複製の停止は、どれも「静かに進行して、必要になった瞬間に手遅れと分かる」
-#   種類の故障です。閾値の判定は機械にやらせます。
+# Docs:
+#   - docs/services/alerting.md    conventions, mkRule, MetricsQL pitfalls, n8n
+#   - docs/runbooks/alerting.md    add/change/delete a rule, test the notify path
+#   - docs/decisions/2026-08-25-alerting-split-from-monitoring.md
+#   - docs/decisions/2026-08-25-mkrule-instant-query-shape.md
 #
-# なぜ monitoring.nix と分けるか:
-#   monitoring.nix が既に 400 行を超えており、収集 (exporter とスクレイプ) と
-#   判定 (アラート) は変更の理由が別だからです。services.grafana の属性は
-#   モジュール間でマージされるので分割に支障はありません
-#   (nixpkgs.config.allowUnfreePredicate のような「1 箇所限定」の制約は
-#    ここには無い)。
-#
-# git が唯一の正:
-#   provisioning で入れたルールは UI から編集できません。dashboards/*.json を
-#   allowUiUpdates = false で読ませているのと同じ方針です。閾値を変えたいときは
-#   このファイルを直して rebuild します。
-#
-# 通知:
-#   n8n の Webhook 1 本だけに飛ばします。SMTP を選ばなかったのは、
-#   パスワードを置く場所が要るからです (このリポジトリにはまだ sops-nix も
-#   agenix もありません)。n8n は同一ホストの 127.0.0.1 なので、
-#   秘密情報を一切増やさずに済みます。通知先の振り分け (Discord / メール /
-#   夜間は無視、など) は n8n のワークフロー側で育てます。
-#
-#   Webhook 先のワークフローがまだ無くても、アラートの状態自体は
-#   Grafana の Alerting 画面に出ます。通知の配送は失敗しますが、
-#   ルールの評価には影響しません。
-#
-# 経路の検証のしかた:
-#   一時的なルール (expr = "vector(1)"、for = "0s") を足して発報させ、
-#   確認できたら「閾値だけを変えて Normal に戻す」こと。
-#   **ルールごと削除しても復旧通知は出ません** — 評価対象が消えるだけで
-#   Alerting -> Normal の遷移が起きないためです (実機で確認)。
+# When you change this file, update the docs above in the same commit.
 ##############################################################################
 
 let
-  # ディスクの by-id はマシン固有値なので machine.nix から取ります。
+  # Disk by-id paths are host-specific, so pull them from machine.nix.
   m = import ../machine.nix;
 
-  # データソースの UID。dashboards/*.json と同じ値で、
-  # modules/monitoring.nix の provision.datasources で固定しているものです。
-  # ここを変えると全ルールが「データソースが見つからない」で Error になります。
+  # Data source uid, fixed in modules/monitoring.nix's provision.datasources.
+  # Changing it turns every rule into a "datasource not found" Error.
   dsUid = "victoriametrics";
 
-  # n8n の待ち受けポート。modules/n8n.nix の port と揃えること。
-  n8nPort = 5678;
+  n8nPort = 5678;  # must match modules/n8n.nix's port
 
-  # アラートを置くフォルダ。Grafana が provisioning 時に自動で作ります。
-  folder = "アラート";
+  folder = "アラート";  # Grafana creates this folder automatically during provisioning
 
-  ##########################################################################
-  # ルールを 1 つ組み立てるヘルパー。
-  #
-  # このリポジトリのアラートはすべて「instant クエリを 1 本投げて、
-  # その値を閾値と比べる」形に収まります。Grafana のルールは
-  # data (クエリと式のノードの配列) + condition (最終ノードの refId) という
-  # 冗長な構造なので、素直に書くと 1 ルール 40 行になり、閾値の一覧性が
-  # 失われます。共通部分をここに畳んでおきます。
-  #
-  # 引数:
-  #   uid         ルールの識別子。省略すると再起動のたびに別ルール扱いになり、
-  #               サイレンス設定などが失われるため必ず明示します。
-  #   expr        PromQL (instant)。異常時に系列が出るように書くのではなく、
-  #               常に値が出るように書いて、判定は evaluator に任せます
-  #               (系列が消えると NoData になり、閾値の意味が変わるため)。
-  #   op/limit    閾値。op は "gt" か "lt"。
-  #   pending     この状態が続いたら発報する時間 ("for")。瞬間的な尖りで
-  #               鳴らさないためのもの。
-  #   severity    ラベル。n8n 側で通知先を分けるために使います。
-  #   noData      データが無いときの扱い。既定は "OK" (指標がまだ無い =
-  #               異常ではない) ですが、「値が消えること自体が異常」の
-  #               ルールでは "Alerting" を渡します。
-  ##########################################################################
+  # Builds one alert rule. See docs/services/alerting.md#rule-conventions for the
+  # full rationale (always-emitting instant query + threshold, uid, noData).
   mkRule =
     { uid
     , title
@@ -95,14 +44,14 @@ let
       for = pending;
       isPaused = false;
       noDataState = noData;
-      # クエリが壊れていること自体は知らせてほしいので Error のまま。
+      # Keep Error: a broken query is itself worth being notified about.
       execErrState = "Error";
 
       data = [
         {
           refId = "A";
-          # instant クエリなので窓は評価に使われませんが、
-          # Grafana は必須項目として要求します。
+          # The window is unused for an instant query,
+          # but Grafana requires the field.
           relativeTimeRange = { from = 600; to = 0; };
           datasourceUid = dsUid;
           model = {
@@ -117,8 +66,7 @@ let
         {
           refId = "B";
           relativeTimeRange = { from = 600; to = 0; };
-          # 式ノードは Grafana 内部の疑似データソース。
-          datasourceUid = "__expr__";
+          datasourceUid = "__expr__";  # Grafana's internal pseudo-datasource for expression nodes
           model = {
             refId = "B";
             datasource = { type = "__expr__"; uid = "__expr__"; };
@@ -130,8 +78,7 @@ let
                 evaluator = { type = op; params = [ limit ]; };
                 operator.type = "and";
                 query.params = [ "A" ];
-                # A は instant なので既に 1 点。reducer は形式上の指定です。
-                reducer = { type = "last"; params = [ ]; };
+                reducer = { type = "last"; params = [ ]; };  # A is instant, already 1 point; reducer is a formality
               }
             ];
           };
@@ -142,16 +89,14 @@ let
       annotations = { inherit summary description; };
     };
 
-  # SMART のラベルはディスクの by-id 名 (パス部分を除いたもの) です。
-  # machine.nix を唯一の出所にして、ここにディスク名を直書きしないようにします。
+  # SMART labels are the disk's by-id name (path stripped). Keeps machine.nix as
+  # the single source for disk names rather than hardcoding them here.
   deviceOf = path: baseNameOf path;
 in
 {
   services.grafana.provision.alerting = {
 
-    ##########################################################################
-    # 通知先
-    ##########################################################################
+    # Contact points
     contactPoints.settings = {
       apiVersion = 1;
       contactPoints = [
@@ -163,30 +108,23 @@ in
               uid = "n8n-webhook";
               type = "webhook";
               settings = {
-                # パスは n8n のワークフロー
-                # "Notify Grafana Alert to Discord" (fD6js4TzcXdUF4Wx) の
-                # Webhook ノードに合わせています。末尾のランダムな文字列は
-                # n8n が付けたもので、こちらで短くはできません
-                # (ワークフロー側を直さない限り 404 になります)。
+                # Path matches the n8n workflow "Notify Grafana Alert to Discord"
+                # (fD6js4TzcXdUF4Wx)'s Webhook node. The trailing random suffix is
+                # n8n's own and can't be shortened without editing that workflow
+                # (any other path 404s).
                 url = "http://127.0.0.1:${toString n8nPort}/webhook/grafana-alert-40b2fc68";
                 httpMethod = "POST";
               };
-              # 復旧したことも知らせてほしい (「鳴りっぱなしかどうか」が
-              # 分からないと、アラートを見なくなります)。
-              disableResolveMessage = false;
+              disableResolveMessage = false;  # send resolved notices too, or firing state becomes unknowable
             }
           ];
         }
       ];
     };
 
-    ##########################################################################
-    # 通知ポリシー
-    #
-    # 家庭内のサーバーなので、同じ問題で何度も叩き起こされないよう
-    # 再通知は控えめ (12 時間) にしています。重大度による分岐は
-    # ここではなく n8n 側で行います (nix を触らずに変えられるため)。
-    ##########################################################################
+    # Notification policy: this is a home server, so re-notification is kept
+    # infrequent (12h) rather than paging repeatedly for the same issue.
+    # Severity-based routing is done in n8n, not here (tunable without touching Nix).
     policies.settings = {
       apiVersion = 1;
       policies = [
@@ -201,23 +139,14 @@ in
       ];
     };
 
-    ##########################################################################
-    # ルール
-    ##########################################################################
+    # Rules. To delete one, removing it from `groups` alone is not enough — see
+    # docs/runbooks/alerting.md#delete-a-rule for the deleteRules procedure.
     rules.settings = {
       apiVersion = 1;
 
-      # ルールを消すときは groups から削るだけでは足りません。provisioning から
-      # 消えても Grafana の DB には残り続けるため、一時的に
-      #   deleteRules = [ { orgId = 1; uid = "<消したい uid>"; } ];
-      # をここに書いて 1 回 switch し、消えたのを確認してから
-      # deleteRules ごと消します (実機で確認済み)。
-
       groups = [
 
-        ######################################################################
-        # インフラ本体
-        ######################################################################
+        # Infra
         {
           orgId = 1;
           name = "infra";
@@ -228,8 +157,8 @@ in
             (mkRule {
               uid = "zfs-pool-degraded";
               title = "ZFS プールが ONLINE でない";
-              # modules/zfs-snapshot-metrics.nix が出している指標。
-              # node_exporter の zfs コレクタはプールの健全性を出しません。
+              # From modules/zfs-snapshot-metrics.nix; node_exporter's zfs
+              # collector does not expose pool health.
               expr = "max by (pool) (zfs_pool_health)";
               op = "gt";
               limit = 0;
@@ -242,10 +171,10 @@ in
             (mkRule {
               uid = "filesystem-space-low";
               title = "ファイルシステムの空きが少ない";
-              # ZFS のデータセットはプールの空きを共有するため、全マウント
-              # ポイントを対象にすると 1 つの事象で何十件も鳴ります。
-              # プールごとに代表を 1 つだけ見ます (/ = rpool, /srv = dpool)。
-              # /boot だけは独立した vfat なので別枠で含めます。
+              # ZFS datasets share their pool's free space, so alerting on every
+              # mountpoint would fire dozens of times for one event. Watch one
+              # representative mountpoint per pool (/ = rpool, /srv = dpool);
+              # /boot is a separate vfat filesystem, included on its own.
               expr = ''min by (mountpoint) (node_filesystem_avail_bytes{mountpoint=~"/|/srv|/boot"} / node_filesystem_size_bytes)'';
               op = "lt";
               limit = 0.10;
@@ -258,7 +187,7 @@ in
             (mkRule {
               uid = "smart-status-failed";
               title = "SMART の総合判定が FAILED";
-              # 1 = passed。ディスクが自分で「もう駄目だ」と言っている状態。
+              # 1 = passed. This means the disk itself reports being past saving.
               expr = "min by (device) (smartctl_device_smart_status)";
               op = "lt";
               limit = 1;
@@ -271,7 +200,7 @@ in
             (mkRule {
               uid = "nvme-wearout";
               title = "NVMe の消耗が進んでいる";
-              # NVMe のみが持つ指標 (HDD には出ません)。
+              # NVMe-only metric; HDDs do not expose it.
               expr = "max by (device) (smartctl_device_percentage_used)";
               op = "gt";
               limit = 80;
@@ -296,8 +225,8 @@ in
             (mkRule {
               uid = "hdd-temperature-high";
               title = "HDD の温度が高い";
-              # HDD は 55℃ を超えると寿命が目に見えて縮みます。
-              # NVMe は平常時から 50℃ 前後なので別ルールにしています。
+              # HDD lifespan visibly shortens above 55C. NVMe normally runs
+              # around 50C, hence a separate rule for it.
               expr = ''max by (device) (smartctl_device_temperature{temperature_type="current",device=~"${deviceOf m.hdd1}|${deviceOf m.hdd2}"})'';
               op = "gt";
               limit = 55;
@@ -310,8 +239,8 @@ in
             (mkRule {
               uid = "nvme-temperature-high";
               title = "NVMe の温度が高い";
-              # 平常時 50℃ 前後なので 75℃ で拾います
-              # (サーマルスロットリングが始まる手前)。
+              # Normal operating temp is ~50C, so 75C catches it just before
+              # thermal throttling would start.
               expr = ''max by (device) (smartctl_device_temperature{temperature_type="current",device="${deviceOf m.ssd}"})'';
               op = "gt";
               limit = 75;
@@ -324,8 +253,8 @@ in
             (mkRule {
               uid = "memory-low";
               title = "メモリの空きが少ない";
-              # ARC は MemAvailable に含まれない (回収可能でも used 扱い) ため、
-              # arcMaxBytes を上げすぎたときもここに出ます。
+              # ZFS ARC is not counted in MemAvailable (it's "used" even though
+              # reclaimable), so this also fires if arcMaxBytes is set too high.
               expr = "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes";
               op = "lt";
               limit = 0.10;
@@ -350,16 +279,16 @@ in
             (mkRule {
               uid = "gpu-reboot-required";
               title = "GPU が致命的な Xid エラーを出している (要再起動)";
-              # modules/gpu-xid-metrics.nix が出す指標。2026-08-28 に GPU1 が
-              # "fallen off the bus" (Xid 79) で脱落し、ollama が CPU
-              # フォールバックに落ちて OpenViking の summary task が全滅した
-              # 障害を受けて追加。nvidia-gpu-exporter は Xid を出さないため
-              # (README.md 参照)、この指標だけが検知経路。
+              # Metric from modules/gpu-xid-metrics.nix. Added after a 2026-08-28
+              # incident: GPU1 dropped with "fallen off the bus" (Xid 79), ollama
+              # fell back to CPU, and OpenViking's summary task failed entirely.
+              # nvidia-gpu-exporter does not expose Xid (see README.md), so this
+              # metric is the only detection path.
               expr = "max by (pci) (gpu_reboot_required)";
               op = "gt";
               limit = 0;
-              # 状態ベースの指標 (カウンタではない) で、出た時点で確実に
-              # 致命的なので pending は最短に留める。
+              # State-based metric (not a counter); as soon as it appears it's
+              # already fatal, so keep pending as short as possible.
               pending = "1m";
               severity = "critical";
               summary = "GPU {{ $labels.pci }} が致命的な Xid エラーを出しています";
@@ -369,7 +298,7 @@ in
             (mkRule {
               uid = "gpu-xid-metrics-stale";
               title = "GPU Xid メトリクスの収集が止まっている";
-              # 2 分間隔のタイマーなので 15 分で異常と見なす。
+              # The timer runs every 2 minutes, so treat 15 minutes as stale.
               expr = "time() - gpu_xid_metrics_last_run_seconds";
               op = "gt";
               limit = 900;
@@ -383,7 +312,8 @@ in
             (mkRule {
               uid = "systemd-unit-failed";
               title = "systemd ユニットが failed";
-              # どのユニットでも拾う網。個別のサービス死活は services グループ側。
+              # Catch-all for any unit; individual service liveness is the
+              # "services" group below.
               expr = ''sum by (name) (node_systemd_unit_state{state="failed"})'';
               op = "gt";
               limit = 0;
@@ -396,7 +326,7 @@ in
         }
 
         ######################################################################
-        # サービスの死活
+        # Service liveness
         ######################################################################
         {
           orgId = 1;
@@ -408,8 +338,8 @@ in
             (mkRule {
               uid = "scrape-target-down";
               title = "スクレイプ対象が落ちている";
-              # exporter が死ぬと、その配下のアラートがすべて無言になります。
-              # 「監視が見えていないこと」自体を critical で拾います。
+              # If an exporter dies, every alert downstream of it goes silent too.
+              # This catches "monitoring itself has gone blind" as critical.
               expr = "min by (job, instance) (up)";
               op = "lt";
               limit = 1;
@@ -422,29 +352,23 @@ in
             (mkRule {
               uid = "service-inactive";
               title = "常駐サービスが止まっている";
-              # いずれも Restart 前提の常駐ユニットなので、
-              # active でない = 落ちている、と見なして構いません。
+              # All are Restart-always resident units, so "not active" can safely
+              # be read as "down".
               #
-              # ★ llama-cpp.service はまだここに入れてはいけません ★
-              #   modules/llama-cpp.nix は wantedBy = [] で、切り替えを決める
-              #   までは手動起動です。ユニット自体は /etc/systemd/system に
-              #   存在するため node_exporter は inactive として値を出し続け、
-              #   この式に足すと「常に発報しているアラート」が 1 本増えます
-              #   (それは他の本物の異常を埋もれさせます)。
-              #   ollama から llama.cpp へ切り替えるときに、
-              #   llama-cpp.service を足して ollama.service を外してください。
-              #
-              # ★ 2026-09-21: ollama.service を外しました ★
-              #   modules/ollama.nix で enable = false にしたため、常に
-              #   inactive になり鳴りっぱなしになるからです。
-              #   (元の式: … |n8n.service|ollama.service|open-webui.service| … )
-              #
-              # ★ 2026-09-23: llama-cpp.service を足しました ★
-              #   modules/llama-cpp.nix が wantedBy = [ "multi-user.target" ]
-              #   の常時起動になったためです。手動起動だった頃にここへ入れると
-              #   常に inactive で鳴りっぱなしになる、というのが従来の除外理由
-              #   でした。llama-cpp を再び手動起動に戻すなら、ここからも
-              #   外してください。
+              # **Only include a unit here if it is meant to be always running.**
+              # A manually-started (wantedBy = []) unit still exists in
+              # /etc/systemd/system and node_exporter keeps reporting it inactive,
+              # which would turn into a permanently-firing alert that buries real
+              # ones. `llama-cpp.service` went through exactly this: excluded
+              # while it was manual-start, added on 2026-09-23 once it became
+              # wantedBy = [ "multi-user.target" ] (and `ollama.service` was
+              # removed on 2026-09-21 once `services.ollama.enable = false` made
+              # it permanently inactive). Verified current as of 2026-09-24
+              # (`systemctl is-enabled llama-cpp.service` → enabled/active;
+              # `ollama.service` → not-found). Full history:
+              # docs/decisions/2026-09-23-ollama-to-llama-cpp.md (owned by the
+              # llama-cpp module docs). If llama-cpp ever goes back to manual
+              # start, remove it from this expression again.
               expr = ''min by (name) (node_systemd_unit_state{state="active",name=~"grafana.service|victoriametrics.service|n8n.service|open-webui.service|llama-cpp.service|tailscaled.service|podman-ftb-evolution.service|podman-mc-monitor.service"})'';
               op = "lt";
               limit = 1;
@@ -457,8 +381,8 @@ in
             (mkRule {
               uid = "minecraft-unhealthy";
               title = "Minecraft サーバーが応答しない";
-              # コンテナが動いていてもワールドの読み込みで固まることがあるため、
-              # プロセスの死活 (上の service-inactive) とは別に持ちます。
+              # A running container can still hang on world load, so this is
+              # kept separate from the process-level check (service-inactive above).
               expr = "min(minecraft_status_healthy)";
               op = "lt";
               limit = 1;
@@ -470,15 +394,12 @@ in
           ];
         }
 
-        ######################################################################
-        # バックアップ (複製とスナップショット)
-        #
-        # rpool は single vdev で冗長性が無いため、dpool への複製が
-        # 唯一の保険です。ここが止まっていることに気づけないのが最悪の状態なので、
-        # 「ユニットの失敗」と「実際に届いたデータの古さ」を別々に見張ります
-        # (ユニットが成功で終わっていても何も転送していないことがあるため。
-        #  README.md の複製の節を参照)。
-        ######################################################################
+        # Backup (replication and snapshots). rpool is a single vdev with no
+        # redundancy, so replication to dpool is the only safety net. Not
+        # noticing it has stopped is the worst outcome, so unit failure and
+        # actual data staleness are watched separately — a unit can exit
+        # successfully while transferring nothing (see README.md's replication
+        # section).
         {
           orgId = 1;
           name = "backup";
@@ -489,14 +410,13 @@ in
             (mkRule {
               uid = "replication-lag";
               title = "複製が遅れている";
-              # 日次複製なので 24 時間 + 猶予 12 時間 = 36 時間 (129600 秒)。
+              # Daily replication, so 24h + 12h grace = 36h (129600 seconds).
               expr = ''max by (dataset) (time() - zfs_snapshot_latest_creation_seconds{dataset=~"dpool/backup/.*"})'';
               op = "gt";
               limit = 129600;
               pending = "30m";
               severity = "critical";
-              # 系列が消えること自体が異常 (データセットごと失われている)。
-              noData = "Alerting";
+              noData = "Alerting";  # the series disappearing IS the failure (dataset lost entirely)
               summary = "{{ $labels.dataset }} の最新バックアップが 36 時間以上前です";
               description = "syncoid が止まっているか、送信側にスナップショットがありません。今 SSD が死んだらこの時間分のデータを失います。";
             })
@@ -504,9 +424,9 @@ in
             (mkRule {
               uid = "syncoid-failed";
               title = "syncoid が失敗している";
-              # `\.` ではなく `[.]` で書いているのは、MetricsQL が
-              # 二重引用符の中のバックスラッシュを文字列エスケープとして
-              # 先に解釈してしまい構文エラーになるためです (実機で確認)。
+              # `[.]` instead of `\.`: MetricsQL parses the backslash as a string
+              # escape inside double quotes before it reaches the regex, causing
+              # a syntax error (confirmed on hardware). See docs/services/alerting.md.
               expr = ''sum by (name) (node_systemd_unit_state{state="failed",name=~"syncoid-.*[.]service"})'';
               op = "gt";
               limit = 0;
@@ -519,8 +439,8 @@ in
             (mkRule {
               uid = "zfs-snapshot-metrics-stale";
               title = "ZFS メトリクスの収集が止まっている";
-              # これが古いと、上の複製ラグの判定そのものが信用できません。
-              # 5 分間隔のタイマーなので 30 分で異常と見なします。
+              # If this is stale, the replication-lag rule above can no longer be
+              # trusted. The timer runs every 5 minutes, so treat 30 minutes as stale.
               expr = "time() - zfs_snapshot_metrics_last_run_seconds";
               op = "gt";
               limit = 1800;
@@ -536,19 +456,5 @@ in
     };
   };
 
-  ############################################################################
-  # 動作確認
-  #
-  #   systemctl status grafana        # provisioning の構文エラーはここに出る
-  #                                   # (失敗すると Grafana が起動しない)
-  #   ls /etc/grafana/provisioning/alerting/
-  #
-  #   Web UI: https://<host>/grafana/alerting/list
-  #     すべて Normal であること。Error や NoData のルールがあれば
-  #     PromQL の書き間違いを疑う。
-  #
-  # n8n 側:
-  #   Webhook ノードのパスを "grafana-alert" (POST) にしたワークフローを
-  #   作って有効化しておくこと。無くてもアラートの評価と UI 表示は動きます。
-  ############################################################################
+  # Verifying the alert path: see docs/services/alerting.md#verifying-the-alert-path.
 }
