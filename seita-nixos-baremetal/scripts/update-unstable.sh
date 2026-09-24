@@ -1,32 +1,33 @@
 #!/usr/bin/env bash
 #
-# nixpkgs-unstable だけを更新するスクリプト。
+# Updates only nixpkgs-unstable.
 #
-# stable 側 (nixpkgs, disko, agenix) の flake.lock は一切触らず、
-# modules/unstable.nix 経由・modules/ollama.nix (services.ollama.package) 経由で
-# unstable から引いているパッケージ (ollama-cuda, open-webui, neovim,
-# mcp-grafana, brave, multica-cli, opencode 等) だけをまとめて最新化する。
+# Leaves the stable side (nixpkgs, disko, agenix) flake.lock entries
+# untouched, and only updates packages pulled from unstable via
+# modules/unstable.nix and modules/ollama.nix (services.ollama.package) —
+# ollama-cuda, open-webui, neovim, mcp-grafana, brave, multica-cli, opencode,
+# etc.
 #
-# 使い方:
-#   scripts/update-unstable.sh          # lock 更新 + 評価チェックのみ
-#   scripts/update-unstable.sh --switch # 上記に加えて sudo nixos-rebuild switch まで実行
+# Usage:
+#   scripts/update-unstable.sh          # lock update + eval check only
+#   scripts/update-unstable.sh --switch # also runs sudo nixos-rebuild switch
 #
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "==> nixpkgs-unstable を更新"
+echo "==> Updating nixpkgs-unstable"
 nix flake lock --update-input nixpkgs-unstable
 
-echo "==> 評価チェック (ディスクは触らない)"
+echo "==> Eval check (disks untouched)"
 nix eval --raw .#nixosConfigurations.seita-nixos-baremetal.config.system.build.toplevel.drvPath
 
 if [[ "${1:-}" == "--switch" ]]; then
     echo "==> nixos-rebuild switch"
     sudo nixos-rebuild switch --flake /etc/nixos
 else
-    echo "==> 評価成功。適用するには:"
+    echo "==> Eval succeeded. To apply:"
     echo "      sudo nixos-rebuild switch --flake /etc/nixos"
-    echo "    または"
+    echo "    or"
     echo "      scripts/update-unstable.sh --switch"
 fi

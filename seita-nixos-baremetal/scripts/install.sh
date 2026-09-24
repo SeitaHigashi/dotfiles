@@ -1,41 +1,44 @@
 #!/usr/bin/env bash
 #
-# NixOS on ZFS 一括インストーラ (disko 版)
-#   SSD x1 (EFI + swap + slog予約 + rpool) + HDD x2 mirror (dpool)
+# NixOS on ZFS all-in-one installer (disko-based)
+#   1x SSD (EFI + swap + slog reservation + rpool) + 2x HDD mirror (dpool)
 #
-# 想定: NixOS の installer ISO で起動し、SSH で root として接続している状態。
+# Assumes: booted from the NixOS installer ISO, connected via SSH as root.
 #
-#   !!! 指定した3台のディスクの内容は完全に消去されます !!!
+#   !!! The contents of the 3 specified disks will be completely erased !!!
 #
-# 使い方:
-#   1. scripts/disks.env を自分の環境に書き換える
+# Usage:
+#   1. Edit scripts/disks.env for your environment
 #   2. bash scripts/install.sh
 #
-# パーティショニング・プール作成・データセット作成・マウントはすべて
-# disko/default.nix の宣言から disko が行います。このスクリプトの仕事は
-#   disks.env -> machine.nix の生成、事前チェック、disko と nixos-install の起動
-# だけです。
+# Partitioning, pool creation, dataset creation and mounting are all done by
+# disko from the declarations in disko/default.nix. This script's job is only:
+#   disks.env -> machine.nix generation, pre-flight checks, and kicking off
+#   disko and nixos-install.
 #
-# オプション:
-#   --yes              確認プロンプトを出さない (完全無人)
-#   --no-tmux          tmux への自動再入をしない
-#   --config-only      machine.nix の生成とドライラン評価まで。ディスクは触らない
-#   --format-only      disko でフォーマット・マウントまで。nixos-install はしない
-#   --skip-format      disko を実行しない (既に /mnt がマウント済みの前提で再開)
-#   --remount          既存プールを破棄せず /mnt にマウントし直してから nixos-install。
-#                      インストールをやり直したいがデータは残したい場合に使う
-#   --no-export        最後に /mnt の umount と zpool export を行わない
-#                      (通常は指定しないこと。export し忘れは起動不能の原因になる)
-#   --list-disks       このマシンのディスクと by-id パスを一覧表示して終了
-#   --bench            プール作成直後に性能のベースラインを測り /root に保存する
-#                      (数分かかります。--bench-size で測定サイズを変更可)
-#   --bench-size <N>   ベンチのテストサイズ (既定 4G)
+# Options:
+#   --yes              Don't prompt for confirmation (fully unattended)
+#   --no-tmux          Don't auto re-exec into tmux
+#   --config-only      Stop after generating machine.nix and dry-run eval. Disks untouched
+#   --format-only      Stop after disko formats/mounts. Don't run nixos-install
+#   --skip-format      Don't run disko (assumes /mnt is already mounted, for resuming)
+#   --remount          Mount the existing pools without destroying them, then
+#                       run nixos-install. Use this when redoing the install
+#                       while keeping the data
+#   --no-export        Don't umount /mnt and zpool export at the end
+#                      (normally leave this unset — forgetting to export can leave
+#                       the system unbootable)
+#   --list-disks       List this machine's disks and by-id paths, then exit
+#   --bench            Measure a performance baseline right after pool creation
+#                       and save it under /root (takes a few minutes; size is
+#                       configurable via --bench-size)
+#   --bench-size <N>   Benchmark test size (default 4G)
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
-# FLAKE は disks.env を読み込んだ後に決めます (構成名 = ホスト名のため)。
+# FLAKE is decided after disks.env is sourced (the flake attribute name = hostname).
 FLAKE=""
 LOG=/tmp/nixos-zfs-install.log
 
@@ -50,7 +53,7 @@ REMOUNT=0
 BENCH=0
 BENCH_SIZE=4G
 
-# --bench-size だけ値を取るので、前の引数を覚えながら回す。
+# Only --bench-size takes a value, so we track the previous argument as we loop.
 prev=""
 for arg in "$@"; do
   if [[ "$prev" == "--bench-size" ]]; then BENCH_SIZE="$arg"; prev=""; continue; fi
@@ -66,95 +69,98 @@ for arg in "$@"; do
     --bench)       BENCH=1 ;;
     --bench-size)  prev="--bench-size" ;;
     -h|--help)     sed -n '2,34p' "${BASH_SOURCE[0]}"; exit 0 ;;
-    *) echo "不明なオプション: $arg" >&2; exit 1 ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
 
 ##############################################################################
-# SSH 切断で install が死なないように tmux の中で動かす
+# Run inside tmux so the install doesn't die if the SSH connection drops
 ##############################################################################
 if [[ -n "${SSH_CONNECTION:-}" && -z "${TMUX:-}" && -z "${STY:-}" \
       && "${NIXOS_ZFS_IN_TMUX:-0}" != "1" && "$NO_TMUX" != "1" ]]; then
   if command -v tmux >/dev/null 2>&1; then
-    echo "SSH セッションを検出しました。tmux 'nixos-install' 内で実行します。"
-    echo "切断した場合は再接続後に:  tmux attach -t nixos-install"
+    echo "Detected an SSH session. Running inside tmux 'nixos-install'."
+    echo "If disconnected, reconnect and run:  tmux attach -t nixos-install"
     sleep 2
     export NIXOS_ZFS_IN_TMUX=1
     exec tmux new-session -A -s nixos-install -- "${BASH_SOURCE[0]}" "$@"
   else
-    echo "警告: SSH 接続かつ tmux/screen の外で実行しています。"
-    echo "      切断するとインストールが中断されます。"
-    echo "      nix-shell -p tmux で入れてから実行し直すことを推奨します。"
+    echo "WARNING: running over SSH outside tmux/screen."
+    echo "         If disconnected, the install will be interrupted."
+    echo "         Recommended: enter a shell with nix-shell -p tmux first."
     if [[ "$ASSUME_YES" != "1" ]]; then
-      read -r -p "このまま続行しますか? [y/N]: " a
+      read -r -p "Continue anyway? [y/N]: " a
       [[ "$a" == "y" || "$a" == "Y" ]] || exit 1
     fi
   fi
 fi
 
-# ログ先を決める。
-#   ★ $REPO_DIR (flake のソースツリー) の中には絶対に置かないこと ★
-#   nix eval / nixos-install は --flake に渡したディレクトリを丸ごと NAR ハッシュ化して
-#   入力として扱うため、実行中にそこへ追記し続けるとディレクトリ内容が変わり続け、
-#   最初に評価した時点のハッシュと後で読み込んだ時点のハッシュが食い違って
-#   "NAR hash mismatch" で失敗する (実際に踏んだ不具合)。
-# /tmp が書けない環境 (権限・read-only 等) では $HOME 直下 (repo の外) に落とし、
-# それも駄目ならログ無しで続行する。ログはあくまで補助なので、ここで止めない。
+# Decide where to log.
+#   ★ Never place this inside $REPO_DIR (the flake's source tree) ★
+#   nix eval / nixos-install hash the entire directory passed to --flake as a
+#   NAR to use as input, so if the log keeps growing inside it during the run,
+#   the directory contents keep changing and the hash computed at first eval
+#   ends up mismatching the hash read later, failing with "NAR hash mismatch"
+#   (this has actually happened in practice).
+# If /tmp isn't writable (permissions, read-only, etc.), fall back to $HOME
+# (outside the repo), and if that also fails, continue without a log. The log
+# is only a convenience, so it should never block the install.
 if ! ( : >> "$LOG" ) 2>/dev/null; then
   LOG="${HOME:-/root}/nixos-zfs-install.log"
   ( : >> "$LOG" ) 2>/dev/null || LOG=""
 fi
 if [[ -n "$LOG" ]]; then
   exec > >(tee -a "$LOG") 2>&1
-  echo "===== $(date -Is) install.sh (disko) 開始 (log: $LOG) ====="
+  echo "===== $(date -Is) install.sh (disko) starting (log: $LOG) ====="
 else
-  echo "===== $(date -Is) install.sh (disko) 開始 (ログファイルは書けないので画面のみ) ====="
+  echo "===== $(date -Is) install.sh (disko) starting (no writable log, screen only) ====="
 fi
 
-# installer ISO では flakes が既定で無効なので、この実行中だけ有効化する
+# Flakes are disabled by default on the installer ISO, so enable them just for this run.
 export NIX_CONFIG="experimental-features = nix-command flakes"
 
 # shellcheck source=disks.env
 source "$SCRIPT_DIR/disks.env"
 
-# flake の構成名はホスト名と同じです (flake.nix が machine.nix の hostName を使う)。
-# こうしておくと、インストール後は属性名を省いて
+# The flake's configuration name matches the hostname (flake.nix reads
+# hostName from machine.nix). This lets you drop the attribute name after
+# install and just write:
 #   sudo nixos-rebuild switch --flake /etc/nixos
-# と書けます。
 #
-# 注意: HOSTNAME は bash 自身が実行中マシンのホスト名で設定する変数です。
-# disks.env に HOSTNAME= の行が無いと、ISO のホスト名 ("nixos") が黙って
-# 使われて構成名が食い違います。空チェックでは検出できないので、
-# disks.env に定義があること自体を確認します。
+# Note: HOSTNAME is a variable bash itself sets to the currently running
+# machine's hostname. If disks.env has no HOSTNAME= line, the ISO's hostname
+# ("nixos") gets used silently and the configuration name ends up wrong. An
+# emptiness check alone wouldn't catch this, so we check that disks.env
+# actually defines it.
 grep -qE '^[[:space:]]*HOSTNAME=' "$SCRIPT_DIR/disks.env" \
-  || { echo "ERROR: disks.env に HOSTNAME= の行がありません。" >&2; exit 1; }
+  || { echo "ERROR: disks.env has no HOSTNAME= line." >&2; exit 1; }
 [[ -n "${HOSTNAME:-}" ]] \
-  || { echo "ERROR: HOSTNAME が空です。" >&2; exit 1; }
+  || { echo "ERROR: HOSTNAME is empty." >&2; exit 1; }
 FLAKE="${REPO_DIR}#${HOSTNAME}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 step() { echo; echo "==================== $* ===================="; }
 
-# ディスク指定が間違っているときに、そのまま貼れる候補一覧を出す
+# Print a pasteable candidate list when the disk settings are wrong.
 list_disks() {
   echo
-  echo "--- このマシンのディスク ---"
+  echo "--- Disks on this machine ---"
   lsblk -dno NAME,SIZE,ROTA,MODEL | while read -r name size rota model; do
     if [[ "$rota" == "1" ]]; then kind="HDD"; else kind="SSD/NVMe"; fi
     printf '  /dev/%-10s %-8s %-9s %s\n' "$name" "$size" "$kind" "$model"
   done
   echo
-  echo "--- disks.env に貼る by-id パス (パーティションを除く) ---"
+  echo "--- by-id paths to paste into disks.env (partitions excluded) ---"
   for l in /dev/disk/by-id/*; do
     [[ -L "$l" ]] || continue
     case "$l" in *-part*) continue ;; esac
     tgt="$(readlink -f "$l")"
     [[ -b "$tgt" ]] || continue
-    # /dev/sda 等の実体を持つものだけ、サイズ付きで出す
+    # Only print entries backed by a real device like /dev/sda, with size.
     printf '  %-12s %s\n' "$(lsblk -dno SIZE "$tgt" 2>/dev/null)" "$l"
   done | sort -u
   echo
-  echo "  (wwn-... より nvme-Model_Serial / ata-Model_Serial 形式の方が読みやすいです)"
+  echo "  (nvme-Model_Serial / ata-Model_Serial forms are more readable than wwn-...)"
 }
 
 if [[ "$LIST_DISKS" == "1" ]]; then
@@ -163,105 +169,106 @@ if [[ "$LIST_DISKS" == "1" ]]; then
 fi
 
 ##############################################################################
-# 事前チェック
+# Pre-flight checks
 ##############################################################################
-step "事前チェック"
+step "Pre-flight checks"
 
-[[ "$(id -u)" -eq 0 ]] || die "root で実行してください (sudo -i)。"
-[[ -d /sys/firmware/efi ]] || die "UEFI で起動していません。この構成は systemd-boot (UEFI) 前提です。"
+[[ "$(id -u)" -eq 0 ]] || die "Please run as root (sudo -i)."
+[[ -d /sys/firmware/efi ]] || die "Not booted in UEFI mode. This configuration requires systemd-boot (UEFI)."
 
 missing=()
 for c in nix nixos-generate-config nixos-install zpool zfs; do
   command -v "$c" >/dev/null 2>&1 || missing+=("$c")
 done
-[[ ${#missing[@]} -eq 0 ]] || die "コマンドが見つかりません: ${missing[*]}"
+[[ ${#missing[@]} -eq 0 ]] || die "Commands not found: ${missing[*]}"
 
 modprobe zfs 2>/dev/null || true
-zpool version >/dev/null 2>&1 || die "ZFS カーネルモジュールが使えません。ZFS 入りの ISO で起動してください。"
+zpool version >/dev/null 2>&1 || die "The ZFS kernel module isn't usable. Boot from a ZFS-enabled ISO."
 
 bad=0
 for v in SSD HDD1 HDD2; do
   d="${!v}"
   if [[ "$d" == *XXXXXXX* || "$d" == *YYYYYYY* ]]; then
-    echo "ERROR: $v が disks.env のテンプレートのままです: $d" >&2
+    echo "ERROR: $v is still the disks.env template value: $d" >&2
     bad=1
   elif [[ ! -b "$d" ]]; then
-    echo "ERROR: $v のブロックデバイスがありません: $d" >&2
+    echo "ERROR: $v has no matching block device: $d" >&2
     bad=1
   fi
 done
 if [[ "$bad" == "1" ]]; then
   list_disks
-  die "$SCRIPT_DIR/disks.env の SSD / HDD1 / HDD2 を上の by-id パスに書き換えてください。"
+  die "Rewrite SSD / HDD1 / HDD2 in $SCRIPT_DIR/disks.env using the by-id paths above."
 fi
-[[ "$(readlink -f "$SSD")"  != "$(readlink -f "$HDD1")" ]] || die "SSD と HDD1 が同一デバイスです。"
-[[ "$(readlink -f "$SSD")"  != "$(readlink -f "$HDD2")" ]] || die "SSD と HDD2 が同一デバイスです。"
-[[ "$(readlink -f "$HDD1")" != "$(readlink -f "$HDD2")" ]] || die "HDD1 と HDD2 が同一デバイスです。"
+[[ "$(readlink -f "$SSD")"  != "$(readlink -f "$HDD1")" ]] || die "SSD and HDD1 are the same device."
+[[ "$(readlink -f "$SSD")"  != "$(readlink -f "$HDD2")" ]] || die "SSD and HDD2 are the same device."
+[[ "$(readlink -f "$HDD1")" != "$(readlink -f "$HDD2")" ]] || die "HDD1 and HDD2 are the same device."
 
-case "$NIX_POOL" in rpool|dpool) ;; *) die "NIX_POOL は rpool か dpool にしてください (今: $NIX_POOL)" ;; esac
-case "${USE_SLOG:-0}" in 0|1) ;; *) die "USE_SLOG は 0 か 1 にしてください (今: $USE_SLOG)" ;; esac
+case "$NIX_POOL" in rpool|dpool) ;; *) die "NIX_POOL must be rpool or dpool (currently: $NIX_POOL)" ;; esac
+case "${USE_SLOG:-0}" in 0|1) ;; *) die "USE_SLOG must be 0 or 1 (currently: $USE_SLOG)" ;; esac
 
 sz1=$(blockdev --getsize64 "$HDD1"); sz2=$(blockdev --getsize64 "$HDD2")
 if [[ "$sz1" != "$sz2" ]]; then
-  echo "警告: HDD の容量が異なります ($((sz1/1000/1000/1000))GB / $((sz2/1000/1000/1000))GB)。"
-  echo "      mirror は小さい方の容量になります。"
+  echo "WARNING: the HDDs have different capacities ($((sz1/1000/1000/1000))GB / $((sz2/1000/1000/1000))GB)."
+  echo "         The mirror will use the smaller capacity."
 fi
 
-# disko と nixpkgs の取得、nixos-install のバイナリキャッシュに必要
+# Needed to fetch disko and nixpkgs, and for nixos-install's binary cache
 curl -fsS -m 15 -o /dev/null https://cache.nixos.org/nix-cache-info \
-  || die "cache.nixos.org に到達できません。ネットワーク設定を確認してください。"
+  || die "Can't reach cache.nixos.org. Check the network configuration."
 
 ##############################################################################
-# machine.nix の生成
+# Generating machine.nix
 ##############################################################################
-step "マシン固有値の決定"
+step "Determining machine-specific values"
 
 if [[ -z "${HOST_ID:-}" ]]; then
   HOST_ID="$(head -c 8 /etc/machine-id)"
-  echo "hostId を /etc/machine-id から生成: $HOST_ID"
+  echo "Generated hostId from /etc/machine-id: $HOST_ID"
 else
-  echo "hostId (disks.env 指定): $HOST_ID"
+  echo "hostId (from disks.env): $HOST_ID"
 fi
-[[ "$HOST_ID" =~ ^[0-9a-fA-F]{8}$ ]] || die "hostId が 8 桁の 16 進数ではありません: $HOST_ID"
+[[ "$HOST_ID" =~ ^[0-9a-fA-F]{8}$ ]] || die "hostId isn't an 8-digit hex value: $HOST_ID"
 
 ##############################################################################
-# ★ ISO 側の hostid を、インストール後システムと同じ値に揃える ★
+# ★ Align the ISO's hostid with the value the installed system will use ★
 #
-# ZFS はプール作成時に「作ったホストの hostid」をラベルに刻みます。
-# 何もしないと ISO の hostid が刻まれ、インストール後システムの
-# networking.hostId とは必ず食い違います。すると、非クリーンな停止
-# (クラッシュ・電源断・kernel panic) が一度でも起きた時点で、次回起動時に
+# ZFS stamps the "hostid of the creating host" into the pool label at
+# creation time. If we don't do anything here, the ISO's hostid gets stamped
+# in, which will always differ from the installed system's
+# networking.hostId. Then, the moment there's an unclean shutdown (crash,
+# power loss, kernel panic), stage 1 will refuse to boot next time with:
 #   cannot import 'dpool': pool was previously in use from another system
-# で stage 1 が止まり、起動不能になります。
 #
-# ここで先に ISO の /etc/hostid を揃えておけば、プールには最初から
-# 最終的な hostid が刻まれ、この失敗経路そのものが消えます。
-# (export 忘れ対策の boot.zfs.forceImportRoot = true とは別の、より根本的な防御)
+# By aligning the ISO's /etc/hostid beforehand, the pool gets stamped with
+# the final hostid from the start, and this failure path never opens up.
+# (This is a more fundamental defense than boot.zfs.forceImportRoot = true,
+# which only covers a forgotten export.)
 #
-# hostid の値そのものは何でも構いません (ISO ごとに変わって問題ありません)。
-# 重要なのは「プールに刻まれる値」と「インストール後システムの networking.hostId」が
-# 一致することだけです。ここで ISO 側を machine.nix と同じ値に揃えることで、
-# 両者が必ず一致します。
+# The hostid's actual value doesn't matter (it's fine for it to differ per
+# ISO boot). What matters is only that the value stamped into the pool
+# matches the installed system's networking.hostId. Setting the ISO side to
+# the same value as machine.nix here guarantees that.
 #
-# /etc/hostid は 4 バイトのリトルエンディアン。"5a8a0885" -> 85 08 8a 5a。
+# /etc/hostid is 4 bytes, little-endian. "5a8a0885" -> 85 08 8a 5a.
 #
-# ISO では /etc/hostid が /etc/static/... 経由で nix store へのシンボリックリンクに
-# なっていることがあり、そのままリダイレクトすると store (read-only) に書きに行って
-# 失敗します。先にリンクを消してから実体を作ります。
+# On the ISO, /etc/hostid can be a symlink into the nix store via
+# /etc/static/..., so redirecting into it directly would try to write to the
+# (read-only) store and fail. Remove the link first, then create a real file.
 ##############################################################################
 h="${HOST_ID,,}"
 rm -f /etc/hostid
 printf "\\x${h:6:2}\\x${h:4:2}\\x${h:2:2}\\x${h:0:2}" > /etc/hostid \
-  || die "/etc/hostid の書き込みに失敗しました (/etc が書き込み可能か確認してください)。"
+  || die "Failed to write /etc/hostid (check that /etc is writable)."
 actual_hostid="$(hostid)"
 [[ "$actual_hostid" == "$h" ]] \
-  || die "hostid の設定に失敗しました (期待: $h / 実際: $actual_hostid)。"
-echo "ISO の hostid を $h に設定しました (プールにこの値が刻まれます)"
+  || die "Failed to set hostid (expected: $h / actual: $actual_hostid)."
+echo "Set the ISO's hostid to $h (this value will be stamped into the pool)"
 unset h actual_hostid
 
-# SSH 公開鍵: disks.env 優先、無ければ ISO 上の authorized_keys を引き継ぐ。
-# configuration.nix は PasswordAuthentication = false なので、
-# これを取り違えると再起動後に締め出される。
+# SSH public key: disks.env takes priority; otherwise carry over authorized_keys from the ISO.
+# configuration.nix has PasswordAuthentication = false, so getting this wrong
+# locks you out after reboot.
 keys_raw="${SSH_AUTHORIZED_KEYS:-}"
 if [[ -z "$keys_raw" ]]; then
   for f in /root/.ssh/authorized_keys "$HOME/.ssh/authorized_keys"; do
@@ -270,55 +277,55 @@ if [[ -z "$keys_raw" ]]; then
 fi
 mapfile -t SSH_KEYS < <(printf '%s\n' "$keys_raw" | sed -e 's/[[:space:]]*$//' -e '/^#/d' -e '/^$/d' | sort -u)
 
-# パスワードハッシュの形検査。
-# disks.env をダブルクォートで書くと bash が $y$... を変数展開して壊すので、
-# 「crypt 形式に見えない」場合はここで止める。
+# Sanity-check the password hash shape.
+# Double-quoting in disks.env would let bash expand $y$... and corrupt it, so
+# stop here if it doesn't look like a crypt-format hash.
 for v in USER_PASSWORD_HASH ROOT_PASSWORD_HASH; do
   h="${!v:-}"
   [[ -z "$h" ]] && continue
   if [[ ! "$h" =~ ^\$[0-9a-zA-Z]+\$ ]]; then
-    die "$v が crypt 形式のハッシュに見えません: '$h'
-       disks.env ではシングルクォートで囲んでください (ダブルクォートだと \$ が展開されて壊れます)。
+    die "$v doesn't look like a crypt-format hash: '$h'
+       Wrap it in single quotes in disks.env (double quotes let \$ expand and corrupt it).
          OK : $v='\$y\$j9T\$...'
          NG : $v=\"\$y\$j9T\$...\"
-       生成:  nix-shell -p mkpasswd --run 'mkpasswd -m yescrypt'"
+       Generate with:  nix-shell -p mkpasswd --run 'mkpasswd -m yescrypt'"
   fi
-  # 平文パスワードの誤設定も弾く (crypt 形式でないものは上で落ちるが念のため)
-  echo "$v: 形式 OK (${h:0:6}...)"
+  # Also rejects an accidental plaintext password (non-crypt-format already dies above, but just in case)
+  echo "$v: format OK (${h:0:6}...)"
 done
 
-echo "引き継ぐ SSH 公開鍵: ${#SSH_KEYS[@]} 本"
+echo "SSH public keys carried over: ${#SSH_KEYS[@]}"
 for k in "${SSH_KEYS[@]}"; do echo "  ${k%% *} ... ${k##* }"; done
 
-# ログイン手段が1つも無い状態を防ぐ。
-#   1) SSH 公開鍵
-#   2) machine.nix に埋めるパスワードハッシュ (Nix ストアに残る点に注意)
-#   3) nixos-install が最後に対話で聞く root パスワード (/etc/shadow に直接書かれる)
+# Prevent ending up with zero login methods. Options are:
+#   1) SSH public key
+#   2) A password hash baked into machine.nix (note: this stays in the Nix store)
+#   3) The interactive root password nixos-install asks for at the end (written directly to /etc/shadow)
 if [[ "${PROMPT_ROOT_PASSWORD:-1}" == "1" ]]; then
-  echo "root パスワード: nixos-install の最後に対話で設定します (/etc/shadow に直接書かれ、Nix ストアには残りません)"
+  echo "Root password: will be set interactively at the end of nixos-install (written directly to /etc/shadow, not kept in the Nix store)"
   if [[ -z "${USER_PASSWORD_HASH:-}" ]]; then
-    echo "  → ${USER_NAME} のパスワードは未設定です。初回起動後にコンソールで root ログインし、"
-    echo "     passwd ${USER_NAME}  を実行してください。"
+    echo "  -> ${USER_NAME}'s password is not set. After first boot, log in as root on"
+    echo "     the console and run: passwd ${USER_NAME}"
   fi
 elif [[ ${#SSH_KEYS[@]} -eq 0 && -z "${USER_PASSWORD_HASH:-}" && -z "${ROOT_PASSWORD_HASH:-}" ]]; then
   echo
-  echo "警告: ログイン手段が1つもありません。"
-  echo "      PROMPT_ROOT_PASSWORD=0 かつ SSH 公開鍵もパスワードハッシュも未設定です。"
-  echo "      再起動後にログインできなくなります。"
+  echo "WARNING: there are no login methods at all."
+  echo "         PROMPT_ROOT_PASSWORD=0 and neither an SSH public key nor a password hash is set."
+  echo "         You will not be able to log in after reboot."
   if [[ "$ASSUME_YES" != "1" ]]; then
-    read -r -p "それでも続行しますか? [y/N]: " a
+    read -r -p "Continue anyway? [y/N]: " a
     [[ "$a" == "y" || "$a" == "Y" ]] || exit 1
   fi
 fi
 
 if [[ ${#SSH_KEYS[@]} -eq 0 ]]; then
-  echo "注意: SSH 公開鍵が 0 本なので、再起動後は SSH で入れません (コンソールのみ)。"
-  echo "      後から /etc/nixos/machine.nix の userSshKeys に足して"
-  echo "      nixos-rebuild switch すれば有効になります。"
+  echo "Note: 0 SSH public keys, so you won't be able to SSH in after reboot (console only)."
+  echo "      Add one later to userSshKeys in /etc/nixos/machine.nix and run"
+  echo "      nixos-rebuild switch to enable it."
 fi
 
-step "machine.nix を生成"
-nix_str() { # null か "文字列" を出力 (Nix 文字列としてエスケープ)
+step "Generating machine.nix"
+nix_str() { # Prints null or a "string" (escaped as a Nix string)
   if [[ -z "$1" ]]; then
     printf 'null'
   else
@@ -332,8 +339,8 @@ nix_str() { # null か "文字列" を出力 (Nix 文字列としてエスケー
 nix_bool() { if [[ "$1" == "1" ]]; then printf 'true'; else printf 'false'; fi; }
 
 {
-  echo '# scripts/install.sh が scripts/disks.env から自動生成しました。'
-  echo "# 生成日時: $(date -Is)"
+  echo '# Auto-generated by scripts/install.sh from scripts/disks.env.'
+  echo "# Generated at: $(date -Is)"
   echo '{'
   printf '  hostName = "%s";\n'        "$HOSTNAME"
   printf '  hostId = "%s";\n'          "$HOST_ID"
@@ -374,43 +381,43 @@ sed -e 's/\(ssh-[a-z0-9]*\) \([A-Za-z0-9+/]\{16\}\)[A-Za-z0-9+/=]*/\1 \2.../' "$
 echo "-----------------------------"
 
 ##############################################################################
-# ハードウェア構成の検出
-#   --no-filesystems: fileSystems / swapDevices を生成させない。
-#   それらは disko が生成するので、あるとぶつかる。
+# Hardware configuration detection
+#   --no-filesystems: don't generate fileSystems / swapDevices.
+#   Those are generated by disko instead, and would clash if present.
 ##############################################################################
-step "ハードウェア構成を検出"
+step "Detecting hardware configuration"
 nixos-generate-config --no-filesystems --show-hardware-config > "$REPO_DIR/hardware-configuration.nix"
 echo "--- hardware-configuration.nix ---"
 cat "$REPO_DIR/hardware-configuration.nix"
 echo "----------------------------------"
 
 ##############################################################################
-# ドライラン評価 (ディスクを触る前に構文・評価エラーを潰す)
+# Dry-run evaluation (catch syntax/eval errors before touching disks)
 ##############################################################################
-step "設定を評価 (ドライラン)"
-# ディスクを触る前に、Nix 側の構文エラー・評価エラーをここで落とす。
+step "Evaluating configuration (dry run)"
+# Catch Nix syntax/eval errors here, before touching any disks.
 nix eval --raw \
   "${REPO_DIR}#nixosConfigurations.\"${HOSTNAME}\".config.system.build.toplevel.drvPath" >/dev/null \
-  || die "システム構成の評価に失敗しました。上のエラーを確認してください。"
-echo "OK — システム構成"
+  || die "Evaluating the system configuration failed. Check the error above."
+echo "OK — system configuration"
 
 nix eval --raw \
   "${REPO_DIR}#nixosConfigurations.\"${HOSTNAME}\".config.system.build.diskoScript" >/dev/null \
-  || die "disko のレイアウト評価に失敗しました。disko/default.nix を確認してください。"
-echo "OK — disko レイアウト"
+  || die "Evaluating the disko layout failed. Check disko/default.nix."
+echo "OK — disko layout"
 
 ##############################################################################
-# 最終確認
+# Final confirmation
 ##############################################################################
-step "実行内容の確認"
+step "Confirming what will happen"
 cat <<EOF
-  ホスト名     : $HOSTNAME  (hostId: $HOST_ID)
-  ユーザー     : $USER_NAME
-  /nix の場所  : $NIX_POOL  $( [[ "$NIX_POOL" == dpool ]] && echo "(HDD — SSD の書き込みを節約。ビルド/GC は HDD 速度)" || echo "(SSD)" )
-  ARC 上限     : $((ARC_MAX_BYTES/1024/1024/1024)) GiB
-  SLOG         : $( [[ "${USE_SLOG:-0}" == 1 ]] && echo "有効" || echo "無効 (part3 は予約のみ)" )
+  Hostname       : $HOSTNAME  (hostId: $HOST_ID)
+  User           : $USER_NAME
+  /nix location  : $NIX_POOL  $( [[ "$NIX_POOL" == dpool ]] && echo "(HDD — saves SSD writes; build/GC run at HDD speed)" || echo "(SSD)" )
+  ARC limit      : $((ARC_MAX_BYTES/1024/1024/1024)) GiB
+  SLOG           : $( [[ "${USE_SLOG:-0}" == 1 ]] && echo "enabled" || echo "disabled (part3 is reserved only)" )
 
-  消去されるディスク:
+  Disks to be erased:
     SSD  $SSD
          -> $(readlink -f "$SSD")   $(lsblk -dno SIZE,MODEL "$(readlink -f "$SSD")")
     HDD1 $HDD1
@@ -418,56 +425,56 @@ cat <<EOF
     HDD2 $HDD2
          -> $(readlink -f "$HDD2")  $(lsblk -dno SIZE,MODEL "$(readlink -f "$HDD2")")
 
-  SSD: EFI ${EFI_SIZE} / swap ${SWAP_SIZE} / slog ${SLOG_SIZE} / 残り全部 rpool
-  HDD: mirror (100% を1パーティション)
+  SSD: EFI ${EFI_SIZE} / swap ${SWAP_SIZE} / slog ${SLOG_SIZE} / remainder to rpool
+  HDD: mirror (100% in a single partition)
 EOF
 
 if [[ "$CONFIG_ONLY" == "1" ]]; then
-  step "--config-only 指定のためここで終了 (ディスクは変更していません)"
-  echo "続行する場合:"
+  step "Stopping here due to --config-only (disks not touched)"
+  echo "To continue:"
   echo "  nix run github:nix-community/disko/latest -- --mode destroy,format,mount --flake ${FLAKE}"
   echo "  nixos-install --root /mnt --flake ${FLAKE}"
   exit 0
 fi
 
-# ディスクを消すのは destroy,format,mount のときだけ。
-# --skip-format / --remount では既存プールを維持するので確認を出さない。
+# Only prompt for confirmation when destroy,format,mount will actually run.
+# --skip-format / --remount keep the existing pools, so skip the prompt.
 if [[ "$ASSUME_YES" != "1" && "$SKIP_FORMAT" != "1" && "$REMOUNT" != "1" ]]; then
   echo
-  read -r -p "上記3台のディスクを消去して続行します。'YES' と入力: " ans
-  [[ "$ans" == "YES" ]] || { echo "中止しました。"; exit 1; }
+  read -r -p "This will erase the 3 disks listed above. Type 'YES' to continue: " ans
+  [[ "$ans" == "YES" ]] || { echo "Aborted."; exit 1; }
 elif [[ "$REMOUNT" == "1" ]]; then
   echo
-  echo "--remount 指定: 既存のプールとデータは破棄しません (マウントし直すだけ)。"
+  echo "--remount specified: the existing pool and data will NOT be destroyed (mounting only)."
 fi
 
 ##############################################################################
 # disko: destroy -> format -> mount
 ##############################################################################
 if [[ "$REMOUNT" == "1" ]]; then
-  # 既存プールを破棄せず、/mnt にマウントし直すだけ。
-  # nixos-install をやり直したいが、プールとデータはそのまま使いたい場合に使う。
-  step "disko でマウントし直し (--remount / 既存プールは破棄しない)"
-  mountpoint -q /mnt && { umount -R /mnt || die "/mnt のアンマウントに失敗しました。"; }
+  # Mount the existing pool without destroying it.
+  # Use this when redoing nixos-install but keeping the pool and its data as-is.
+  step "Remounting via disko (--remount / existing pool not destroyed)"
+  mountpoint -q /mnt && { umount -R /mnt || die "Failed to unmount /mnt."; }
 
   nix run github:nix-community/disko/latest -- \
     --mode mount \
     --flake "$FLAKE"
 
 elif [[ "$SKIP_FORMAT" != "1" ]]; then
-  step "disko でパーティショニング・プール作成・マウント"
+  step "Partitioning, creating pools, and mounting via disko"
 
-  # 既存プールが残っていると disko が「既にあるので作らない」と判断してしまうため、
-  # destroy モードに入る前に手動で片付けておく。
+  # If a leftover pool exists, disko will decide "it already exists, don't
+  # create it" — so clean up manually before entering destroy mode.
   mountpoint -q /mnt && umount -R /mnt || true
   swapoff -a || true
   for p in rpool dpool; do
     if zpool list "$p" >/dev/null 2>&1; then
-      echo "既存プール '$p' を破棄します。"
+      echo "Destroying existing pool '$p'."
       zpool destroy -f "$p" || zpool export -f "$p" || true
     fi
   done
-  # ZFS のラベルはディスク末尾にもあるので消しておく
+  # ZFS labels also exist at the end of the disk, so clear those too
   for d in "$SSD"* "$HDD1"* "$HDD2"*; do
     [[ -b "$d" ]] && zpool labelclear -f "$d" >/dev/null 2>&1 || true
   done
@@ -476,13 +483,14 @@ elif [[ "$SKIP_FORMAT" != "1" ]]; then
     --mode destroy,format,mount \
     --flake "$FLAKE"
 else
-  step "disko をスキップ (--skip-format)"
-  mountpoint -q /mnt || die "/mnt がマウントされていません。
-       既にプールは作成済みで、マウントし直してから再開したい場合は --remount を使ってください:
+  step "Skipping disko (--skip-format)"
+  mountpoint -q /mnt || die "/mnt is not mounted.
+       If the pool has already been created and you want to remount and resume,
+       use --remount instead:
          sudo bash $0 --remount"
 fi
 
-step "マウント結果"
+step "Mount results"
 zpool status
 echo
 zpool list -v
@@ -490,32 +498,32 @@ echo
 findmnt -R /mnt
 
 ##############################################################################
-# プール性能のベースライン測定 (--bench 指定時のみ)
+# Pool performance baseline measurement (only with --bench)
 #
-# プールが出来た直後、まだ何も載っていないこの時点が最も条件が揃います
-# (断片化なし・スナップショットなし・他の I/O なし)。ここで取った値が
-# 「このハードウェアの素の実力」になり、後日おかしくなったときの比較対象に
-# なります。
+# Right after pool creation, before anything is stored on it, is the best
+# time to measure this (no fragmentation, no snapshots, no other I/O). The
+# values captured here become "this hardware's raw capability" and the
+# comparison point for later if something looks off.
 #
-# 既定で走らせないのは、SSD への書き込みが発生することと、
-# インストール時間が数分伸びるためです。
+# Not run by default because it writes to the SSD and extends the install
+# by several minutes.
 ##############################################################################
 if [[ "$BENCH" == "1" ]]; then
-  step "プール性能のベースライン測定"
+  step "Measuring pool performance baseline"
   BASELINE="/tmp/pool-baseline-$(date +%F).csv"
   if bash "$SCRIPT_DIR/bench-pools.sh" --yes --size "$BENCH_SIZE" --out "$BASELINE"; then
-    # /mnt/root は rpool/root の上なので、インストール後もそのまま残ります。
+    # /mnt/root sits on rpool/root, so it survives after install too.
     install -d -m 0700 /mnt/root
     install -m 0600 "$BASELINE" /mnt/root/ \
-      && echo "ベースラインを /root/$(basename "$BASELINE") に保存しました。"
+      && echo "Saved the baseline to /root/$(basename "$BASELINE")."
   else
-    echo "警告: ベンチマークに失敗しました。インストールは続行します。" >&2
+    echo "WARNING: the benchmark failed. Continuing with the install." >&2
   fi
 fi
 
 if [[ "$FORMAT_ONLY" == "1" ]]; then
-  step "--format-only 指定のためここで終了"
-  echo "続行する場合:"
+  step "Stopping here due to --format-only"
+  echo "To continue:"
   echo "  nixos-install --root /mnt --flake ${FLAKE}"
   exit 0
 fi
@@ -527,79 +535,79 @@ step "nixos-install"
 install_args=(--root /mnt --flake "$FLAKE")
 if [[ "${PROMPT_ROOT_PASSWORD:-1}" == "1" ]]; then
   echo
-  echo "※ ビルド完了後に root パスワードの入力を求められます。"
-  echo "   (この値は /mnt/etc/shadow に直接書かれ、Nix ストアには残りません)"
+  echo "Note: you'll be asked for the root password once the build finishes."
+  echo "      (This value is written directly to /mnt/etc/shadow, not kept in the Nix store)"
 else
   install_args+=(--no-root-passwd)
 fi
 nixos-install "${install_args[@]}"
 
 ##############################################################################
-# 設定一式を新システムへ配置
+# Deploy the full configuration onto the new system
 ##############################################################################
-step "設定を /mnt/etc/nixos へ配置"
+step "Deploying configuration to /mnt/etc/nixos"
 ##############################################################################
-# リポジトリを丸ごとコピーする。
+# Copy the whole repository.
 #
-# 以前はファイルを個別に列挙していましたが、modules/ に1枚足したときに
-# ここへの追記を忘れると、インストールは成功するのに (nixos-install は
-# リポジトリ側を直接読むため)、再起動後の nixos-rebuild だけが
-# 「ファイルが無い」で失敗します。実際にこれを踏みました。
+# This used to list files individually, but forgetting to add an entry here
+# when adding a file under modules/ meant the install would succeed (since
+# nixos-install reads directly from the repo) while a later nixos-rebuild
+# after reboot would fail with "file not found". This has actually happened.
 #
-# .git は除外します。flake のソースツリーとして必要ないうえ、
-# /etc/nixos に履歴ごと置くと肥大化するためです
-# (バージョン管理は手元のリポジトリ側で行う)。
+# .git is excluded: it isn't needed as the flake's source tree, and keeping
+# the full history under /etc/nixos would bloat it unnecessarily
+# (version control stays on the local repo copy).
 ##############################################################################
 install -d -m 0755 /mnt/etc/nixos
 tar -C "$REPO_DIR" --exclude=.git --exclude=result -cf - . \
   | tar -C /mnt/etc/nixos -xf - \
-  || die "/mnt/etc/nixos へのコピーに失敗しました。"
+  || die "Failed to copy files to /mnt/etc/nixos."
 
-# root 所有・一般ユーザーは読めるだけにする (パスワードハッシュを含みうるため)
+# Owned by root; regular users can only read (may contain password hashes)
 chown -R root:root /mnt/etc/nixos
 find /mnt/etc/nixos -type d -exec chmod 0755 {} +
 find /mnt/etc/nixos -type f -exec chmod 0644 {} +
 find /mnt/etc/nixos -type f -name '*.sh' -exec chmod 0755 {} +
 
-echo "--- /mnt/etc/nixos に配置したファイル ---"
+echo "--- Files deployed to /mnt/etc/nixos ---"
 find /mnt/etc/nixos -type f | sed 's|/mnt/etc/nixos/|  |' | sort
 
 ##############################################################################
-# プールのクリーンエクスポート
+# Clean pool export
 #
-# 非クリーンな停止のマークを消してから再起動するための処理。
+# Clears the "unclean shutdown" marker before rebooting.
 #
-# このスクリプトは disko を動かす前に ISO の /etc/hostid を最終的な hostId に
-# 揃えてあるので、export し損ねても hostid 不一致にはなりません。
-# それでも export するのは、ZFS が「まだ他ホストが使用中」と判断する余地を
-# 完全に無くしておくためです。
-# (保険は三重: hostid の事前一致 / ここでの export / forceImportRoot = true)
+# This script has already aligned the ISO's /etc/hostid with the final
+# hostId before running disko, so failing to export here won't cause a
+# hostid mismatch. We still export anyway to leave zero room for ZFS to
+# think "another host might still be using this".
+# (Triple safety net: matching hostid up front / export here / forceImportRoot = true)
 ##############################################################################
 if [[ "${NO_EXPORT:-0}" != "1" ]]; then
-  step "プールをクリーンにエクスポート"
+  step "Cleanly exporting the pools"
   sync
-  umount -R /mnt || die "/mnt のアンマウントに失敗しました。/mnt を使っているプロセスがないか確認してください (lsof +D /mnt)。"
+  umount -R /mnt || die "Failed to unmount /mnt. Check for processes still using it (lsof +D /mnt)."
   swapoff -a || true
   if zpool export -a; then
-    echo "OK — rpool / dpool をエクスポートしました。安全に再起動できます。"
+    echo "OK — exported rpool / dpool. Safe to reboot."
   else
-    echo "警告: zpool export に失敗しました。" >&2
-    echo "      このまま再起動すると hostid 不一致でインポートを拒否される可能性があります。" >&2
-    echo "      (boot.zfs.forceImportRoot = true なので通常は起動できますが、" >&2
-    echo "       手動で  zpool export -a  を成功させてから再起動するのが安全です)" >&2
+    echo "WARNING: zpool export failed." >&2
+    echo "         Rebooting now may have the import refused due to a hostid mismatch." >&2
+    echo "         (boot.zfs.forceImportRoot = true usually lets it boot anyway, but" >&2
+    echo "          it's safer to run  zpool export -a  manually until it succeeds first)" >&2
     zpool status || true
   fi
 fi
 
 ##############################################################################
-step "完了"
+step "Done"
 
 if [[ -z "${USER_PASSWORD_HASH:-}" ]]; then
   cat <<EOF
 
-★初回起動後にやること★
-  コンソールで root としてログイン (パスワードは先ほど設定したもの) し、
-  通常ユーザーのパスワードを設定してください:
+★Things to do after first boot★
+  Log in as root on the console (using the password you just set), and
+  set the regular user's password:
 
     passwd $USER_NAME
 
@@ -608,7 +616,7 @@ fi
 
 if [[ ${#SSH_KEYS[@]} -eq 0 ]]; then
   cat <<EOF
-SSH で入れるようにするには、初回起動後に公開鍵を足します:
+To be able to log in over SSH, add a public key after first boot:
 
     vi /etc/nixos/machine.nix     # userSshKeys = [ "ssh-ed25519 AAAA..." ];
     nixos-rebuild switch --flake /etc/nixos
@@ -618,22 +626,23 @@ fi
 
 cat <<EOF
 
-インストールが完了しました。ログ: $LOG
+Installation complete. Log: $LOG
 
-再起動:
+Reboot:
   reboot
-$( [[ "${NO_EXPORT:-0}" == "1" ]] && echo "  (--no-export 指定のため、先に umount -R /mnt && swapoff -a && zpool export -a が必要)" )
+$( [[ "${NO_EXPORT:-0}" == "1" ]] && echo "  (--no-export was specified, so first run umount -R /mnt && swapoff -a && zpool export -a)" )
 
-再起動後の確認:
+Checks after reboot:
   zpool status -v
   zpool list -v
-  arc_summary            # ARC の状況
-  smartctl -a /dev/nvme0 # SSD の寿命 (Percentage Used) と温度
+  arc_summary            # ARC status
+  smartctl -a /dev/nvme0 # SSD lifetime (Percentage Used) and temperature
 
-以後の運用:
+Ongoing operation:
   sudo nixos-rebuild switch --flake /etc/nixos
 
-ディスク障害からの再構築:
-  同じ flake で  disko --mode destroy,format,mount --flake /etc/nixos#${HOSTNAME}
-  を流せば同じレイアウトが再現されます (machine.nix の by-id は要更新)。
+Rebuilding after a disk failure:
+  Running  disko --mode destroy,format,mount --flake /etc/nixos#${HOSTNAME}
+  with the same flake reproduces the same layout (update the by-id paths in
+  machine.nix first).
 EOF
