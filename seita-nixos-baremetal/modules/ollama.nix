@@ -1,253 +1,152 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# Ollama (ローカル LLM 推論サーバ) と Open WebUI。
+# Ollama (local LLM inference server) and Open WebUI.
 #
-# 何のために入れるか:
-#   1. 他のサービス / スクリプトから叩ける HTTP API (11434)
-#   2. ブラウザからのチャットとコード補助 (Open WebUI, 8080)
+# Ollama is disabled (services.ollama.enable = false, since 2026-09-21) — inference
+# moved to llama.cpp (modules/llama-cpp.nix, 127.0.0.1:8888). Open WebUI still runs
+# from this module.
 #
-# このホストの制約 (modules/gpu.nix も参照):
-#     GPU 0  GTX 1660 SUPER  6 GiB  sm_75  PCIe x4
-#     GPU 1  RTX 3060 Ti     8 GiB  sm_86  PCIe x8  (プロジェクター投影時は X とも共用)
-#   合計 VRAM (0+1) 14 GiB (ollama から見える実効値は 13.3 GiB)。
-#   GPU 番号は CUDA_DEVICE_ORDER=PCI_BUS_ID の並び (PCI bus 04/06 の順)。
-#   2026-08-11 に表示専任の GT1030 を bus 05 へ増設し、PCI bus 06 の 3060 Ti が
-#   index 1 から 2 へ繰り下がったことがあったが、2026-08-12 に GT1030 を撤去した
-#   ため index 1 = 3060 Ti に戻っている (投影用 HDMI の接続先は 2026-08-12 に
-#   1660 SUPER、2026-08-25 に 3060 Ti へ繋ぎ変えたが、index には影響しない)。
-#   CPU は Ryzen 3 3300X (4C/8T)。RAM 46 GiB のうち ZFS ARC に 16 GiB、
-#   Minecraft のヒープに 8 GiB を既に割り当てているため、CPU オフロードに
-#   使える余地は 20 GiB 程度です。
+# Docs (history, measurements, caller-facing notes are not comments here):
+#   docs/services/ollama.md                          status, re-enable steps, ops
+#   docs/services/open-webui.md                       what it is, gotchas
+#   docs/decisions/2026-08-02-ollama-model-selection.md
+#   docs/decisions/2026-08-12-ollama-gpu-topology.md
+#   docs/decisions/2026-09-06-openviking-model-consolidation.md
+#   docs/decisions/2026-09-23-ollama-to-llama-cpp.md  the migration itself
+#   docs/gpu-vram-budget.md                           card table, VRAM budget
 #
-#   **選定の基準はパラメータ数ではなく「総サイズが VRAM に収まるか」です。**
-#   あふれた分は CPU に落ち、特にプロンプト処理が桁で遅くなります。
-#   2026-08-02 に実測した値 (同一プロンプト、日本語の要約 + JSON 強制):
+# Ran as a native systemd service rather than a container: simpler than setting up
+# GPU passthrough (CDI / nvidia-container-toolkit) for podman, fewer moving parts.
 #
-#     gemma4:12b   7.6GB  収まる    プロンプト 177.9 tok/s  生成 35.0 tok/s
-#     qwen3:14b      9GB  収まる    プロンプト 130.6 tok/s  生成 35.0 tok/s
-#     gemma4:26b    18GB  収まらない プロンプト  18.8 tok/s  生成 26.0 tok/s
-#
-#   gemma4:26b は MoE (アクティブ 4B) ですが、**アクティブ数が小さくても
-#   総サイズが収まらなければ遅くなります**。長い入力を読ませる用途では
-#   プロンプト処理の差がそのまま所要時間になるため致命的です。
-#   (CPU only で動かすと逆に MoE が有利になり順位が入れ替わります。
-#    GPU が効いているかを確認せずにモデルを選ばないこと。)
-#
-# コンテナではなくネイティブの systemd サービスにしています。
-# podman 側に GPU パススルー (CDI / nvidia-container-toolkit) を用意するより
-# services.ollama をそのまま使う方が単純で、壊れる箇所が少ないためです。
+# When you change this file, update the docs above in the same commit.
 ##############################################################################
 
 let
   ports = {
     ollama = 11434;
-    openWebui = 8080; # monitoring.nix の cadvisor は 8081。衝突しません
+    openWebui = 8080; # monitoring.nix's cadvisor is 8081, no conflict
   };
 in
 {
   ############################################################################
-  # Ollama 本体
+  # Ollama
   ############################################################################
   services.ollama = {
-    ########################################################################
-    # ★ 2026-09-21: 無効化しました ★
-    #
-    #   modules/llama-cpp.nix (llama.cpp の PrismML フォークのルーター、
-    #   127.0.0.1:8888) へ移行するためです。VRAM は 2 枚で 13.6 GiB しか
-    #   なく、ollama が OpenViking 用に約 4.7 GiB を保持したままだと
-    #   llama.cpp 側は Bonsai (PTQ1_0, 5.6 GiB) をロードできません。
-    #   両方を「定義」はできても「同時に動かす」意味がないため、
-    #   切り替え時に ollama を止めます。
-    #
-    #   下の設定 (loadModels / environmentVariables / port など) は、
-    #   戻せるように残してあります。戻すときは enable の行だけ復活させて
-    #   ください。ただし llama-cpp.service を先に止めること。
-    #
-    #   ★ enable を false にすると一緒に止まるもの ★
-    #     - OpenViking (modules/openviking.nix) の vlm / query_planner /
-    #       embedding。移行先は llama.cpp の bonsai / embedding プリセット。
-    #       ov.conf の api_base を 8888 に向けるまで OpenViking は
-    #       /embeddings のリトライループに入ります。
-    #     - Open WebUI のチャットと RAG (下の RAG_EMBEDDING_ENGINE)。
-    #       接続先は PersistentConfig で DB 側が持っているため、
-    #       Admin Panel → Settings → Connections で手動変更が必要です。
-    #     - n8n の 4 つの HTTP ワークフローと Task Partner Brain。
-    ########################################################################
+    # Disabled 2026-09-21 in favor of llama.cpp (modules/llama-cpp.nix,
+    # 127.0.0.1:8888) — the two GPUs (13.6 GiB total) can't hold ollama's
+    # OpenViking models and llama.cpp's Bonsai at once. Rest of this block is
+    # left in place to re-enable: flip this back to true, stop llama-cpp.service
+    # first, and see docs/services/ollama.md#how-to-re-enable for the rest
+    # (including the commented-out systemd.services.ollama block below).
     # enable = true;
     enable = false;
 
-    # unstable の CUDA 版を使う。
-    #
-    # なぜ unstable か:
-    #   25.05 の ollama は 0.11.10 で、unstable は 0.32.4 です。ollama は
-    #   モデルの対応状況が本体のバージョンに直結しており、古いままだと
-    #   新しいモデルは pull はできても読み込みで落ちます。
-    #   ollama はカーネルと結合しないユーザー空間のデーモンなので、
-    #   modules/unstable.nix の「葉のパッケージだけ unstable」に合致します。
-    #   (unstablePackages のリストではなく、ここで名指しで参照しています。
-    #    systemPackages ではなくサービスの package として使うため)
-    #
-    # なぜ ollama ではなく ollama-cuda か:
-    #   既定の pkgs.ollama は nixpkgs.config.cudaSupport を見ますが、
-    #   それを立てると nixpkgs 全体が再ビルドになります (modules/gpu.nix 参照)。
-    #
-    # これは CUDA 12.9 を引きます。NVIDIA ドライバを beta 575 にしているのは
-    # そのためです (modules/gpu.nix)。片方を戻すなら両方戻してください。
+    # unstable for CUDA support and a current version — see docs/services/ollama.md.
     package = pkgs.unstable.ollama-cuda;
 
-    # **これが無いと package の指定が無意味になります。**
-    #   nixos/modules/services/misc/ollama.nix は ExecStart に cfg.package を
-    #   そのまま使わず、
-    #     ollamaPackage = cfg.package.override { inherit (cfg) acceleration; };
-    #   と書き戻します。acceleration の既定値は null なので、ollama-cuda を
-    #   渡しても override で CUDA 無効のビルドに差し替えられてしまいます。
-    #   実機で踏みました: config.services.ollama.package は CUDA 版を返すのに
-    #   ユニットの ExecStart は CPU 版を指しており、lib/ollama/ に
-    #   libggml-cuda.so が無いため GPU が 1 枚も検出されず (inference compute が
-    #   cpu だけ)、全推論が CPU に落ちていました。
+    # **Required alongside `package`, or the CUDA build is silently discarded.**
+    # The upstream module overrides cfg.package with `acceleration` (default
+    # null), which strips CUDA back out unless set explicitly here. See
+    # docs/services/ollama.md for the failure mode hit on this host.
     acceleration = "cuda";
 
-    # user / group は既定 (null) のまま = DynamicUser で動かします。
-    #
-    # 静的ユーザーにしても解決しない点に注意してください。25.05 の
-    # services.ollama は User= を足すだけで serviceConfig.DynamicUser = true を
-    # 常に付けており、systemd は DynamicUser が立っている限り StateDirectory の
-    # 実体を /var/lib/private/<名前> に置きます。したがってモデル用の
-    # ZFS データセットは /var/lib/private/ollama にマウントしています
-    # (VictoriaMetrics と同じ事情。disko/default.nix のコメント参照)。
-    # /var/lib/ollama はそこへの symlink になるので、home はこのままで構いません。
+    # DynamicUser (user/group left at default null) — do not "fix" this to a
+    # static user, it won't change where the state directory actually lives.
+    # See docs/services/ollama.md for why /var/lib/ollama is a symlink.
     home = "/var/lib/ollama";
-    # modelsDir は既定で ${home}/models
+    # modelsDir defaults to ${home}/models
 
-    # 待ち受けは 0.0.0.0。到達制御はファイアウォール側 (下記) で行います。
-    # Grafana と同じ方針です — Tailscale の IP はビルド時に決まらないため、
-    # アドレスではなくインタフェースで絞ります。
+    # 0.0.0.0; reachability is controlled by the firewall block below, same
+    # policy as Grafana (Tailscale IPs aren't known at build time).
     host = "0.0.0.0";
     port = ports.ollama;
     openFirewall = false;
 
     environmentVariables = {
       ########################################################################
-      # GPU 2 枚を束ねて 14 GiB のプールとして使う
+      # Pool both GPUs into a single ~14 GiB budget
       ########################################################################
 
-      # ★ これが無いと下の CUDA_VISIBLE_DEVICES の番号が別の GPU を指します ★
-      #   CUDA ランタイムは既定では PCI バス順ではなく「速い GPU が先」の
-      #   FASTEST_FIRST 順で番号を振ります。実機で確認した既定順序:
-      #     0 = RTX 3060 Ti, 1 = GTX 1660 SUPER
-      #   これを明示的に PCI バス順 (bus 04/06 = 1660 SUPER/3060 Ti) に
-      #   固定しないと、下の "1,0" は意図しない組み合わせを指してしまい
-      #   1660 SUPER が一切使われません (2026-08-12 に GT1030 増設時に実機で
-      #   踏みました。modules/comfyui.nix には設定済みでしたが ollama 側だけ
-      #   抜けていました)。
+      # ★ Required or CUDA_VISIBLE_DEVICES below points at the wrong GPU ★
+      # See docs/decisions/2026-08-12-ollama-gpu-topology.md.
       CUDA_DEVICE_ORDER = "PCI_BUS_ID";
 
-      # 速い 3060 Ti (index 1) を先頭にして、層の割り当てで優先させる。
-      # (この順序は ollama から見た GPU 番号にも影響します)
+      # Faster 3060 Ti first — see docs/decisions/2026-08-12-ollama-gpu-topology.md.
       CUDA_VISIBLE_DEVICES = "1,0";
 
-      # 1 枚に収まるモデルでも敢えて 2 枚に分散させる。
-      #
-      # ★ これは「速くなる」設定ではありません ★
-      #   1660 SUPER は PCIe x4 かつ FP16 テンソルコアを持たない TU116 です。
-      #   層分割ではカード間転送と遅い側の演算が律速し、3060 Ti 単体より
-      #   tok/s が落ちることがあります。7B クラスで遅いと感じたら、
-      #   この行を消して CUDA_VISIBLE_DEVICES = "2" に切り戻してください
-      #   (3060 Ti 単体構成)。判断材料の取り方は末尾の運用メモに書いています。
+      # Split models across both cards even when one would fit alone.
+      # ★ Not necessarily a speedup — measure before trusting this. ★
+      # See docs/decisions/2026-08-12-ollama-gpu-topology.md.
       OLLAMA_SCHED_SPREAD = "1";
 
       ########################################################################
-      # VRAM の節約
+      # VRAM savings
       ########################################################################
       OLLAMA_FLASH_ATTENTION = "1";
 
-      # KV キャッシュを q8_0 に量子化してほぼ半減させる。
-      # 長いコンテキストを扱うときに効きます。sm_75 / sm_86 とも対応。
-      # 出力がおかしいと感じたら、まずここを外して切り分けてください。
+      # q8_0 KV cache roughly halves KV memory use; supported on both sm_75 and
+      # sm_86. If output looks wrong, rule this out first.
       OLLAMA_KV_CACHE_TYPE = "q8_0";
 
       ########################################################################
-      # 常駐とスケジューリング
+      # Residency and scheduling
       ########################################################################
 
-      # OpenViking (modules/openviking.nix) が embedding (qwen3-embedding:4b,
-      # 実測 ~4.5-4.7GB 常駐) と vlm (qwen3.5:9b, ~6.6GB) を交互に呼ぶため、
-      # 1 本固定だとリクエストのたびにロード/アンロードが往復し「slow call」の
-      # 異常な遅延 (実機で duration_ms=5000〜16000 を確認) を引き起こします。
-      # 合計 ~11.1GB は実効 VRAM 13.3GiB に収まる想定ですが、vlm 側の
-      # num_ctx=16384 (modules/openviking.nix の vlm.extra_request_body 参照)
-      # 分の KV キャッシュも上乗せされるため、ここは実機の ollama ps / GPU
-      # 使用量を見ながら調整してください。num_ctx をさらに大きい値
-      # (163840 など) にすると同時ロードで容易に cudaMalloc OOM します
-      # (gemma4:12b-163k で実機確認済み — modules/openviking.nix のコメント参照)。
-      # query_planner は vlm (qwen3.5:9b) と同一モデルを共用しており
-      # (modules/openviking.nix 参照)、常駐が必要なのは embedding と vlm の
-      # 2 本だけなのでこの上限で足ります。以前 query_planner に専用の軽量
-      # モデル (guoxuter/ov_intent_analysis_sft) を充てていた際は常駐 3 本目
-      # として毎回スワップが発生し、再ロード待ちが OpenViking 側のタイムアウトを
-      # 超えて記憶抽出/クエリ拡張が失敗する事故になったため元に戻しています
-      # (2026-09-06、modules/openviking.nix のコメント参照)。
+      # Keeps embedding + vlm both resident for OpenViking (avoids per-request
+      # load/unload thrash). See
+      # docs/decisions/2026-09-06-openviking-model-consolidation.md for the
+      # incident this fixed and why 2 is sufficient.
       OLLAMA_MAX_LOADED_MODELS = "2";
 
-      # 4C/8T なので同時リクエストも絞る。
-      # 並列を上げると KV キャッシュの分だけ VRAM も余計に食います。
+      # 4C/8T CPU — keep concurrent requests low; more parallelism costs VRAM
+      # via extra KV cache.
       OLLAMA_NUM_PARALLEL = "1";
 
-      # API 利用のたびにモデルを読み直さないよう、しばらく常駐させる。
-      # ロードは NVMe から数秒かかります。VRAM を空けたいときは短くする。
+      # Keep models resident between calls; loading from NVMe takes seconds.
+      # Shorten this if VRAM needs freeing up sooner.
       OLLAMA_KEEP_ALIVE = "30m";
     };
 
-    # 起動後に自動で pull しておくモデル。
-    # 初回の rebuild ではここのダウンロード (計 15 GiB 程度) が走ります。
+    # Pulled automatically after the service starts; first rebuild downloads
+    # ~15 GiB total. See docs/decisions/2026-08-02-ollama-model-selection.md
+    # for the sizing rule and benchmark behind this list.
     loadModels = [
-      "qwen2.5-coder:7b" # コード補助。Q4 で ~4.7 GiB、3060 Ti 単体にも載る
-      "gemma4:12b"        # 汎用チャット (Open WebUI)。以前は OpenViking の vlm
-                          # としても兼用していたが、extract_loop の
-                          # tool_choice="auto" のもとでツール呼び出しの代わりに
-                          # 自然文の要約を返すことがあり (実機確認)、下の
-                          # qwen3.5:9b に切り替えた。Open WebUI 用としては残置。
-      "qwen3.5:9b"        # OpenViking (modules/openviking.nix) の vlm (記憶抽出/
-                          # クエリ拡張/要約などの汎用 LLM) 用。num_ctx は
-                          # openviking 側の extra_request_body で 16384 に
-                          # 指定している (provider="openai" 経由だと litellm
-                          # の "ollama/" プレフィックス判定に乗らず openviking
-                          # 側の num_ctx 自動注入が効かないため、明示指定が必要
-                          # — modules/openviking.nix の vlm コメント参照)。
-                          # tools ケイパビリティを ollama show で確認済み、
-                          # ~6.6 GiB
-      # ★ 2026-09-23: もう誰も使っていません ★
-      #   RAG_EMBEDDING_MODEL 用に入れていましたが、RAG は llama-swap の
-      #   [embedding] (Qwen3) に移りました。ollama を復活させる場合も
-      #   この行は不要です (消していないのは、この loadModels ブロック全体が
-      #   「enable = true に戻すときの原状復帰用」として残されているため)。
-      "nomic-embed-text" # ~0.3 GiB と軽い
-      "qwen3-embedding:4b" # OpenViking の embedding 用。Matryoshka 学習済みで
-                            # dimensions パラメータにより出力次元を落とせるため、
-                            # イメージ同梱のブートストラップコレクションが期待する
-                            # 2048 次元に合わせられる。Q4_K_M で ~2.5 GiB
-      # guoxuter/ov_intent_analysis_sft:v7_q8 (旧 query_planner 専用モデル) は
-      # 2026-09-06 に削除。8GB VRAM に embedding+vlm+これの3本が同時に収まらず
-      # 常時スワップで記憶抽出/クエリ拡張がタイムアウトしていたため、
-      # query_planner を vlm (qwen3.5:9b) と共用に変更した (modules/openviking.nix
-      # 参照)。手動 pull 済みのモデルはここから消しても自動では消えないため、
-      # 不要なら `ollama rm guoxuter/ov_intent_analysis_sft:v7_q8` で手動削除する。
+      "qwen2.5-coder:7b" # code assistance, Q4 ~4.7 GiB, fits the 3060 Ti alone
+      "gemma4:12b"       # general chat via Open WebUI. Previously doubled as
+                         # OpenViking's vlm; dropped that role for tool-call
+                         # reliability reasons — see
+                         # docs/decisions/2026-09-08-openviking-vlm-selection.md.
+                         # Kept for Open WebUI's own chat use.
+      "qwen3.5:9b"       # OpenViking's vlm/query_planner model (era before the
+                         # llama.cpp migration) — see
+                         # docs/decisions/2026-09-08-openviking-vlm-selection.md.
+                         # ~6.6 GiB, tool-calling confirmed via `ollama show`.
+      # No longer used by anything (2026-09-23) — RAG embedding moved to
+      # llama-swap's [embedding]. Kept only because this whole loadModels block
+      # is a restore point for `enable = true`; not required to re-enable.
+      "nomic-embed-text"   # ~0.3 GiB
+      "qwen3-embedding:4b" # OpenViking's embedding model — Matryoshka-trained,
+                            # truncatable to the 2048 dimensions the bundled
+                            # bootstrap collection expects. Q4_K_M, ~2.5 GiB.
+      # guoxuter/ov_intent_analysis_sft:v7_q8 (former dedicated query_planner
+      # model) removed 2026-09-06 — see
+      # docs/decisions/2026-09-06-openviking-model-consolidation.md. Pulled
+      # models aren't auto-removed by deleting them from this list; run
+      # `ollama rm guoxuter/ov_intent_analysis_sft:v7_q8` if still present.
     ];
 
-    # 新しい nixpkgs にある services.ollama.syncModels (宣言外のモデルを
-    # 削除する) は 25.05 にはまだありません。既定どおり、手で ollama pull した
-    # モデルはそのまま残ります。
+    # services.ollama.syncModels (removes undeclared models) isn't in 25.05
+    # yet; manually `ollama pull`-ed models are left alone as usual.
   };
 
-  # GPU が使える状態になってから起動する。
-  # nvidia-persistenced が上がっていればドライバは初期化済みです。
+  # Start only once the GPU is usable (driver is initialized once
+  # nvidia-persistenced is up).
   #
-  # ★ 2026-09-21: 上の enable = false に合わせてコメントアウト ★
-  #   services.ollama.enable = false のとき ollama.service は生成されません。
-  #   ここだけ残すと after/wants しか持たない (ExecStart の無い) ユニットを
-  #   こちらで作ってしまうため、一緒に無効化します。
-  #   enable を戻すときはここも戻すこと。
+  # Commented out alongside `enable = false` above: with services.ollama
+  # disabled, no ollama.service unit exists for after/wants to attach to, and
+  # leaving this active would create a unit with no ExecStart. Restore
+  # alongside re-enabling ollama.
   # systemd.services.ollama = {
   #   after = [ "nvidia-persistenced.service" ];
   #   wants = [ "nvidia-persistenced.service" ];
@@ -256,179 +155,71 @@ in
   ############################################################################
   # Open WebUI
   #
-  # Ollama 自体は認証を一切持ちません。ブラウザから使う窓口はこちらに寄せ、
-  # アカウント管理は Open WebUI 側で行います。
+  # Ollama itself has no authentication; all browser access and account
+  # management goes through here instead. See docs/services/open-webui.md.
   ############################################################################
   services.open-webui = {
     enable = true;
 
-    ##########################################################################
-    # unstable 追従。
-    #
-    # なぜ unstable か:
-    #   25.05 の open-webui は 0.6.9 で、unstable は 0.11.0 です。
-    #   Ollama 本体を unstable に寄せている以上、UI 側も同世代に
-    #   揃えておかないと新しいモデルや API の扱いで齟齬が出ます。
-    #   Python アプリでカーネル・カーネルモジュール・systemd・glibc の
-    #   いずれにも関わらない「葉」なので、この差し替えは安全です。
-    #
-    # n8n と違い overlay は不要です。services.open-webui には package
-    # オプションがあるため、ここで名指しするだけで済みます。
-    #
-    # ※ 0.11.0 は非フリーです。0.6.x の MIT から独自の
-    #   Open WebUI License に変わりました。許可は modules/gpu.nix の
-    #   allowUnfreePredicate に書いています (nixpkgs.config は 1 箇所
-    #   からしか定義できないため、ここには書けません)。
-    #
-    # ※ NixOS モジュールは 25.05 のものを使い続けます。unstable 側の
-    #   モジュールは DATA_DIR を "." から "${stateDir}/data" に変え、
-    #   既存データを移す preStart を持っていますが、こちらはパッケージ
-    #   だけを差し替えるのでその配置変更は適用されません。データは
-    #   従来どおり StateDirectory の直下に置かれます。中途半端に
-    #   unstable 側のモジュールを真似しないこと。
-    #
-    # ※ 0.6.9 からは alembic のリビジョンが 16 -> 55 に進みます。
-    #   起動時に自動適用され、ダウングレードは想定されていません。
-    #   パッケージを戻すだけでは切り戻せず、rpool/var/lib の
-    #   スナップショットからのロールバックが要ります。
-    ##########################################################################
+    # unstable, to track ollama's version — see docs/services/open-webui.md
+    # for why, the non-free license change, and the alembic migration caveat.
     package = pkgs.unstable.open-webui;
 
     host = "0.0.0.0";
     port = ports.openWebui;
-    openFirewall = false; # 下のファイアウォール設定でまとめて開けます
+    openFirewall = false; # opened below, alongside ollama's port
 
     environment = {
-      ########################################################################
-      # データとキャッシュの置き場を絶対パスにする
-      #
-      # ★ これが無いと 0.11.0 は起動できません ★
-      #   25.05 のモジュールはこの 4 つを "." (相対パス) で渡しますが、
-      #   open-webui は 0.6.18 以降これを正しく扱えません。実際に踏んだ症状は
-      #   起動時の `sqlite3.OperationalError: no such table: config` で、
-      #   alembic のマイグレーションは 55 個すべて成功しているのに、
-      #   アプリ本体はそれとは別の空 DB を掴んでいる、という状態になります。
-      #   (既存データがある場合は「アカウントを作成してください」と言われる
-      #    形で現れます — nixpkgs issue #430433 と同じ)
-      #
-      #   nixpkgs では PR #431395 でモジュール側が絶対パスに直されましたが、
-      #   25.05 には入っていません。ここは module の environment が
-      #   `// cfg.environment` で後勝ちになるので、モジュールを差し替えずに
-      #   上書きできます。値は unstable のモジュールと同じにしてあります。
-      #
-      #   stateDir は /var/lib/open-webui で、DynamicUser のため実体は
-      #   /var/lib/private/open-webui です (symlink 経由で解決されます)。
-      ########################################################################
+      # ★ Required or 0.11.0 fails to start. ★ The 25.05 module passes these
+      # as relative paths, which open-webui 0.6.18+ can't handle correctly.
+      # See docs/services/open-webui.md for the exact failure and why
+      # `// cfg.environment` lets us override without patching the module.
       STATIC_DIR = "${config.services.open-webui.stateDir}/static";
       DATA_DIR = "${config.services.open-webui.stateDir}/data";
       HF_HOME = "${config.services.open-webui.stateDir}/hf_home";
       SENTENCE_TRANSFORMERS_HOME = "${config.services.open-webui.stateDir}/transformers_home";
 
+      # PersistentConfig seed only, not necessarily the live value — see
+      # docs/services/open-webui.md.
       OLLAMA_BASE_URL = "http://127.0.0.1:${toString ports.ollama}";
 
-      # 初回アクセスで作った管理者アカウントが必須になる。
-      # False にすると tailnet の誰でも素通りになります。
+      # Requires the admin account created on first access. False lets anyone
+      # on the tailnet straight in.
       WEBUI_AUTH = "True";
 
-      # 外部へのテレメトリを止める。閉じたホストなので送っても意味がありません。
+      # No outbound telemetry — closed host, nothing to send it to.
       ANONYMIZED_TELEMETRY = "False";
       DO_NOT_TRACK = "True";
       SCARF_NO_ANALYTICS = "True";
 
-      ########################################################################
-      # RAG の埋め込み (2026-09-23 に ollama → llama-swap へ移行)
-      #
-      # ★ ここが死んだ先を指していました ★
-      #   services.ollama.enable = false にした 2026-09-21 以降も
-      #   RAG_EMBEDDING_ENGINE = "ollama" のままだったため、RAG は
-      #   OLLAMA_BASE_URL (11434、待ち受けなし) を叩き続けており、埋め込みを
-      #   一度も作れていませんでした。エラーにならず「Knowledge に入れても
-      #   何も引っかからない」という形で静かに壊れます。
-      #
-      # 向け先は llama-swap の [embedding] (Qwen3-Embedding-4B, 2560 次元)。
-      # modules/llama-cpp.nix にあった 768 次元の [embedding-nomic] は、
-      # 同日に削除しました (呼ぶ経路が無く、守るべき既存インデックスも
-      # 無かったため。1660 SUPER の VRAM を空ける目的も兼ねています)。
-      #
-      # ★ RAG_EMBEDDING_* は PersistentConfig です ★
-      #   ここに書いた値は初回起動時に DB へ種を蒔くだけで、既に DB がある
-      #   このホストでは反映されません。実際に RAG を使い始めるときは
-      #   Admin Panel → Settings → Documents で同じ値に手で変更すること。
-      #   (2026-09-23 時点で Knowledge は 0 件、RAG 未使用のため未実施)
-      ########################################################################
+      # RAG embedding, moved from ollama to llama-swap on 2026-09-23 — see
+      # docs/decisions/2026-09-23-ollama-to-llama-cpp.md for the outage this
+      # fixed (RAG silently never embedded anything for two days) and why
+      # these are PersistentConfig seeds, not necessarily the live value.
       RAG_EMBEDDING_ENGINE = "openai";
       RAG_OPENAI_API_BASE_URL = "http://127.0.0.1:8888/v1";
-      RAG_OPENAI_API_KEY = "dummy"; # llama-swap は認証しないが、空だと弾かれる
+      RAG_OPENAI_API_KEY = "dummy"; # llama-swap doesn't check this, but rejects empty
       RAG_EMBEDDING_MODEL = "embedding";
     };
   };
 
   ############################################################################
-  # 公開範囲
+  # Exposure: tailscale0 only, not the LAN. Ollama's API has no auth, so LAN
+  # exposure would let anyone on the network run/delete models.
   #
-  # tailscale0 からのみ。LAN には出しません。
-  # 特に Ollama の API は無認証なので、LAN に晒すと同じネットワークの
-  # 誰でもモデルの実行と削除ができます。
-  #
-  # Open WebUI (8080) はここでは開けません。到達経路は
-  # modules/reverse-proxy.nix の Tailscale Serve (tailnet の 443 のルート) に
-  # 一本化してあります。
-  #
-  # 一方 Ollama の 11434 は直接開けたままにしています。ollama CLI や
-  # OLLAMA_HOST を使うクライアントはベース URL にパスを含められず、
-  # https://<fqdn>/ollama/ では接続できないためです。tailnet 限定なので
-  # 公開範囲は Serve 経由と変わりません。
-  #
-  # LAN からも叩く必要が出たら networking.firewall.allowedTCPPorts に
-  # 足すことになりますが、その前に本当に必要か検討してください。
+  # Open WebUI (8080) is not opened here — reachable only via Tailscale Serve
+  # (modules/reverse-proxy.nix). Ollama's 11434 is opened directly instead,
+  # since ollama CLI / OLLAMA_HOST clients can't target a sub-path base URL;
+  # tailnet-only exposure is unchanged either way.
   ############################################################################
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     ports.ollama
   ];
 
-  # ollama CLI をシステムに入れておく (ollama list / ps / pull 用)。
-  # サーバと同じ CUDA 版を使い、バージョン差を出さないようにします。
+  # ollama CLI for `ollama list/ps/pull`; same CUDA build as the service to
+  # avoid version skew.
   environment.systemPackages = [ config.services.ollama.package ];
 
-  ############################################################################
-  # 運用メモ
-  #
-  # 状態確認
-  #   systemctl status ollama open-webui
-  #   ollama list          # 手元のモデル
-  #   ollama ps            # ロード中のモデルと GPU/CPU の配分
-  #   journalctl -u ollama -b | grep "inference compute"
-  #                        # 認識された GPU が 2 行出るか
-  #
-  # 2 枚構成が本当に速いかを測る
-  #   1) 現状で計測
-  #        curl -s http://127.0.0.1:11434/api/generate \
-  #          -d '{"model":"qwen2.5-coder:7b","prompt":"数を1から50まで数えて","stream":false}' \
-  #          | grep -o '"eval_count":[0-9]*\|"eval_duration":[0-9]*'
-  #      tok/s = eval_count / (eval_duration / 1e9)
-  #   2) このファイルの OLLAMA_SCHED_SPREAD を消し
-  #      CUDA_VISIBLE_DEVICES = "2" にして rebuild、同じ計測
-  #   3) 遅くならないなら 1 枚構成のままにする。
-  #      Grafana の NVIDIA ダッシュボードで両カードが均等に回っているかも
-  #      あわせて確認してください。
-  #
-  # モデル置き場
-  #   /var/lib/ollama/models は専用の ZFS データセット
-  #   (rpool/var/lib/ollama → /var/lib/private/ollama にマウント,
-  #    recordsize=1M, compression=off)。
-  #   スナップショットも syncoid のバックアップも対象外です。消えたら
-  #   ollama pull で取り直します。使用量: zfs list rpool/var/lib/ollama
-  #
-  # Open WebUI の state
-  #   DynamicUser=true なので実体は /var/lib/private/open-webui です。
-  #   /var/lib/open-webui はそこへの symlink になります
-  #   (VictoriaMetrics と同じ。disko/default.nix のコメント参照)。
-  #   会話履歴とユーザー DB が入るので、こちらは rpool/var/lib の
-  #   スナップショットと syncoid の対象に含まれます。
-  #
-  # メトリクス
-  #   Ollama は Prometheus のエンドポイントを持ちません。
-  #   GPU は nvidia-gpu-exporter (9835)、プロセスとユニットの状態は
-  #   node exporter で見えるので、scrape job は追加していません。
-  ############################################################################
+  # Ops notes, benchmarking procedure, storage details: docs/services/ollama.md
+  # and docs/services/open-webui.md.
 }
