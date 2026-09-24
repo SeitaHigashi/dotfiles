@@ -1,73 +1,61 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# rpool (SSD) を dpool (HDD mirror) へ定期複製する。
+# Periodic replication of rpool (SSD) to dpool (HDD mirror) via syncoid, so a
+# dead SSD can be recovered by receiving back from dpool/backup instead of
+# losing rpool's contents outright (rpool is a single vdev, no redundancy).
 #
-# なぜ必要か:
-#   disko/default.nix のとおり rpool は single vdev で、冗長性がありません。
-#   SSD が死ぬとシステムが丸ごと消えます (/home と /srv は dpool に残る)。
-#   HDD 側は mirror なので、そこへ複製しておけば
-#     新しい SSD を挿す -> disko で作り直す -> dpool から受信し直す
-#   という手順で復旧できます。
+# This is NOT a backup: same-chassis replication does nothing against fire,
+# theft, or whole-enclosure failure. Take real backups to external media or a
+# separate host.
 #
-# 何をしているか:
-#   services.zfs.autoSnapshot が作るスナップショットを、syncoid が
-#   dpool/backup 配下へ差分転送します。両方ローカルなのでネットワークは
-#   介しません。--no-sync-snap を付けて、syncoid が独自のスナップショットを
-#   増やさないようにしています (autoSnapshot の世代管理に一本化するため)。
-#
-# これはバックアップではありません:
-#   同一筐体内の複製なので、火災・盗難・筐体ごとの故障には無力です。
-#   「SSD が死んだときに素早く戻せる」ためのものです。本当のバックアップは
-#   外部媒体か別ホストへ取ってください。
+# Docs: docs/storage-zfs.md §6 (design, what's replicated and why),
+# docs/runbooks/zfs-operations.md (recovery procedure).
+# When you change this file, update the docs above in the same commit.
 ##############################################################################
 
 {
   services.syncoid = {
     enable = true;
 
-    # 毎日 1 回。もっと頻繁にしたい場合は "hourly" など。
-    # rpool の中身はシステム設定とログが主なので、日次で十分です。
+    # Once daily; rpool's contents are mostly system config and logs, for which
+    # this is enough. Use "hourly" etc. for a tighter RPO.
     interval = "daily";
 
-    # syncoid 専用ユーザーに、必要な ZFS 権限だけを委譲する。
-    # これが無いと root で動かすことになります。
+    # Delegate only the needed ZFS permissions to a dedicated syncoid user
+    # (without this it would have to run as root).
     localSourceAllow = [ "bookmark" "hold" "send" "snapshot" "destroy" "mount" ];
     localTargetAllow = [ "change-key" "compression" "create" "mount" "mountpoint" "receive" "rollback" "destroy" ];
 
     commonArgs = [
-      # 自前のスナップショットを作らない。autoSnapshot のものを使う。
+      # Don't create syncoid's own snapshots; rely on autoSnapshot's instead.
       "--no-sync-snap"
-      # 送信側の圧縮をそのまま使う (ローカル転送なので追加圧縮は無駄)
+      # Keep the sender's compression as-is (local transfer, so recompressing wastes CPU).
       "--compress=none"
     ];
 
     commands = {
-      # / (システム本体)
+      # / (the system itself)
       "rpool/root" = {
         target = "dpool/backup/root";
         recursive = false;
       };
 
-      # /var/lib — サービスの状態。podman のコンテナ・ボリュームもここ。
+      # /var/lib — service state, including podman containers/volumes.
       "rpool/var/lib" = {
         target = "dpool/backup/var-lib";
         recursive = false;
       };
 
-      # /srv/minecraft — Minecraft のワールドと mod。
-      #
-      # 他の 2 つと性格が違います。root と var/lib は「flake から作り直せるが
-      # 戻せると速い」ものですが、ワールドはどこからも再生成できません。
-      # HDD が SMR で I/O が間に合わず rpool へ移したので
-      # (disko/default.nix 参照)、この複製が唯一の冗長性です。
-      #
-      # 日次で足りる理由: rpool 側に autoSnapshot が 15 分刻みで残るため、
-      # modpack 更新の事故やワールドの巻き戻しはそちらで済みます。
-      # ここが効くのは SSD が物理的に死んだときだけで、そのとき失うのは
-      # 最大 1 日ぶんです。短くしたくなったら interval を全体で上げるのではなく
-      # (root と var/lib まで巻き添えになります)、この項目に
-      # interval = "hourly"; を足してください。
+      # /srv/minecraft — world + mods. Unlike root/var-lib (rebuildable from the
+      # flake, replication just for speed), the world can't be regenerated at
+      # all; this is its only redundancy since it sits on rpool
+      # (disko/default.nix). Daily is enough because rpool's own 15-minute
+      # autoSnapshot already covers modpack-update mishaps and world rollback —
+      # this only matters if the SSD physically dies, at which point up to a
+      # day is lost. To shorten that, set interval = "hourly" on this entry
+      # specifically rather than raising services.syncoid.interval globally
+      # (which would also affect root and var-lib).
       "rpool/srv/minecraft" = {
         target = "dpool/backup/minecraft";
         recursive = false;
@@ -76,17 +64,18 @@
   };
 
   ############################################################################
-  # 複製しないもの
+  # Not replicated
   #
-  #   rpool/var/log … ログ。復旧に不要で、書き込みが多く差分が大きい。
-  #   rpool/tmp     … 一時ファイル。sync=disabled で再起動時に消える前提。
-  #   rpool/nix     … nix store。flake から完全に再現できるので複製不要。
-  #                   (machine.nix の nixPool = "rpool" のとき存在する)
+  #   rpool/var/log … logs. Not needed for recovery, high write churn.
+  #   rpool/tmp     … sync=disabled, expected to vanish on reboot anyway.
+  #   rpool/nix     … nix store, fully reproducible from the flake (present
+  #                   when machine.nix's nixPool = "rpool").
   #
-  # 特に nix store は容量が大きく差分も激しいため、複製すると HDD を
-  # 無駄に消費します。復旧時は nixos-install で作り直す方が速くて確実です。
+  # The nix store especially is large and highly volatile; replicating it
+  # would waste HDD space for no recovery benefit — nixos-install is faster
+  # and more reliable for recovery.
   #
-  # 動作確認:
+  # Verify it's working:
   #   systemctl list-timers | grep syncoid
   #   journalctl -u 'syncoid-*' --since today
   #   zfs list -t snapshot -r dpool/backup

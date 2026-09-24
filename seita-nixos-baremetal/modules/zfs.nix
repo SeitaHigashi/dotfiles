@@ -1,151 +1,119 @@
 { config, lib, pkgs, ... }:
 
+# ZFS core: ARC, autoScrub/trim/autoSnapshot, smartd, NVMe workarounds.
+# Docs: docs/storage-zfs.md §5 (ARC/NVMe tuning rationale, measurements),
+# docs/runbooks/zfs-operations.md (scrub/snapshot/backup procedures),
+# decisions/2026-07-30-nvme-dropout-made-system-unbootable.md.
+# When you change this file, update the docs above in the same commit.
+
 let
   m = import ../machine.nix;
 
-  # ARC の上限。実 RAM の 1/4〜1/2 を目安に (machine.nix で設定)。
-  # 例) 8G=8589934592, 12G=12884901888, 16G=17179869184, 32G=34359738368
+  # ARC ceiling, roughly 1/4-1/2 of physical RAM (set in machine.nix).
+  # e.g. 8G=8589934592, 12G=12884901888, 16G=17179869184, 32G=34359738368
   arcMaxBytes = m.arcMaxBytes;
 
-  # ARC に「これだけは空きメモリとして残せ」と伝える下限 (zfs_arc_sys_free)。
-  # arcMaxBytes の 1/4 を割り当て。machine.nix に新規フィールドを増やすと
-  # install.sh / disks.env のスキーマ変更が要るため、ここで arcMaxBytes から
-  # 計算するだけにとどめている。
+  # zfs_arc_sys_free: computed as arcMaxBytes/4 here rather than added as its own
+  # machine.nix field, to avoid an install.sh/disks.env schema change.
+  # Rationale: docs/storage-zfs.md §5.
   arcSysFreeBytes = arcMaxBytes / 4;
 in
 {
   ############################################################################
-  # ZFS 本体
+  # ZFS core
   ############################################################################
-  # nixpkgs 24.05 以降は attrset 形式 (旧: [ "zfs" ] はリスト形式で非推奨)
+  # attrset form (nixpkgs 24.05+); the old [ "zfs" ] list form is deprecated.
   boot.supportedFilesystems.zfs = true;
 
-  # ZFS は最新カーネルに追従しないことがあるため LTS を使う。
-  # pkgs.linuxPackages は nixpkgs の LTS 系デフォルト。
+  # ZFS doesn't always track the newest kernel, so stick to LTS
+  # (pkgs.linuxPackages is nixpkgs's default LTS series).
   #
-  # linuxPackages_latest に変えると、ZFS が未対応のカーネルを引いて
-  # 起動不能になることがあります。rebuild 時に
+  # Switching to linuxPackages_latest can pull in a kernel ZFS doesn't support
+  # yet, making the system unbootable. If rebuild prints
   #   error: ... zfs ... is not supported on kernel ...
-  # が出たら、カーネルを上げるのではなく nixpkgs 側の追従を待ってください。
+  # wait for nixpkgs to catch up rather than bumping the kernel.
   #
-  # カーネルと ZFS は必ず同じ nixpkgs (= stable 側) から取ること。
-  # modules/unstable.nix の pkgs.unstable.* をここで使ってはいけません。
+  # Kernel and ZFS must always come from the same nixpkgs (stable). Do not use
+  # modules/unstable.nix's pkgs.unstable.* here.
   boot.kernelPackages = lib.mkDefault pkgs.linuxPackages;
 
-  # ハイバネートは ZFS と組み合わせるとプール破損の可能性があるため無効のまま。
+  # Hibernation can corrupt a ZFS pool, so it stays disabled.
   boot.zfs.allowHibernation = false;
 
-  # インポート時にスキャンするディレクトリ (NixOS の既定値と同じ)。
-  # disko はプールを /dev/disk/by-partlabel/disk-<disk>-<part> で作りますが、
-  # ZFS はパスではなくラベルの GUID で照合するため、by-id をスキャンしても
-  # 同じパーティションが見つかります。バス依存名 (/dev/sda) だけは避けること。
-  # うまくインポートできない場合は "/dev/disk/by-partlabel" を試す。
+  # Directory scanned at import time (same as the NixOS default). disko creates
+  # pools under /dev/disk/by-partlabel/disk-<disk>-<part>, but ZFS matches on the
+  # label GUID rather than the path, so scanning by-id still finds the same
+  # partitions. Just avoid bus-dependent names (/dev/sda). If import fails, try
+  # "/dev/disk/by-partlabel" instead.
   boot.zfs.devNodes = "/dev/disk/by-id";
 
-  # NixOS の既定値 (true) のままにしておくこと。
+  # Keep at the NixOS default (true).
   #
-  # false にすると、プールの hostid が現在のシステムと違う場合に initrd が
-  # インポートを拒否し、起動不能になります。disko/nixos-install は installer ISO の
-  # hostid でプールを作るため、インストール直後は必ず不一致が起きます
-  # (クリーンに zpool export していれば問題になりませんが、異常終了や
-  #  export し忘れが1度でもあると詰みます)。実際にこれで起動不能になりました。
+  # Setting this to false makes initrd refuse to import a pool whose hostid
+  # doesn't match the running system, leaving it unbootable. disko/nixos-install
+  # create pools under the installer ISO's hostid, so a mismatch is guaranteed
+  # right after install unless zpool export ran cleanly — one crash or missed
+  # export and you're stuck. This has actually happened; see
+  # decisions/2026-07-30-nvme-dropout-made-system-unbootable.md and
+  # docs/runbooks/zfs-troubleshooting.md.
   #
-  # false が意味を持つのは SAN / 共有ストレージのように、他ホストが同じプールを
-  # 現に使っている可能性がある構成だけです。ローカルディスク専用機では true が正解。
+  # false only makes sense for SAN/shared-storage setups where another host may
+  # genuinely be using the same pool. true is correct for a local-disks-only box.
   boot.zfs.forceImportRoot = true;
 
-  # fileSystems に出てこないプールがある場合だけ列挙する。
-  # rpool / dpool は modules/zfs-layout.nix の fileSystems で参照されているため不要。
+  # Only list pools here if they don't otherwise appear in fileSystems.
+  # rpool/dpool are referenced via disko's fileSystems, so this stays empty.
   # boot.zfs.extraPools = [ ];
 
   ############################################################################
-  # ARC チューニング
-  #
-  # ★ 読み込みキャッシュは ARC (RAM) だけで処理します。SSD を使う二次キャッシュ
-  #   (L2ARC / cache vdev) は廃止しました。復活させないでください。★
-  #   理由は disko/default.nix の dpool のコメントを参照。要約すると、SSD を
-  #   常時削る一方で ARC に余裕がある構成では効果が無く、実機で NVMe の
-  #   I/O タイムアウト → ZFS ハング → 起動不能を招いたためです。
-  #
-  # 読み込みが遅いと感じたら arcMaxBytes (machine.nix) を上げてください。
-  # 現状の確認: arc_summary | head -40
-  #
-  # zfs_arc_sys_free について:
-  #   既定値は物理 RAM のごく一部 (数百MB程度) しかなく、ARC は c_max 近くまで
-  #   張り付いたまま自発的にはなかなか縮みません。ARC はどの cgroup にも
-  #   計上されないため (modules/resource-priority.nix 参照)、他サービスの
-  #   cgroup 側 MemoryHigh を締め付けても ARC 自身は解放されず、システム
-  #   全体の実質的な空きメモリを圧迫し続けます。zfs_arc_sys_free に
-  #   arcMaxBytes の 1/4 を与えることで、その分の空きメモリを常に確保する
-  #   よう ARC に先んじて縮ませます (2026-08-08、ComfyUI 稼働時に
-  #   /proc/pressure/memory の悪化を確認したのがきっかけ)。
-  #
-  #   zfs_arc_shrink_shift (縮小の刻み幅) は既定 (auto=0) のまま触っていません。
-  #   固定値にすると縮小が過敏になりキャッシュヒット率を犠牲にする恐れがあり、
-  #   zfs_arc_sys_free だけで「早めに手放す」という狙いには十分だからです。
+  # ARC tuning — rationale and measurements: docs/storage-zfs.md §5
   ############################################################################
   boot.kernelParams = [
     "zfs.zfs_arc_max=${toString arcMaxBytes}"
     "zfs.zfs_arc_sys_free=${toString arcSysFreeBytes}"
 
     ##########################################################################
-    # NVMe の脱落対策
-    #
-    # 廉価 NVMe (DRAM レス / HMB 方式) で実際に起きた障害への対策です。
-    #   nvme nvme0: I/O tag NN timeout, aborting req_op:WRITE
-    #   nvme nvme0: Admin Cmd QID 0 timeout, reset controller
-    # コントローラリセットが起きると、その NVMe 上の rpool が固まり、
-    # ZFS スレッドが hung_task になってシャットダウンすら完走できなくなります。
-    # 結果としてプールが未 export のまま強制リセットされ、次回起動時に
-    # initrd の import が失敗して起動不能になります (README の障害事例を参照)。
+    # NVMe dropout workarounds — see decisions/2026-07-30-nvme-dropout-made-system-unbootable.md
     ##########################################################################
 
-    # APST (自動省電力ステート) を無効化。
-    # 低電力ステートからの復帰に失敗して脱落する既知の不具合を回避する。
-    # 既定は 100000 (us)。0 で APST を使わなくなる。
-    #
-    # 消費電力がわずかに増えるだけで副作用は無いため、SSD を交換した後も
-    # 保険として残しています。
+    # Disable APST (automatic power-saving states); kept permanently as cheap
+    # insurance even after replacing the failing drive. docs/storage-zfs.md §5.
     "nvme_core.default_ps_max_latency_us=0"
 
-    # nvme_core.io_timeout は既定 (30 秒) のままにします。
-    #
-    # 以前は 255 秒に延長していました。DRAM レス SSD が SLC キャッシュ枯渇で
-    # 数十秒応答しなくなるのを「故障」と誤認させないための延命策です。
-    # DRAM 搭載 SSD ではその失速が起きないため不要ですし、延ばしたままだと
-    # 本物の故障を 4 分間も見逃すことになります。早く顕在化させる方が安全です。
+    # nvme_core.io_timeout is left at its 30s default — do not re-extend it.
+    # docs/storage-zfs.md §5 has the history of why it was raised and reverted.
   ];
 
   ############################################################################
-  # 自動メンテナンス
+  # Automatic maintenance
   ############################################################################
 
-  # 毎月スクラブ (既定: 第1日曜)
+  # Monthly scrub (default: first Sunday)
   services.zfs.autoScrub = {
     enable = true;
     interval = "monthly";
-    # pools を省略すると全プールが対象になる
+    # omitting `pools` targets every pool
   };
 
-  # SSD (rpool) 向けの定期 TRIM。HDD には無害。
+  # Periodic TRIM for the SSD (rpool); harmless for the HDDs.
   services.zfs.trim = {
     enable = true;
     interval = "weekly";
   };
 
-  # 自動スナップショット。除外したいデータセットには
+  # Automatic snapshots. To exclude a dataset:
   #   zfs set com.sun:auto-snapshot=false <dataset>
   services.zfs.autoSnapshot = {
     enable = true;
     flags = "-k -p --utc";
-    frequent = 4;    # 15分ごと x 4
+    frequent = 4;    # every 15 min, x4
     hourly = 24;
     daily = 7;
     weekly = 4;
     monthly = 12;
   };
 
-  # プール異常をメールで通知したい場合 (要 MTA 設定)
+  # To email on pool problems (requires MTA setup):
   # services.zfs.zed.settings = {
   #   ZED_EMAIL_ADDR = [ "root" ];
   #   ZED_NOTIFY_VERBOSE = true;
@@ -153,35 +121,29 @@ in
   services.zfs.zed.enableMail = false;
 
   ############################################################################
-  # 便利ツール
+  # Convenience tools
   ############################################################################
   environment.systemPackages = with pkgs; [
     zfs        # zpool / zfs / arc_summary / zdb
     smartmontools
-    nvme-cli   # nvme smart-log / get-feature。NVMe の障害調査に必須
+    nvme-cli   # nvme smart-log / get-feature — needed for NVMe failure diagnosis
   ];
 
   ############################################################################
-  # ディスクの健康監視
-  #
-  # smartd を有効にするだけでは通知先が無く、SMART の異常を誰も見ません。
-  # 実機では NVMe の Percentage Used (寿命消費率) が 78% に達していたのに
-  # 気付けませんでした。ジャーナルに残るようログレベルを上げ、
-  # 属性変化を必ず記録させます。
-  #   手動確認: sudo smartctl -a /dev/nvme0
-  #             sudo nvme smart-log /dev/nvme0
+  # Disk health monitoring — rationale: docs/storage-zfs.md §5
+  # Manual check: sudo smartctl -a /dev/nvme0 ; sudo nvme smart-log /dev/nvme0
   ############################################################################
   services.smartd = {
     enable = true;
     autodetect = true;
 
-    # -a       全属性を監視
-    # -o on    オフライン自己テストを有効化
-    # -S on    属性の自動保存を有効化
-    # -n standby  スタンバイ中の HDD は起こさない (無駄な spin-up を避ける)
-    # -W 4,50,60  温度が 4℃ 変化 / 50℃ 超 / 60℃ 超 で記録・警告
-    # メール通知は指定していないので、警告は journal にのみ出ます
-    # (MTA 未設定のため。確認: journalctl -u smartd)
+    # -a          monitor all attributes
+    # -o on       enable offline self-test
+    # -S on       enable attribute autosave
+    # -n standby  don't wake idle HDDs (avoid needless spin-up)
+    # -W 4,50,60  log/warn on a 4C jump, or crossing 50C/60C
+    # No mail transport configured, so warnings only reach the journal
+    # (journalctl -u smartd).
     defaults.autodetected = "-a -o on -S on -n standby -W 4,50,60";
   };
 }

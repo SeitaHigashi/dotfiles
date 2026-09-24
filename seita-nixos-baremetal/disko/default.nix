@@ -1,48 +1,37 @@
 { lib, ... }:
 
 ##############################################################################
-# disko によるディスクレイアウト宣言。
+# Declarative disk layout via disko: partitioning, zpool/dataset creation, and
+# fileSystems/swapDevices generation all come from this one file.
 #
-#   SSD  : part1 EFI / part2 swap / part3 slog(既定は予約のみ) / part4 rpool(残り全部)
-#   HDD×2: 全体を1パーティションにして dpool の mirror
-#
-# このファイル1枚から
-#   - パーティショニング
-#   - zpool / データセットの作成
-#   - fileSystems / swapDevices の生成
-# がすべて行われます。手書きの partition.sh / datasets.sh は不要です。
-#
-# 実行:
-#   disko --mode destroy,format,mount --flake <repo>#<hostName>
+# Docs: docs/storage-zfs.md (layout/design), docs/runbooks/install.md (running
+# disko), docs/runbooks/zfs-operations.md (adding a dataset to a live system).
+# When you change this file, update the docs above in the same commit.
 ##############################################################################
 
 let
   m = import ../machine.nix;
 
-  # disko の topology では、"/" で始まらない member は
-  #   /dev/disk/by-partlabel/disk-<disk名>-zfs
-  # に解決されます。SSD には zfs パーティションが複数あるため、
-  # SLOG はフルパス (by-partlabel) で指定する必要があります。
+  # SSD has multiple zfs partitions, so SLOG must be given as a full by-partlabel
+  # path (see docs/storage-zfs.md §3.2 for how disko resolves bare member names).
   slogDev  = "/dev/disk/by-partlabel/disk-ssd-slog";
 
-  # 全データセット共通の ZFS プロパティ
+  # ZFS properties shared by every dataset.
   commonRootFsOptions = {
     compression = "zstd";
     acltype = "posixacl";
     xattr = "sa";
     dnodesize = "auto";
     relatime = "on";
-    # canmount=off にするとプールのルートデータセットはマウントされず、
-    # disko が zpool create に -m none を付けてくれる。
-    # ここで mountpoint="none" も書くと zpool create に -m none と
-    # -O mountpoint=none が二重に渡るので書かないこと。
-    # (canmount は継承されないプロパティなので子データセットには波及しない)
+    # canmount=off keeps the pool's root dataset unmounted (disko passes -m none
+    # to zpool create). Do not also set mountpoint="none" here — that would pass
+    # both -m none and -O mountpoint=none. canmount doesn't inherit to children.
     canmount = "off";
     "com.sun:auto-snapshot" = "false";
   };
 
-  # mountpoint=legacy を使い、マウントは NixOS の fileSystems に一本化する。
-  # (zfs-mount.service と systemd mount unit の競合を避けるため)
+  # mountpoint=legacy; all actual mounting goes through NixOS's fileSystems
+  # (avoids zfs-mount.service fighting the systemd mount unit).
   fsDataset = mountpoint: extraOptions: {
     type = "zfs_fs";
     inherit mountpoint;
@@ -52,9 +41,7 @@ let
   snapshotted = { "com.sun:auto-snapshot" = "true"; };
   notSnapshotted = { "com.sun:auto-snapshot" = "false"; };
 
-  # /nix は NixOS wiki の指示どおり、非 POSIX なプロパティを付けない。
-  # (normalization / utf8only / atime=off / snapdir=visible / acltype=nfsv4)
-  # atime=off ではなく relatime=on を使う。ストアは再現可能なのでスナップショット不要。
+  # /nix skips the non-POSIX properties per the NixOS wiki (docs/storage-zfs.md §3.4).
   nixDataset = fsDataset "/nix" ({ relatime = "on"; } // notSnapshotted);
 
   onRpool = m.nixPool == "rpool";
@@ -63,13 +50,13 @@ in
   assertions = [
     {
       assertion = builtins.elem m.nixPool [ "rpool" "dpool" ];
-      message = "machine.nix: nixPool は \"rpool\" か \"dpool\" にしてください (現在: ${m.nixPool})";
+      message = "machine.nix: nixPool must be \"rpool\" or \"dpool\" (currently: ${m.nixPool})";
     }
   ];
 
   disko.devices = {
     ############################################################################
-    # ディスク
+    # Disks
     ############################################################################
     disk = {
       ssd = {
@@ -91,9 +78,9 @@ in
               };
             };
 
-            # part2 — swap
-            #   ZFS 上の swapfile はデッドロックするので生パーティションを使う。
-            #   randomEncryption = 起動ごとにランダム鍵 (ハイバネート不可。ZFS では意図どおり)。
+            # part2 — swap. A ZFS-backed swapfile can deadlock, so a raw partition
+            # is used instead. randomEncryption = fresh random key per boot
+            # (no hibernation, which is fine — intentional under ZFS anyway).
             swap = {
               priority = 2;
               size = m.swapSize;
@@ -104,10 +91,9 @@ in
               };
             };
 
-            # part3 — SLOG
-            #   useSlog = false のときは content を付けない。
-            #   disko は「pool を宣言したのに topology に無いデバイス」があると
-            #   プール作成をスキップするため、未使用時は予約だけにする必要がある。
+            # part3 — SLOG. No `content` when useSlog = false: disko skips pool
+            # creation if a `pool`-declaring device is missing from the topology
+            # (docs/storage-zfs.md §3.1), so it must stay reserved-only when unused.
             slog = {
               priority = 3;
               size = m.slogSize;
@@ -117,11 +103,9 @@ in
               };
             };
 
-            # part4 — rpool (システム用プール)。SSD の残り全部。
-            #
-            #   かつてここは固定サイズ (rpoolSize) で、残りは part5 の
-            #   読み込みキャッシュ用でした。廃止したので rpool が残りを吸収します。
-            #   理由は下の zpool.dpool のコメントを参照。
+            # part4 — rpool (system pool), the rest of the SSD. Used to be a fixed
+            # size with part5 as a read-cache vdev for dpool; that vdev was removed
+            # (see the zpool.dpool comment below), so rpool now absorbs the rest.
             rpool = {
               priority = 4;
               size = "100%";
@@ -134,9 +118,8 @@ in
         };
       };
 
-      # HDD は 100% を1パーティションにして dpool へ。
-      # disko の topology が member を by-partlabel で解決するため、
-      # 素のディスクではなくパーティションにしておくのが安全。
+      # Each HDD is one 100% partition into dpool. Using a partition rather than
+      # the raw disk is safer since disko's topology resolves members by-partlabel.
       hdd1 = {
         type = "disk";
         device = m.hdd1;
@@ -169,17 +152,16 @@ in
     };
 
     ############################################################################
-    # プール
+    # Pools
     ############################################################################
     zpool = {
       #########################################################################
-      # rpool — SSD 単体。システム本体。
-      #   single vdev なので冗長性なし。ここが飛んでも /home は dpool に残る。
+      # rpool — single SSD, the system itself. Single vdev, no redundancy: if it
+      # dies the system is gone, but /home and /srv survive on dpool.
       #########################################################################
       rpool = {
         type = "zpool";
-        # 単一 vdev なので topology 不要
-        mode = "";
+        mode = ""; # single vdev, no topology needed
         options = {
           ashift = m.ashift;
           autotrim = "on";
@@ -192,77 +174,30 @@ in
           "var/log" = fsDataset "/var/log" notSnapshotted;
           "var/lib" = fsDataset "/var/lib" snapshotted;
 
-          # 時系列データベース (modules/monitoring.nix の VictoriaMetrics)。
-          #
-          # 親から独立させる理由は 2 つあります。
-          #   1. スナップショットを切りたい。メトリクスは書き込みが絶え間なく、
-          #      /var/lib と一緒に毎時スナップショットを取ると差分だけが太ります。
-          #      失っても困るデータではありません。
-          #   2. syncoid の複製対象から外れる。modules/replication.nix の
-          #      rpool/var/lib は recursive = false なので、子データセットは
-          #      自動的に対象外になります。
-          #
-          # recordsize=16K は時系列の細かい書き込みに合わせたもの。
-          # 既定の 128K のままだと 1 回の小さな更新で 128K 書き直すことになり、
-          # SSD の書き込み量が無駄に増えます。
-          #
-          # マウント先が /var/lib/victoriametrics ではなく
-          # /var/lib/private/victoriametrics である理由:
-          #   victoriametrics.service は DynamicUser=true で動きます。この場合
-          #   systemd は実体を /var/lib/private/<名前> に置き、
-          #   /var/lib/<名前> はそこへの symlink にします。
-          #   /var/lib/victoriametrics を実ディレクトリ (= マウントポイント) に
-          #   すると、systemd が実体を private 配下へ rename しようとして
-          #   EBUSY で失敗します (マウントポイントは rename できないため):
-          #     Failed to set up special execution directory in /var/lib:
-          #     Device or resource busy
-          #   したがって systemd が実際に使う側に直接マウントします。
-          #
-          #   データセット名は rpool/var/lib/victoriametrics のままです。
-          #   名前を private 込みにすると親データセット rpool/var/lib/private が
-          #   必要になりますが、mountpoint=legacy 運用なので名前とマウント先を
-          #   一致させる必要はありません。
+          # Time-series DB (VictoriaMetrics, modules/monitoring.nix). Split off
+          # for its own snapshot cadence and to drop out of syncoid's
+          # rpool/var/lib replication; recordsize=16K matches its small writes;
+          # mounts at /var/lib/private/ (DynamicUser=true — see
+          # docs/storage-zfs.md §4 for why). Rationale: docs/storage-zfs.md §4.
           "var/lib/victoriametrics" =
             fsDataset "/var/lib/private/victoriametrics" ({ recordsize = "16K"; } // notSnapshotted);
 
-          # ログストア (modules/monitoring.nix の Loki)。
-          #
-          # 独立させる理由は VictoriaMetrics と同じ 2 点 (書き込みが絶え間なく、
-          # 失っても再取得の必要が無い) です。recordsize=16K も同じ理由。
-          #
-          # マウント先は /var/lib/loki に直接で問題ありません。
-          # VictoriaMetrics と違い loki.service は DynamicUser ではなく固定
-          # ユーザー "loki" で動くため、/var/lib/private/ への退避 (EBUSY 回避) が
-          # 不要です (nixpkgs の loki NixOS モジュールで確認済み)。
+          # Log store (Loki, modules/monitoring.nix). Same rationale as
+          # VictoriaMetrics above, but mounts directly at /var/lib/loki — loki
+          # runs under a fixed user, not DynamicUser. docs/storage-zfs.md §4.
           "var/lib/loki" =
             fsDataset "/var/lib/loki" ({ recordsize = "16K"; } // notSnapshotted);
 
-          # LLM のモデル置き場 (modules/ollama.nix)。
-          #
-          # 独立させる理由は VictoriaMetrics と同じ 2 点です。
-          #   1. スナップショットを切りたい。GGUF は 1 ファイル数 GiB あり、
-          #      失っても ollama pull で取り直せます。
-          #   2. syncoid の複製対象から外れる (rpool/var/lib は recursive = false)。
-          #      HDD の dpool に数十 GiB のモデルを複製する意味はありません。
-          #
-          # recordsize=1M: 推論時は巨大ファイルの連続読み出しが主で、
-          #   128K だとメタデータと I/O 回数が無駄に増えます。
-          # compression=off: 量子化済みの GGUF はほぼ非圧縮データで、
-          #   zstd を通しても縮まず CPU を捨てるだけです。
-          #
-          # マウント先が /var/lib/private/ollama なのは VictoriaMetrics と
-          # まったく同じ事情です。ollama.service は DynamicUser=true で動くため
-          # (25.05 の services.ollama は User= を指定しても DynamicUser を
-          #  外しません)、実体は /var/lib/private/ollama に置かれます。
-          # /var/lib/ollama をマウントポイントにすると、systemd が実体を
-          # private 配下へ rename しようとして EBUSY で起動に失敗します。
+          # LLM model store (modules/ollama.nix). Split off so GGUF churn (each
+          # re-fetchable via `ollama pull`) doesn't bloat snapshots/replication;
+          # recordsize=1M + compression=off for large, already-compressed reads.
+          # Mounts at /var/lib/private/ollama (DynamicUser=true). docs/storage-zfs.md §4.
           "var/lib/ollama" =
             fsDataset "/var/lib/private/ollama" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
 
-          # rpool/srv/minecraft の親。データセットの入れ物でしかなく、
-          # マウントはしません (/srv 本体は dpool/srv のままです)。
-          # 親を明示的に宣言するのは、disko も zfs recv も中間の
-          # データセットを自動生成しないためです。
+          # Parent placeholder for rpool/srv/minecraft below; not mounted itself
+          # (/srv proper stays on dpool/srv). Declared explicitly because neither
+          # disko nor zfs recv auto-creates intermediate datasets.
           "srv" = {
             type = "zfs_fs";
             options = {
@@ -271,30 +206,14 @@ in
             };
           };
 
-          # Minecraft (FTB Evolution) のワールドと mod。
-          # modules/ftb-evolution.nix のコンテナがここを /data として使います。
-          #
-          # dpool ではなく rpool に置く理由:
-          #   dpool の HDD (ST4000DM004) は SMR です。チャンクの定期オートセーブが
-          #   write(2) で 60 秒以上ブロックし、Minecraft の ServerHangWatchdog が
-          #   「サーバーがハングした」と判断して落とすのを 1 日に 7 回起こしました。
-          #   スレッドダンプはいずれも UnixFileDispatcherImpl.write0 で止まっており、
-          #   mod ではなく純粋な I/O 待ちでした。ZFS は blk-cgroup を通らないため
-          #   IOWeight でも救えず (modules/resource-priority.nix 参照)、
-          #   NVMe に載せる以外に手がありません。
-          #
-          #   rpool は single vdev で冗長性が無いので、ワールドという
-          #   再生成できないデータをここに置くには複製が必須です。
-          #   modules/replication.nix の syncoid が dpool/backup/minecraft へ
-          #   日次で送っています。片方だけ変えないこと。
-          #
-          # 独立したデータセットにしておくと、ワールドだけをスナップショット・
-          # ロールバックできます (modpack 更新で壊れたときの巻き戻しが容易)。
-          #
-          # recordsize は既定の 128K のまま。region ファイルは大きく、
-          # 小さくしてもメタデータが増えるだけで得がありません。
-          # (zfs send/recv はファイルごとの record size を保持するため、
-          #  そもそも移行済みのファイルには変更が遡及しません)
+          # Minecraft (FTB Evolution) world + mods; modules/ftb-evolution.nix
+          # mounts this as /data. Lives on rpool (NVMe), not dpool, because the
+          # dpool HDD is SMR and stalled autosave writes past the server's own
+          # watchdog — see decisions/2026-07-31-minecraft-restarting-on-60s-tick.md.
+          # Not redundant on its own (rpool is single-vdev): modules/replication.nix
+          # syncoid's it to dpool/backup/minecraft daily — do not change one
+          # without the other. recordsize left at default 128K (region files are
+          # large; shrinking only adds metadata overhead).
           "srv/minecraft" = fsDataset "/srv/minecraft" ({ atime = "off"; } // snapshotted);
 
           "tmp"     = fsDataset "/tmp"     ({ sync = "disabled"; } // notSnapshotted);
@@ -302,25 +221,15 @@ in
       };
 
       #########################################################################
-      # dpool — HDD ×2 mirror。データ用。
+      # dpool — HDD ×2 mirror, for data.
       #
-      #   ★ cache vdev (L2ARC) は使いません。読み込みキャッシュは ARC だけで
-      #     処理します。この方針は変更しないでください。★
-      #
-      #   かつては SSD の一部を dpool の cache に充てていましたが、実運用で
-      #   次の障害を起こしたため廃止しました:
-      #     NVMe の I/O タイムアウト → コントローラリセット → キャッシュ供給と
-      #     zfs スレッドが blocked → journald の watchdog タイムアウト →
-      #     シャットダウン不能 → 強制リセット → プール未 export →
-      #     次回起動時に initrd が import に失敗して起動不能。
-      #
-      #   cache は常時 SSD へ書き込むため寿命を確実に削る一方、ARC に十分な
-      #   RAM がある構成では効果がほぼありません (実機では ARC 上限 16 GiB に
-      #   対し実使用 1 GiB 程度で、まったく出番が無かった)。
-      #   DRAM レスの廉価 SSD では書き込みレイテンシ悪化の主因にもなります。
-      #
-      #   読み込み性能が足りないと感じたら、cache を足すのではなく
-      #   machine.nix の arcMaxBytes (= RAM) を増やしてください。
+      # **No cache vdev (L2ARC). Read caching is ARC-only. Do not add one back.**
+      # A cache vdev on the SSD was removed after it contributed to an unbootable
+      # system (NVMe I/O timeout → controller reset → ZFS threads blocked →
+      # journald watchdog → forced reset → pool never exported → initrd import
+      # fails next boot). See decisions/2026-07-30-nvme-dropout-made-system-unbootable.md
+      # and docs/storage-zfs.md §5. If read performance is lacking, raise
+      # arcMaxBytes in machine.nix instead of adding a cache vdev.
       #########################################################################
       dpool = {
         type = "zpool";
@@ -335,9 +244,9 @@ in
             ];
             log = lib.optionals m.useSlog [ { members = [ slogDev ]; } ];
 
-            # special / dedup vdev は使わない。
-            # SSD 1台で special を足すと、その SSD が死んだ時点で
-            # HDD ミラーごと全損する (cache/log と違い special はプールの一部)。
+            # No special/dedup vdev: unlike cache/log, special becomes part of
+            # the pool, so a single-SSD special vdev dying takes the HDD mirror
+            # with it. docs/storage-zfs.md §1 "Do not do this".
           };
         };
         options = {
@@ -349,59 +258,35 @@ in
           "home" = fsDataset "/home" snapshotted;
           "srv"  = fsDataset "/srv"  snapshotted;
 
-          # Minecraft のワールドはここではなく rpool 側にあります。
-          # HDD が SMR で I/O が間に合わず、サーバーが watchdog に落とされて
-          # いたためです (経緯は rpool の srv/minecraft のコメント参照)。
-          # dpool は複製先 (下の backup) としてだけ関わります。
+          # The Minecraft world lives on rpool, not here — see the "srv/minecraft"
+          # comment above. dpool's only role for it is as the replication target
+          # (backup, below).
 
-          # ComfyUI (modules/comfyui.nix) の venv + モデル置き場。
-          #
-          # dpool に置く理由 (rpool の ollama モデルとは逆の判断):
-          #   ComfyUI のチェックポイントは肥大化しやすく (SDXL/Flux 級で
-          #   複数持つと数十〜100GiB超も普通)、rpool は single vdev で
-          #   冗長性が無く容量も有限です。Minecraft を rpool に置いている
-          #   理由 (SMR HDD での書き込み watchdog stall) とは I/O 特性が
-          #   異なり、ComfyUI は大容量・低頻度・非リアルタイムな読み書き
-          #   (チェックポイントの一括ダウンロードと生成開始時の読み出し) が
-          #   主なので、SMR HDD でも問題になりにくいという判断です。
-          #   ただしチェックポイント読み込みが NVMe より多少遅くなる
-          #   可能性はトレードオフとして残ります。
-          #
-          # recordsize=1M / compression=off は ollama のモデル置き場と同じ
-          # 理由です (巨大ファイルの連続読み出し中心、safetensors はほぼ
-          # 非圧縮データなので zstd を通しても縮まない)。
-          #
-          # マウント先は /var/lib/comfyui。ollama/victoriametrics と違い
-          # DynamicUser を使わない固定ユーザーで動かす設計のため (理由は
-          # modules/comfyui.nix 参照)、/var/lib/private/ への retreat は
-          # 不要です。
+          # ComfyUI (modules/comfyui.nix) venv + model store. On dpool (opposite
+          # call from ollama's rpool placement): checkpoints run large (tens to
+          # 100+ GiB) and rpool has finite capacity; ComfyUI's I/O is bulk/
+          # low-frequency/non-realtime, unlike Minecraft's watchdog-sensitive
+          # small writes, so the SMR HDD is an acceptable trade (at some cost to
+          # checkpoint-load latency vs NVMe). recordsize=1M/compression=off for
+          # the same reason as the ollama dataset. Mounts directly at
+          # /var/lib/comfyui — fixed user, not DynamicUser (modules/comfyui.nix).
+          # Rationale: docs/storage-zfs.md §4.
           "comfyui" =
             fsDataset "/var/lib/comfyui" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
 
-          # OpenViking (modules/openviking.nix) のワークスペース/ベクトル DB 置き場。
-          #
-          # dpool は mirror (RAID1) で冗長性があるため、ComfyUI と同じく
-          # notSnapshotted (バックアップ用のスナップショット層は不要というユーザー判断)。
-          #
-          # SMR (ST4000DM004) の注意点: Minecraft は同じ HDD 上で頻繁な小書き込みが
-          # 60 秒超ブロックし watchdog に落とされた実績があるが (上の srv/minecraft の
-          # コメント参照)、OpenViking はリアルタイム watchdog を持つゲームサーバーでは
-          # なくセッション後の非同期書き込みが中心と見て、ComfyUI 同様ここに置く。
-          # 実運用で書き込みが詰まるようなら rpool 側への移設を検討すること。
+          # OpenViking (modules/openviking.nix) workspace/vector DB. On dpool's
+          # mirror for redundancy, notSnapshotted like ComfyUI. Writes are async
+          # and post-session rather than realtime-watchdog-sensitive like
+          # Minecraft, so the SMR HDD is judged acceptable; revisit moving to
+          # rpool if writes stall in practice. docs/storage-zfs.md §4.
           "var/lib/openviking" = fsDataset "/var/lib/openviking" notSnapshotted;
 
-          # rpool の複製先 (modules/replication.nix)。
-          #
-          # rpool は single vdev で冗長性が無いため、SSD が死ぬとシステムが
-          # 丸ごと消えます。ここへ定期的に zfs send しておけば、
-          # ディスク交換後に受信側から巻き戻すだけで復旧できます。
-          #
-          # システム (root / var-lib) だけでなく Minecraft のワールドも
-          # ここへ送っています。ワールドは再生成できない唯一のデータで、
-          # rpool 側にあるためこの複製が最後の砦になります。
-          #
-          # マウントしない (mountpoint = "none")。受信したデータセットが
-          # 元の / や /var を上書きマウントしてしまう事故を防ぐためです。
+          # Replication target for rpool (modules/replication.nix). rpool has no
+          # redundancy, so this daily zfs send is what lets a dead SSD be
+          # recovered by receiving back from here — including the Minecraft
+          # world, the one dataset on rpool that can't be regenerated from the
+          # flake. mountpoint="none" so a received dataset can never shadow-mount
+          # over the live / or /var.
           "backup" = {
             type = "zfs_fs";
             options = {
