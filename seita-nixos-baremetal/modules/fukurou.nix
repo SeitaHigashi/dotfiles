@@ -107,7 +107,7 @@ in
     #   3060 Ti (CUDA0) を llama.cpp のモデル専用にするためです。fukurou は
     #   待機中も約 478 MiB を握り続けます (実測)。1660 SUPER 側の予算は
     #   5.7 GiB で、ここに埋め込みプリセットを置く構想があるので
-    #   (modules/llama-cpp.nix 参照)、478 MiB を先に引いて考えてください。
+    #   (docs/gpu-vram-budget.md 参照)、478 MiB を先に引いて考えてください。
     #
     # ★ 未検証: VOICEVOX core の onnxruntime ★
     #   478 MiB はモデルサイズ (ggml-small.bin = 465 MB) とほぼ一致するので

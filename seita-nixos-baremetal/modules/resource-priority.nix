@@ -131,7 +131,7 @@ in
     # MemoryHigh はソフト上限 (超えると回収圧がかかるだけで kill されない)
     # なので、ollama と足して物理 RAM を超えていても直ちに破綻はしません。
     # ただし両者を常用で同時に動かす想定はありません (VRAM が先に尽きます。
-    # modules/llama-cpp.nix の冒頭コメント参照)。ollama を完全に落として
+    # docs/gpu-vram-budget.md 参照)。ollama を完全に落として
     # こちらへ切り替えたら、ollama 側の 12G を削ってここの予算に回してください。
     #
     # 20G の根拠 (2026-09-21 実測、当時の bonsai-max)。262144 ctx / --no-kv-offload を
