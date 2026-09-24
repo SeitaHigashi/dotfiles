@@ -1,8 +1,8 @@
 let
-  # 公開鍵(暗号化先)はこのホストの SSH ホスト鍵から導出したもの。
-  # 確認方法: ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
-  # 復号側は生の SSH 秘密鍵ではなく /etc/age/host.key を使う
-  # (理由は modules/discord-bot.nix の age.identityPaths のコメント参照)。
+  # Recipient public key, derived from this host's SSH host key:
+  #   ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+  # Decryption uses a derived age identity (/etc/age/host.key), not the raw
+  # SSH private key — see docs/secrets.md.
   host = "age12k54m0g5x0xjpxfa5mg9v8zhp02rnktk94c87mq60fw7udjxaqdsgh6fp4";
 in
 {

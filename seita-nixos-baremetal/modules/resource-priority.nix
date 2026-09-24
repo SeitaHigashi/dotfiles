@@ -1,49 +1,20 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# サービス間の資源優先度 (cgroup v2)。
+# Cross-service CPU/memory priority (cgroup v2), collected in one file.
 #
-# なぜ 1 ファイルにまとめるか:
-#   CPUWeight は絶対値ではなく「同じ階層にいる兄弟同士の取り分の比」です。
-#   ここに挙げたユニットはすべて system.slice 直下の兄弟なので、値は
-#   互いを見比べて初めて意味を持ちます。各モジュールに散らすと
-#   片方だけ書き換えて比率が崩れるため、表として一箇所に置いています。
+# Docs: docs/resource-priority.md (why one file, the podman cgroup-parent
+# quirk, per-service weights/budgets and their measurements).
 #
-# 前提:
-#   - podman のコンテナは、oci-containers が作る systemd サービスの cgroup の
-#     "下" には入りません。conmon が machine.slice 直下の libpod-<id>.scope に
-#     移すため、podman-*.service に CPUWeight を書いてもコンテナ内のプロセス
-#     (Minecraft の JVM) には効きません。実機で確認済み:
-#       podman-ftb-evolution.service/cpu.weight        = 1000  (podman 本体だけ)
-#       machine.slice/libpod-<id>.scope/cpu.weight     = 100   (JVM はこちら)
-#     scope 名はコンテナ ID なので nix から名指しできません。したがって
-#     コンテナには --cgroup-parent で専用スライスを与え、スライス側に
-#     重みを付けます (下の systemd.slices)。
-#     Nice= も podman クライアントにしか効かないので使いません。
-#   - services.ollama は DynamicUser で動きますが、ユニット自身は
-#     system.slice 直下なので同様に扱えます。
-#   - tailscaled は「他のサービスへの到達経路」なので、Minecraft より上に
-#     置いています (下のコメント参照)。優先度を考えるときはサービス単体の
-#     重さではなく、それが落ちたときに何が道連れになるかで見ること。
-#
-# 効かないもの:
-#   - IOWeight: ZFS は blk-cgroup を通らないため、このホストでは無効です。
-#     ディスク I/O の優先度制御は諦めて、CPU とメモリだけで調整しています。
-#   - ZFS ARC はカーネル側の確保でどの cgroup にも計上されません。
-#     MemoryHigh の合計 + arcMaxBytes (16 GiB) が物理 RAM (46 GiB) を
-#     超えないように、自分で足し算して決めること。
-#
-# 確認方法:
-#   systemd-cgtop                        # 実際の取り分
-#   systemctl show -p CPUWeight -p MemoryHigh podman-ftb-evolution
+# When you change this file, update docs/resource-priority.md in the same commit.
 ##############################################################################
 
 let
-  # ユニット名は syncoid モジュールが commands の名前から作ります
-  # (`syncoid-rpool-root` のようにエスケープされる)。名前を直書きすると
-  # replication.nix 側で対象を足したときに漏れるので、そこから引きます。
-  # syncoid モジュール内の escapeUnitName と同じ規則 (英数字・_ . - 以外を "-" に)。
-  # lib には公開されていないので、ここに写しています。
+  # syncoid builds unit names from the commands' names (e.g. escaped into
+  # `syncoid-rpool-root`). Read from config instead of hardcoding, so new
+  # targets added in replication.nix aren't missed here. Mirrors syncoid's own
+  # escapeUnitName (non [a-zA-Z0-9_.\-] -> "-"); not exposed via lib, so
+  # duplicated here.
   escapeUnitName = name:
     lib.concatMapStrings (s: if lib.isList s then "-" else s)
       (builtins.split "[^a-zA-Z0-9_.\\-]+" name);
@@ -56,180 +27,87 @@ let
 in
 {
   systemd.services = syncoidUnits // {
-    ##########################################################################
-    # tailscaled — Minecraft より上。
-    #
-    # 理由は 2 つあります。
-    #   1. これが落ちると Grafana も Ollama も届かなくなります (network.nix と
-    #      monitoring.nix のとおり、どちらも tailscale0 限定で公開しています)。
-    #      障害調査でホストへ入る経路そのものなので、飢えさせると
-    #      「重いから直しに行きたいのに入れない」が起きます。
-    #   2. tailscale は WireGuard の暗号化をカーネルではなく tailscaled の
-    #      ユーザー空間で回します。tailnet 越しに量を流すとき (Ollama の応答、
-    #      Grafana の描画) は実際に CPU を食うので、重みが効いてきます。
-    #
-    # 常時食うプロセスではないため、高い重みを与えても Minecraft の取り分は
-    # ほぼ減りません。CPUWeight は「使おうとしたときの比」であって予約ではなく、
-    # tailscaled が要求しない間は 100% が他へ回ります。
-    # メモリは数十 MB のデーモンなので MemoryLow は保険の値です。
-    ##########################################################################
+    # tailscaled — above Minecraft. Rationale: docs/resource-priority.md.
     tailscaled.serviceConfig = {
       CPUWeight = 2000;
       MemoryLow = "256M";
     };
 
-    # Minecraft (podman) はここではなく下の systemd.slices で設定します。
-    # コンテナはこのユニットの cgroup の下にいないためです (先頭のコメント参照)。
+    # Minecraft (podman) is configured below via systemd.slices, not here —
+    # the container isn't under this unit's cgroup. See docs/resource-priority.md.
 
-    ##########################################################################
-    # Ollama — 最劣後。
-    #
-    # 推論が GPU に載っているうちは CPU をほとんど使いませんが、VRAM 14 GiB に
-    # 収まらないモデルを読ませると CPU オフロードで 8 スレッドを埋め尽くします
-    # (Ryzen 3 3300X は 4C/8T しかありません)。そのとき Minecraft から CPU を
-    # 奪わせないための重みです。空いていれば低い重みでも全部使えます。
-    #
-    # MemoryHigh はソフト上限 (超えると回収圧がかかるだけで kill されない)。
-    # 巨大モデルを読んだときにページキャッシュごと他を押し出すのを抑えます。
-    #
-    # 2026-08-08: 14G → 12G に縮小。通常時の実測 RSS は約 7.5G で、14G は
-    # 常用には過大でした。gemma4:26b (17G) のような VRAM 溢れ時の CPU
-    # オフロードにも 12G あれば一定の余地はあります (26b は元々低速で常用
-    # モデルではないため、多少タイトでも実運用への影響は小さい判断)。
-    # 浮いた 2G は ComfyUI の予算に回しています (下記コメント参照)。
-    ##########################################################################
-    # ★ 2026-09-21: modules/ollama.nix の enable = false に合わせて無効化 ★
-    #   ここを残すと、ollama.service 本体が生成されなくなったあとも
-    #   systemd.services.ollama の定義だけが残り、ExecStart を持たない
-    #   壊れたユニットが /etc/systemd/system に出力されます (実機で確認済み)。
-    #   起動されることはありませんが、node_exporter が inactive として報告し
-    #   続けるため modules/alerting.nix の死活監視が鳴りっぱなしになります。
-    #   ollama を戻すときはここも戻すこと。
+    # ollama — lowest priority when enabled. Commented out to match
+    # services.ollama.enable = false (modules/ollama.nix); restore together.
+    # See docs/decisions/2026-09-21-ollama-serviceconfig-broken-unit.md for
+    # why leaving this active with ollama disabled breaks the host, and
+    # docs/resource-priority.md for the budget history.
     # ollama.serviceConfig = {
     #   CPUWeight = 20;
     #   MemoryHigh = "12G";
     # };
 
-    ##########################################################################
-    # llama.cpp ルーター (modules/llama-cpp.nix) — ollama と同じ最劣後。
-    #
-    # 性格は ollama とほぼ同じで、推論が GPU に載っているうちは CPU を
-    # ほとんど使いません。違いは 2 点:
-    #
-    #   1. ルーターは子プロセス (モデルごとの llama-server) を fork します。
-    #      子は同じ cgroup に入るので、ここの重みと上限はルーター全体に
-    #      まとめて効きます。
-    #   2. かつて bonsai-max プリセット (262144 context, --no-kv-offload) が
-    #      KV キャッシュを GPU ではなくシステム RAM に置いており、ollama より
-    #      遥かに RAM を食っていました。MemoryHigh を ollama の 12G より広く
-    #      取っているのはその名残です。
-    #      ★ bonsai-max は 2026-09-22 に削除済み ★ 現在残っている
-    #      プリセットは全部 KV を GPU に置くので、RAM の要求は下の実測値より
-    #      大幅に低くなっています。20G はソフト上限なので実害は無く、
-    #      余裕として据え置いていますが、下げる余地があります。
-    #
-    # MemoryHigh はソフト上限 (超えると回収圧がかかるだけで kill されない)
-    # なので、ollama と足して物理 RAM を超えていても直ちに破綻はしません。
-    # ただし両者を常用で同時に動かす想定はありません (VRAM が先に尽きます。
-    # docs/gpu-vram-budget.md 参照)。ollama を完全に落として
-    # こちらへ切り替えたら、ollama 側の 12G を削ってここの予算に回してください。
-    #
-    # 20G の根拠 (2026-09-21 実測、当時の bonsai-max)。262144 ctx / --no-kv-offload を
-    # ルーター経由でロードし、子プロセスの RSS を測った値:
-    #   ロード直後 (KV 未充填)        10.2 GiB
-    #   4060 トークンのプロンプト後   11.0 GiB
-    # つまりロードしただけで約 10 GiB、20G はその約 2 倍にあたります。
-    #
-    # ★ 11.0 GiB を上限と読まないこと ★ これは 262144 のうち 4K しか
-    #   使っていない状態です。context が実際に埋まるにつれて RSS は伸び続け、
-    #   20G はその伸びしろとして取ってあります。
-    #
-    # 常用してみて systemd-cgtop の memory.high 超過が頻発するようなら
-    # 上げ下げしてください。ARC 上限 16 GiB との合計に注意 (物理 46 GiB)。
-    ##########################################################################
+    # llama.cpp router (modules/llama-cpp.nix) — same lowest priority as
+    # ollama. Budget history and current sizing rationale: docs/resource-priority.md.
     llama-cpp.serviceConfig = {
       CPUWeight = 20;
       MemoryHigh = "20G";
     };
 
-    # Open WebUI は RAG の埋め込み以外はほぼ待ち受けているだけ。
+    # Open WebUI is mostly idle except for RAG embedding.
     open-webui.serviceConfig = {
       CPUWeight = 20;
       MemoryHigh = "4G";
     };
 
-    ##########################################################################
-    # n8n — 待ち受けている間はほぼ無負荷ですが、ワークフローの実行時だけ
-    # Node のプロセスが跳ねます。Minecraft から CPU を奪わせないよう
-    # Ollama / Open WebUI と同じ最劣後に置いています。
-    #
-    # MemoryHigh はソフト上限。n8n 2.x は task runner を別プロセスで回すため、
-    # ワークフロー次第でメモリが伸びます。ここで頭打ちにしておかないと
-    # ZFS ARC (16 GiB) と Minecraft のヒープ (8 GiB) を圧迫します。
-    ##########################################################################
+    # n8n — near-idle while waiting, spikes only during workflow runs.
+    # Same lowest priority as ollama/Open WebUI so it can't starve Minecraft.
+    # MemoryHigh is a soft ceiling: n8n 2.x runs task runners in separate
+    # processes, so memory grows with the workflow; capped to avoid pressuring
+    # ZFS ARC (16 GiB) and Minecraft's heap (8 GiB).
     n8n.serviceConfig = {
       CPUWeight = 20;
       MemoryHigh = "2G";
     };
 
-    ##########################################################################
-    # ComfyUI — 生成中だけ GPU/CPU を使う、n8n と同じ性質のワークロード。
-    #
-    # MemoryHigh の予算について:
-    #   arcMaxBytes (16G) + ollama (12G) + open-webui (4G) + n8n (2G) で
-    #   すでに 34G を自己申告しており、Minecraft のヒープ相当 (8G) を足すと
-    #   物理 RAM 46G にほぼ達します。ここに 8G を足すとなお自己申告上の予算は
-    #   超過しますが、MemoryHigh はソフトな reclaim 閾値なので kill はされません。
-    #
-    #   2026-08-08: 6G → 8G に変更。実測で ComfyUI (main.py) の RSS が生成中
-    #   8.1G まで伸び、6G では常時 MemoryHigh を超過して reclaim され続け、
-    #   `/proc/pressure/memory` の full avg が生成中ずっと 45〜50% まで
-    #   悪化する実害が出ていました (実測 RSS に予算を合わせて解消)。
-    #   併せて modules/zfs.nix に zfs_arc_sys_free を設定し、ARC がシステム
-    #   全体の逼迫時により早く縮むようにしています — ARC はどの cgroup にも
-    #   計上されないため (下記「効かないもの」参照)、この予算の是正だけでは
-    #   実メモリの逼迫そのものは解消しません。ComfyUI と ollama が同時に
-    #   重い処理をしてなお逼迫するようなら、まず ollama の 12G を再検討してください。
-    #
-    # comfyui-setup (venv 構築) は一度きりの軽い処理なので最劣後のままで十分。
-    ##########################################################################
+    # ComfyUI — same "only busy while generating" shape as n8n.
+    # Budget history: docs/resource-priority.md.
     comfyui-setup.serviceConfig.CPUWeight = 20;
     comfyui.serviceConfig = {
       CPUWeight = 20;
       MemoryHigh = "8G";
     };
 
-    ##########################################################################
-    # 監視 — 軽いが、障害時こそ動いていてほしいので極端には下げない。
-    # cadvisor だけは全コンテナを走査して周期的に重くなるので落とします。
+    # Monitoring — light, but should keep running especially during an
+    # incident, so not pushed too low. cadvisor is the exception: it scans
+    # every container periodically and gets heavy, so it's deprioritized.
     #
-    # 複製 (syncoid) は上の syncoidUnits で CPUWeight = 20 にしています。
-    # 夜間の一括転送なので遅れても実害がありません。
+    # Replication (syncoid) is set to CPUWeight = 20 above (syncoidUnits) —
+    # a nightly bulk transfer, delay is harmless.
     #
-    # podman-mc-monitor はコンテナなのでここでは設定できません。
-    # machine.slice 側 (下記) でまとめて下げています。
-    ##########################################################################
+    # podman-mc-monitor is a container, so it can't be configured here —
+    # it's deprioritized via its machine.slice membership below instead.
     cadvisor.serviceConfig.CPUWeight = 20;
   };
 
   ############################################################################
-  # スライス — podman コンテナ用。
+  # Slices — for podman containers.
   #
-  # ここは system.slice の中ではなく cgroup ツリーの最上位の兄弟なので、
-  # 上の CPUWeight とは別の階層で比較されます。まず root 直下で
+  # These sit as top-level siblings in the cgroup tree, not inside
+  # system.slice, so they're compared at a different level than the
+  # CPUWeight values above: first split at the root among
   #   system.slice : minecraft.slice : machine.slice : user.slice
-  # の比で分配され、その中を上の重みでさらに分けます。
+  # then further split within each by the weights above.
   #
-  # system.slice を既定の 100 から 1000 に引き上げているのは、Minecraft を
-  # 1000 にした結果 tailscaled (system.slice の中で 2000) が root 段で
-  # 頭打ちになるのを防ぐためです。両者を同格にして、飽和時は
-  # 「Minecraft に半分、system.slice 側に半分 (その中は tailscaled 優先)」
-  # という分かりやすい形にしています。
+  # system.slice is raised from the default 100 to 1000 so that, with
+  # Minecraft at 1000, tailscaled (weight 2000 *within* system.slice) isn't
+  # capped out at the root level. Making the two equal gives a simple split
+  # under saturation: "half to Minecraft, half to system.slice (tailscaled
+  # prioritized within that half)".
   ############################################################################
   systemd.slices = {
-    # Minecraft コンテナ専用 (ftb-evolution.nix の --cgroup-parent と対)。
-    # MemoryMax ではなく MemoryLow なのは前と同じ理由 — 上限を掛けると
-    # JVM がヒープを確保できずに落ちます。
+    # Dedicated to the Minecraft container (paired with ftb-evolution.nix's
+    # --cgroup-parent). MemoryLow rather than MemoryMax for the same reason
+    # as elsewhere — a hard cap makes the JVM fail to allocate heap and crash.
     minecraft = {
       description = "Minecraft server container slice";
       sliceConfig = {
@@ -238,11 +116,12 @@ in
       };
     };
 
-    # 上記以外のコンテナ (podman-mc-monitor) の置き場。podman の既定の
-    # 親スライスなので、明示的に指定していないコンテナはここに落ちます。
+    # Home for every other container (e.g. podman-mc-monitor) — podman's
+    # default parent slice, so anything without an explicit cgroup-parent
+    # lands here.
     machine.sliceConfig.CPUWeight = 20;
 
-    # 上のコメントのとおり、root 段で minecraft.slice と同格にする。
+    # Matches minecraft.slice at the root level, per the comment above.
     system.sliceConfig.CPUWeight = 1000;
   };
 }

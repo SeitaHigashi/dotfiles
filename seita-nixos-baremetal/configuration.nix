@@ -5,63 +5,63 @@ let
 in
 {
   ############################################################################
-  # ブートローダー
-  #   ZFS + systemd-boot。/boot は SSD の EFI パーティション (vfat)。
+  # Bootloader
+  #   ZFS + systemd-boot. /boot is the SSD's EFI partition (vfat).
   ############################################################################
   boot.loader.systemd-boot.enable = true;
-  boot.loader.systemd-boot.configurationLimit = 20;   # /boot (1GiB) が溢れないように
+  boot.loader.systemd-boot.configurationLimit = 20;   # keep /boot (1GiB) from filling up
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # /tmp は tmpfs ではなく rpool/tmp (disko/default.nix で定義) を使う。
+  # /tmp uses rpool/tmp (defined in disko/default.nix), not tmpfs.
   boot.tmp.useTmpfs = lib.mkDefault false;
   boot.tmp.cleanOnBoot = true;
 
   ############################################################################
-  # ZFS 必須設定
-  #   hostId は他マシンからの誤インポートを防ぐ識別子。
-  #   install.sh が ISO 上の /etc/machine-id から生成して machine.nix に埋めます。
-  #   インストール後は変更しないこと。
+  # Required ZFS settings
+  #   hostId prevents accidental pool import from another machine. Generated
+  #   by install.sh from the ISO's /etc/machine-id into machine.nix. Do not
+  #   change after install.
   ############################################################################
   networking.hostId = m.hostId;
   networking.hostName = m.hostName;
-  # IP アドレス・DNS・NetworkManager の有無は modules/network.nix が持ちます。
+  # IP address, DNS, and whether NetworkManager is used live in modules/network.nix.
 
   time.timeZone = "Asia/Tokyo";
 
   ############################################################################
-  # ロケールとキーボード
+  # Locale and keyboard
   #
-  # 表示言語は英語、キーボードは日本語配列。
-  #   - エラーメッセージやログが英語になるので、検索・報告がしやすい
-  #   - 記号の位置は物理キーボードどおり (@ [ ] : _ など)
+  # Display language is English, keyboard layout is Japanese.
+  #   - error messages and logs stay in English, easier to search/report
+  #   - symbol positions match the physical keyboard (@ [ ] : _ etc.)
   ############################################################################
   i18n.defaultLocale = "en_US.UTF-8";
 
-  # 日本語ロケールも生成しておく。
-  # これが無いと ja_JP.UTF-8 を要求するアプリで文字化けや警告が出ます。
-  # 個別に日本語で使いたいときは  LANG=ja_JP.UTF-8 <command>  で切り替え可。
+  # Also generate the Japanese locale.
+  # Without it, apps that require ja_JP.UTF-8 show mojibake or warnings.
+  # To use Japanese for a single command: LANG=ja_JP.UTF-8 <command>
   i18n.supportedLocales = [
     "en_US.UTF-8/UTF-8"
     "ja_JP.UTF-8/UTF-8"
     "C.UTF-8/UTF-8"
   ];
 
-  # 日付・通貨・紙サイズなど、言語とは別に地域依存の表示を日本にしたい場合は
-  # 下のコメントを外してください (メッセージは英語のまま)。
+  # To use Japan-local formatting for dates/currency/paper size while keeping
+  # messages in English, uncomment below.
   # i18n.extraLocaleSettings = {
   #   LC_TIME = "ja_JP.UTF-8";
   #   LC_MONETARY = "ja_JP.UTF-8";
   #   LC_PAPER = "ja_JP.UTF-8";
   # };
 
-  # コンソール (TTY) のキーマップ: 日本語 106/109 配列
+  # Console (TTY) keymap: Japanese 106/109 layout
   console.keyMap = "jp106";
 
-  # X / Wayland のキーボード配列: 日本語
+  # X / Wayland keyboard layout: Japanese
   services.xserver.xkb.layout = "jp";
 
   ############################################################################
-  # ユーザー
+  # Users
   ############################################################################
   users.users.${m.userName} = {
     isNormalUser = true;
@@ -73,22 +73,22 @@ in
 
   users.users.root = {
     hashedPassword = m.rootHashedPassword;
-    # ISO で使った鍵を root にも引き継いでおく (復旧用)
+    # Carry the key used on the ISO over to root as well (for recovery)
     openssh.authorizedKeys.keys = m.userSshKeys;
   };
 
-  # 鍵もパスワード認証も無い = SSH では入れない、という状態を検出して警告する。
-  # (root パスワードは nixos-install の対話や passwd で /etc/shadow に直接
-  #  設定できるため、コンソールログインまで不可能になるとは限らない)
+  # Warn if there's no key and no password auth, i.e. SSH login is impossible.
+  # (root's password can still be set directly in /etc/shadow via nixos-install's
+  #  prompt or `passwd`, so this doesn't necessarily mean console login is dead too.)
   warnings = lib.optional (m.userSshKeys == [ ] && !m.allowPasswordAuth) ''
-    machine.nix の userSshKeys が空で、かつ allowPasswordAuth = false です。
-    このままでは SSH でログインできません (コンソールログインは可能)。
-    エラーは "Permission denied (publickey,keyboard-interactive)" になります。
-    passwd で設定したパスワードはコンソールと sudo にしか効きません。
+    machine.nix's userSshKeys is empty and allowPasswordAuth = false.
+    SSH login is not possible as configured (console login still is).
+    The error will be "Permission denied (publickey,keyboard-interactive)".
+    A password set via passwd only works for console and sudo.
 
-    どちらかを行ってください:
-      - userSshKeys に公開鍵を追加する (推奨)
-      - allowPasswordAuth = true にする
+    Do one of:
+      - add a public key to userSshKeys (recommended)
+      - set allowPasswordAuth = true
   '';
 
   ############################################################################
@@ -99,7 +99,7 @@ in
     auto-optimise-store = true;
   };
 
-  # /nix が HDD にある場合 GC は重い処理になるので定期実行に任せる。
+  # GC is heavy when /nix is on HDD, so leave it to the periodic schedule.
   nix.gc = {
     automatic = true;
     dates = "weekly";
@@ -107,70 +107,73 @@ in
   };
 
   ############################################################################
-  # 基本パッケージ
+  # Base packages
   ############################################################################
-  # neovim は modules/unstable.nix 経由で unstable から入ります。
-  # ここに書くと stable 版と衝突するので、追加しないこと。
+  # neovim comes from unstable via modules/unstable.nix.
+  # Do not add it here — it would conflict with the stable version.
   environment.systemPackages = with pkgs; [
-    vim        # initrd や単一ユーザーモードでの保険として残す
+    vim        # kept as a fallback for initrd / single-user mode
     git
     htop
     tmux
     pciutils
     usbutils
   ];
-  # multica-cli は stable に無いため modules/unstable.nix 側で追加 (pkgs.unstable.multica-cli)。
+  # multica-cli isn't in stable, so it's added via modules/unstable.nix (pkgs.unstable.multica-cli).
 
-  # sudoedit / systemctl edit / git commit などが nvim を使うようにする。
+  # Make sudoedit / systemctl edit / git commit etc. use nvim.
   environment.variables.EDITOR = "nvim";
 
-  # `nix profile install` / `nix shell` など対話的な CLI 操作での unfree 許可。
-  # システム全体のビルド (modules/gpu.nix の allowUnfreePredicate) とは別物 —
-  # そちらは NVIDIA/n8n/open-webui など個別許可のみで、ここを true にしても
-  # nixos-rebuild の評価には影響しません (nix コマンドが読む NIXPKGS_ALLOW_UNFREE
-  # 環境変数と、モジュールの nixpkgs.config.allowUnfreePredicate は別経路のため)。
+  # Unfree allowance for interactive CLI use (`nix profile install` / `nix shell`).
+  # Separate from the whole-system build's allowance
+  # (modules/unfree.nix's allowUnfreePredicate, individual packages only) —
+  # setting this to true doesn't affect nixos-rebuild's evaluation, since the
+  # NIXPKGS_ALLOW_UNFREE env var (read by nix commands) and the module's
+  # nixpkgs.config.allowUnfreePredicate are separate code paths.
   environment.variables.NIXPKGS_ALLOW_UNFREE = "1";
 
   ############################################################################
-  # SSH (インストール後も SSH で入る前提)
+  # SSH (assumes SSH access after install too)
   ############################################################################
   services.openssh = {
     enable = true;
     settings = {
-      # machine.nix の allowPasswordAuth で切り替え。
-      # false のときは公開鍵 (userSshKeys) が唯一のログイン手段になります。
+      # Toggled via machine.nix's allowPasswordAuth.
+      # When false, the public key (userSshKeys) is the only way to log in.
       PasswordAuthentication = m.allowPasswordAuth;
 
-      # root はパスワードでは入れない。鍵があれば可 (復旧用)。
-      # allowPasswordAuth = true にしても、ここは変えないこと。
+      # root cannot log in with a password. Key-based root login is allowed
+      # (for recovery). Do not change this even if allowPasswordAuth = true.
       PermitRootLogin = "prohibit-password";
     };
   };
 
   ############################################################################
-  # ハードウェアウォッチドッグ
+  # Hardware watchdog
   #
-  # 2026-08-17、OOM でも高負荷でもなくカーネルログに一切エラーを残さないまま
-  # 完全フリーズし、手動で電源断するまで復帰しなかった事例が発生 (原因未特定)。
-  # 再発時に人手を介さず復帰できるよう、SP5100/SB800 TCO (AMD チップセット
-  # 内蔵、sp5100_tco) を使う。ハードウェア検出で自動ロードされ /dev/watchdog
-  # が既に存在するため、kernelModules への追記は不要 (起動ログで確認済み)。
+  # 2026-08-17: the host froze completely with no OOM, no high load, and no
+  # error in the kernel log, and did not recover until manually power-cycled
+  # (root cause unidentified). To recover unattended if this recurs, this uses
+  # SP5100/SB800 TCO (built into the AMD chipset, sp5100_tco). It's
+  # auto-loaded by hardware detection and /dev/watchdog already exists, so no
+  # kernelModules entry is needed (confirmed via boot log).
   #
-  # runtimeTime: systemd (PID1) がこの間隔で叩き続ける。PID1 ごと応答不能に
-  #   なった場合だけ、この秒数後にハードウェアリセットがかかる。
-  # rebootTime: reboot/shutdown 処理自体がハングした場合の保険。ZFS スレッドが
-  #   blocked して shutdown が完走しない事例が過去にあった (disko/default.nix
-  #   の dpool コメント参照) ため、無限に待たず強制リセットさせる。
-  #   boot.zfs.forceImportRoot = true (modules/zfs.nix) 済みなので、
-  #   強制リセット後に次回起動の import が失敗することはない。
-  #   通常の shutdown (podman コンテナ停止・ZFS unmount 等) は数秒〜1分程度
-  #   なので、余裕を見て 3分に設定 (誤検知でハードリセットしないため)。
+  # runtimeTime: systemd (PID1) pets the watchdog at this interval. A hardware
+  #   reset only fires if PID1 itself stops responding for this long.
+  # rebootTime: fallback for a hung reboot/shutdown itself. ZFS threads have
+  #   blocked shutdown from completing before (see the dpool comment in
+  #   disko/default.nix), so this forces a reset rather than waiting forever.
+  #   Safe to force-reset because boot.zfs.forceImportRoot = true
+  #   (modules/zfs.nix) is already set, so import won't fail on next boot.
+  #   Normal shutdown (stopping podman containers, ZFS unmount, etc.) takes
+  #   seconds to about a minute, so 3 minutes leaves margin against false
+  #   positives triggering a hard reset.
   ############################################################################
   systemd.watchdog = {
     runtimeTime = "30s";
     rebootTime = "3min";
   };
 
-  # 初回インストール時の NixOS バージョン。動作させ続ける限り変更しないこと。
+  # NixOS version at first install. Do not change while this system keeps running.
   system.stateVersion = "25.05";
 }

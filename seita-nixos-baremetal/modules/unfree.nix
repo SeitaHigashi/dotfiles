@@ -1,12 +1,13 @@
 { lib, ... }:
 
 ##############################################################################
-# unfree パッケージの許可一覧。
+# The single, only place nixpkgs.config.allowUnfreePredicate is defined.
+# It's a function, so it can't be merged across modules — a second definition
+# elsewhere is a hard conflict. Individually allowlisted rather than a
+# blanket allowUnfree = true, to avoid accidentally pulling in unrelated
+# non-free packages. Details and per-package rationale: docs/nixpkgs-channels.md
 #
-# nixpkgs.config.allowUnfreePredicate は関数なのでモジュール間でマージできず、
-# 2 箇所で定義すると衝突エラーになります。そのため個別許可が要る unfree
-# パッケージはすべてここに集約します (全面的な allowUnfree = true にはせず、
-# うっかり別の非フリーパッケージが混入するのを防ぐため)。
+# When you change this file, update docs/nixpkgs-channels.md in the same commit.
 ##############################################################################
 
 {
@@ -16,28 +17,17 @@
       name = lib.getName pkg;
     in
     builtins.elem name [
-      # NVIDIA のプロプライエタリドライバ (modules/gpu.nix)。
-      "nvidia-x11"
+      "nvidia-x11" # proprietary NVIDIA driver (modules/gpu.nix)
       "nvidia-settings"
       "nvidia-persistenced"
-
-      # n8n は Sustainable Use License (再配布不可) で非フリー扱い (modules/n8n.nix)。
-      "n8n"
-
-      # Open WebUI は 0.6.x では MIT でしたが、独自の Open WebUI License に
-      # 変わり非フリー扱いになりました (ブランド表示の除去や一定規模を超える
-      # 利用に制限がかかる条項が入っています)。modules/ollama.nix で
-      # unstable 版を使うためにここでの許可が要ります。
-      "open-webui"
-
-      # Brave ブラウザは公式ビルドの配布条件 (商標・再配布条件) により
-      # nixpkgs では unfree 扱い (modules/unstable.nix)。
-      "brave"
+      "n8n" # Sustainable Use License, non-redistributable (modules/n8n.nix)
+      "open-webui" # was MIT through 0.6.x, now the proprietary Open WebUI License (modules/ollama.nix)
+      "brave" # unfree per official build's distribution/trademark terms (modules/unstable.nix)
     ]
-    # CUDA ランタイム (ollama-cuda が引く cuda_cudart / libcublas / ...) も
-    # NVIDIA の非フリーライセンスです。個数が多く名前も版ごとに増減するため、
-    # 1 つずつ列挙せず接頭辞で通します。それでも allowUnfree = true より
-    # ずっと狭い許可です。
+    # CUDA runtime deps (pulled in by ollama-cuda: cuda_cudart, libcublas, ...)
+    # are also NVIDIA's non-free license. Too many, and too version-churny,
+    # to list individually — allowed by prefix instead. Still far narrower
+    # than allowUnfree = true.
     || lib.hasPrefix "cuda" name      # cuda_cudart, cuda_cccl, cuda_nvcc, ...
     || lib.hasPrefix "libcu" name     # libcublas, libcurand, libcusparse, ...
     || lib.hasPrefix "libnv" name     # libnvjitlink, libnvidia-container, ...

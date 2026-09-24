@@ -1,61 +1,27 @@
 { inputs, config, lib, pkgs, ... }:
 
 ##############################################################################
-# stable ベースのまま、選んだツールだけ unstable から引くための仕組み。
+# Pulls selected leaf packages from nixpkgs-unstable while the base stays on
+# stable. Full rationale, the unfree/allowlist interaction, and the
+# nixpkgs-unstable pin: docs/nixpkgs-channels.md
 #
-# なぜこの向きなのか:
-#   「カーネルだけ stable、他は unstable」はできません。カーネルモジュール
-#   (ZFS を含む) はカーネル本体と同じ nixpkgs でビルドされている必要があり、
-#   カーネル・ZFS・kmod 群は分離不可能なセットだからです。
-#   そのため逆に、土台を stable に固定したうえで、葉のパッケージだけを
-#   unstable から取ってきます。
+# Do not add: the kernel or kernel modules (linuxPackages*, zfs, the NVIDIA
+# driver), systemd, glibc, or anything on the systemd-boot path — all lead
+# directly to an unbootable system. This file is for user-facing tools only.
 #
-# 使い方:
-#   下の unstablePackages にパッケージ名を足すだけ。
-#   個別に参照したい場合は他のモジュールから pkgs.unstable.<name> と書けます。
-#
-# 入れてはいけないもの:
-#   - カーネル / カーネルモジュール (linuxPackages*, zfs, nvidia ドライバ等)
-#   - systemd, glibc, systemd-boot まわり
-#   いずれも起動不能に直結します。ここは「ユーザーが直接使うツール」専用です。
-#
-# 注意:
-#   unstable 由来のパッケージは依存ライブラリも unstable 側のものを引くため、
-#   その分だけビルド/ダウンロードが増えます (stable 側と共有されない)。
-#   数個〜十数個なら誤差ですが、大きなものを大量に入れると効いてきます。
+# When you change this file, update docs/nixpkgs-channels.md in the same commit.
 ##############################################################################
 
 let
-  # ここに書いたものが unstable から来ます。
+  # Packages listed here come from nixpkgs-unstable. Reasons for each:
+  # docs/nixpkgs-channels.md
   unstablePackages = with pkgs.unstable; [
     neovim
-
-    # Grafana Labs 公式の MCP サーバー。Claude Code から Grafana の
-    # ダッシュボードやアラート、VictoriaMetrics への PromQL を読むために使います。
-    # stable 25.05 には無いパッケージなので unstable から。
-    #
-    # 起動設定 (URL とトークンのファイルパス、--disable-write) は
-    # このリポジトリではなく ~/.claude.json 側にあります — MCP クライアントの
-    # 設定であって NixOS の構成ではないためです。詳細は CLAUDE.md を参照。
-    mcp-grafana
-
-    # Brave ブラウザ。unfree のため modules/unfree.nix での許可が要ります。
-    brave
-
-    # Multica の CLI/daemon。stable 25.05 には無いパッケージなので unstable から。
-    # 自前ホストしているサーバー本体は modules/multica.nix (podman) 側です。
-    multica-cli
-
-    # OpenCode — Multica のランタイム (プロトコルファミリー) として Ollama の
-    # ローカルモデルを直接使うために追加。claude プロトコルは Anthropic API
-    # 専用で Ollama を喋れないため、Ollama をネイティブ対応する OpenCode を
-    # 経由させています。プロバイダ設定は ~/.config/opencode/opencode.json
-    # (このリポジトリの管理外、ユーザーのホームディレクトリ直下) 側です。
-    opencode
-
-    # Node.js 最新版。OpenViking を Claude Code と MCP 経由で連携するのに使う
-    # (npx でサーバーを起動する用途)。stable 25.05 は 22.x 止まりなので unstable から。
-    nodejs
+    mcp-grafana # Grafana Labs' official MCP server; launch config lives in ~/.claude.json, see CLAUDE.md
+    brave # unfree — see modules/unfree.nix
+    multica-cli # server itself is hosted via modules/multica.nix (podman)
+    opencode # Multica's runtime protocol for talking to ollama's local models; provider config in ~/.config/opencode/opencode.json (outside this repo)
+    nodejs # runs OpenViking's MCP server via npx
   ];
 in
 {
@@ -63,7 +29,7 @@ in
     (final: prev: {
       unstable = import inputs.nixpkgs-unstable {
         inherit (final.stdenv.hostPlatform) system;
-        # unfree の許可設定などを stable 側と揃える
+        # keep unfree allowance etc. consistent with the stable side
         inherit (prev) config;
       };
     })
