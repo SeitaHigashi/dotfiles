@@ -8,7 +8,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 単一ベアメタルサーバー (`seita-nixos-baremetal`) の NixOS 構成。SSD×1 + HDD×2 mirror の ZFS 上で動き、
 ディスクレイアウトは disko で宣言的に管理されます。ホームサーバー用途として Minecraft サーバー、
-監視スタック、ローカル LLM が同居しています。詳細な設計意図と障害事例は [README.md](README.md) にあります。
+監視スタック、ローカル LLM が同居しています。詳細な設計意図と障害事例は `docs/` にあり、
+[README.md](README.md) がその目次です。
+
+## ドキュメントの置き方
+
+経緯・実測値・手順は `.nix` のコメントではなく `docs/` に書きます。置き場の表は README.md の
+「docs の置き方」。要点:
+
+- `.nix` のコメントには**その行の制約だけ**を短く書き (「実測上限なので上げない」など)、詳細は
+  `docs/...` へのポインタにする。
+- **`.nix` を変えたら、ポインタ先の docs も同じコミットで直す。** 数値 (VRAM、context 上限、ポート) を
+  変えたときは特に。docs が古くなることがこの方式の最大のリスクです。
+- 新しい docs を足したら README.md の目次にも追記する。
+- 移行はモジュール単位で進行中。README.md の「まだ docs に移していないモジュール」にあるものは、
+  従来どおり `.nix` のコメントが正です。
 
 ## コマンド
 
