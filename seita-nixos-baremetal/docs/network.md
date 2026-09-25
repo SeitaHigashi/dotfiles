@@ -139,6 +139,8 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 | 9446 | fukurou-webui via Serve | `modules/reverse-proxy.nix` |
 | 9447 | fukurou-server (wss) via Serve | `modules/reverse-proxy.nix` |
 | 9448 | llama.cpp via Serve | `modules/reverse-proxy.nix` |
+| 9449 | AutoMuteUs galactus via Serve | `modules/reverse-proxy.nix` |
+| 9450 | AutoMuteUs API via Serve | `modules/reverse-proxy.nix` |
 | 10000 | Multica GitHub webhook (Funnel, public internet) | `modules/reverse-proxy.nix` |
 | 1933 | OpenViking (direct) | `modules/openviking.nix` |
 | 7878 | fukurou-server (direct WebSocket) | `modules/fukurou.nix` |

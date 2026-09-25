@@ -36,6 +36,9 @@ let
   # wss:// endpoint for fukurou-server, used by fukurou-webui (docs/network.md).
   fukurouServerWssUrl = "wss://${fqdn}:9447";
   llamaCppUrl = "https://${fqdn}:9448";
+  # AutoMuteUs: AmongUsCapture connects to galactus and the API (tailnet only).
+  automuteusGalactusUrl = "https://${fqdn}:9449";
+  automuteusApiUrl = "https://${fqdn}:9450";
 
   # Must match modules/multica.nix's backendHostPort — the webhook relay
   # nginx below forwards to it.
@@ -68,6 +71,8 @@ let
     { path = null;       httpsPort = 9445;  port = 8082;                          note = "multica-backend"; }
     { path = null;       httpsPort = 9446;  port = 8765;                          note = "fukurou-webui"; }
     { path = null;       httpsPort = 9447;  port = 7878;                          note = "fukurou-server (wss, for fukurou-webui)"; }
+    { path = null;       httpsPort = 9449;  port = 8123;                          note = "automuteus-galactus (AmongUsCapture)"; }
+    { path = null;       httpsPort = 9450;  port = 8084;                          note = "automuteus-api (capture links)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
   ];
 
@@ -223,6 +228,18 @@ in
     CORS_ALLOWED_ORIGINS = multicaUrl;
     MULTICA_APP_URL = multicaUrl;
     MULTICA_PUBLIC_URL = multicaBackendUrl;
+  };
+
+  # AutoMuteUs: HOST is the galactus URL and API_SERVER_URL the API URL that
+  # the bot embeds in capture links; both must be reachable from the PC
+  # running AmongUsCapture (modules/automuteus.nix, docs/services/automuteus.md).
+  virtualisation.oci-containers.containers.automuteus.environment = {
+    HOST = automuteusGalactusUrl;
+    API_SERVER_URL = automuteusApiUrl;
+  };
+  virtualisation.oci-containers.containers.automuteus-api.environment = {
+    HOST = automuteusGalactusUrl;
+    API_SERVER_URL = automuteusApiUrl;
   };
 
   ############################################################################

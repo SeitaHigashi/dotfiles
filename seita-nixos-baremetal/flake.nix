@@ -88,6 +88,7 @@
         ./modules/openviking.nix       # OpenViking (context DB for AI agents) self-hosted via podman
         ./modules/reverse-proxy.nix    # consolidates HTTP services behind Tailscale Serve
         ./modules/resource-priority.nix # cross-service CPU / memory priority
+        ./modules/automuteus.nix       # AutoMuteUs (Among Us auto-mute Discord bot) via podman
         ./modules/discord-bot.nix      # Discord Gateway bot -> n8n webhook
         ./modules/fukurou.nix          # systemd wiring for fukurou (voice dialogue loop, ~/fukurou)
         home-manager.nixosModules.home-manager

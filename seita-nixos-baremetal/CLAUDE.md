@@ -83,6 +83,7 @@ test suite.
 | `modules/n8n.nix` | n8n workflow automation (unstable) | [n8n.md](docs/services/n8n.md) |
 | `modules/multica.nix` | Multica (podman ×3), secrets via agenix | [multica.md](docs/services/multica.md) |
 | `modules/discord-bot.nix` | Discord Gateway bot → n8n webhook | [discord-bot.md](docs/services/discord-bot.md) |
+| `modules/automuteus.nix` | AutoMuteUs (podman ×5), secret via agenix, tailnet-only capture | [automuteus.md](docs/services/automuteus.md) |
 | `modules/resource-priority.nix` | CPU / memory priority across services (cgroup v2) | [resource-priority.md](docs/resource-priority.md) |
 
 ## Before you touch things

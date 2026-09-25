@@ -43,6 +43,7 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - [n8n](docs/services/n8n.md) — workflow automation
 - [Multica](docs/services/multica.md) — self-hosted AI coding-agent workspace
 - [Discord bot](docs/services/discord-bot.md) — Gateway → n8n webhook forwarder
+- [AutoMuteUs](docs/services/automuteus.md) — Among Us auto-mute Discord bot
 - [Minecraft (FTB Evolution)](docs/services/minecraft.md) — podman-hosted modpack server
 
 ## Runbooks

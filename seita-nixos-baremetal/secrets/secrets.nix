@@ -6,6 +6,7 @@ let
   host = "age12k54m0g5x0xjpxfa5mg9v8zhp02rnktk94c87mq60fw7udjxaqdsgh6fp4";
 in
 {
+  "automuteus-env.age".publicKeys = [ host ];
   "discord-bot-env.age".publicKeys = [ host ];
   "multica-env.age".publicKeys = [ host ];
   "multica-github-app-key.age".publicKeys = [ host ];
