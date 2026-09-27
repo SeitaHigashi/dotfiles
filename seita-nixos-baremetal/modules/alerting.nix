@@ -22,7 +22,7 @@ let
 
   n8nPort = 5678;  # must match modules/n8n.nix's port
 
-  folder = "アラート";  # Grafana creates this folder automatically during provisioning
+  folder = "alerts";  # Grafana creates this folder automatically during provisioning
 
   # Builds one alert rule. See docs/services/alerting.md#rule-conventions for the
   # full rationale (always-emitting instant query + threshold, uid, noData).
@@ -156,7 +156,7 @@ in
 
             (mkRule {
               uid = "zfs-pool-degraded";
-              title = "ZFS プールが ONLINE でない";
+              title = "ZFS pool is not ONLINE";
               # From modules/zfs-snapshot-metrics.nix; node_exporter's zfs
               # collector does not expose pool health.
               expr = "max by (pool) (zfs_pool_health)";
@@ -164,13 +164,13 @@ in
               limit = 0;
               pending = "5m";
               severity = "critical";
-              summary = "ZFS プール {{ $labels.pool }} が ONLINE ではありません";
-              description = "zpool status を確認してください。dpool ならミラーの片肺、rpool なら冗長性が無いため即対応が要ります。";
+              summary = "ZFS pool {{ $labels.pool }} is not ONLINE";
+              description = "Check zpool status. For dpool this means one side of the mirror is down; for rpool there is no redundancy at all, so this needs immediate attention.";
             })
 
             (mkRule {
               uid = "filesystem-space-low";
-              title = "ファイルシステムの空きが少ない";
+              title = "Filesystem free space is low";
               # ZFS datasets share their pool's free space, so alerting on every
               # mountpoint would fire dozens of times for one event. Watch one
               # representative mountpoint per pool (/ = rpool, /srv = dpool);
@@ -180,51 +180,51 @@ in
               limit = 0.10;
               pending = "15m";
               severity = "warning";
-              summary = "{{ $labels.mountpoint }} の空きが 10% を切りました";
-              description = "ZFS は空きが尽きると書き込みだけでなく削除も難しくなります。スナップショットの整理を検討してください。";
+              summary = "{{ $labels.mountpoint }} free space has dropped below 10%";
+              description = "When ZFS runs out of space, deleting things becomes hard as well as writing. Consider pruning snapshots.";
             })
 
             (mkRule {
               uid = "smart-status-failed";
-              title = "SMART の総合判定が FAILED";
+              title = "SMART overall health is FAILED";
               # 1 = passed. This means the disk itself reports being past saving.
               expr = "min by (device) (smartctl_device_smart_status)";
               op = "lt";
               limit = 1;
               pending = "10m";
               severity = "critical";
-              summary = "{{ $labels.device }} の SMART が FAILED です";
-              description = "交換を前提に動いてください。rpool 側 (SSD) なら dpool へのバックアップが最新か先に確認します。";
+              summary = "{{ $labels.device }}'s SMART status is FAILED";
+              description = "Treat this as a disk to be replaced. If it's the rpool side (SSD), first check that the backup to dpool is up to date.";
             })
 
             (mkRule {
               uid = "nvme-wearout";
-              title = "NVMe の消耗が進んでいる";
+              title = "NVMe wear is advancing";
               # NVMe-only metric; HDDs do not expose it.
               expr = "max by (device) (smartctl_device_percentage_used)";
               op = "gt";
               limit = 80;
               pending = "1h";
               severity = "warning";
-              summary = "{{ $labels.device }} の書き込み寿命が 80% を超えました";
-              description = "残り 20% を切っています。交換の計画を立ててください。";
+              summary = "{{ $labels.device }}'s write endurance has exceeded 80%";
+              description = "Less than 20% life remains. Plan a replacement.";
             })
 
             (mkRule {
               uid = "nvme-critical-warning";
-              title = "NVMe が critical warning を上げている";
+              title = "NVMe is raising a critical warning";
               expr = "max by (device) (smartctl_device_critical_warning)";
               op = "gt";
               limit = 0;
               pending = "10m";
               severity = "critical";
-              summary = "{{ $labels.device }} が critical warning を報告しています";
-              description = "温度・予備ブロック・読み取り専用化などのいずれか。smartctl -a で内訳を確認してください。";
+              summary = "{{ $labels.device }} is reporting a critical warning";
+              description = "Could be temperature, spare blocks, read-only mode, or similar. Check the details with smartctl -a.";
             })
 
             (mkRule {
               uid = "hdd-temperature-high";
-              title = "HDD の温度が高い";
+              title = "HDD temperature is high";
               # HDD lifespan visibly shortens above 55C. NVMe normally runs
               # around 50C, hence a separate rule for it.
               expr = ''max by (device) (smartctl_device_temperature{temperature_type="current",device=~"${deviceOf m.hdd1}|${deviceOf m.hdd2}"})'';
@@ -232,13 +232,13 @@ in
               limit = 55;
               pending = "30m";
               severity = "warning";
-              summary = "HDD {{ $labels.device }} が 55℃ を超えています";
-              description = "筐体のエアフローを確認してください。";
+              summary = "HDD {{ $labels.device }} has exceeded 55°C";
+              description = "Check the case airflow.";
             })
 
             (mkRule {
               uid = "nvme-temperature-high";
-              title = "NVMe の温度が高い";
+              title = "NVMe temperature is high";
               # Normal operating temp is ~50C, so 75C catches it just before
               # thermal throttling would start.
               expr = ''max by (device) (smartctl_device_temperature{temperature_type="current",device="${deviceOf m.ssd}"})'';
@@ -246,13 +246,13 @@ in
               limit = 75;
               pending = "15m";
               severity = "warning";
-              summary = "NVMe {{ $labels.device }} が 75℃ を超えています";
-              description = "スロットリングで I/O が落ちます。ヒートシンクとエアフローを確認してください。";
+              summary = "NVMe {{ $labels.device }} has exceeded 75°C";
+              description = "Throttling will degrade I/O. Check the heatsink and airflow.";
             })
 
             (mkRule {
               uid = "memory-low";
-              title = "メモリの空きが少ない";
+              title = "Memory free space is low";
               # ZFS ARC is not counted in MemAvailable (it's "used" even though
               # reclaimable), so this also fires if arcMaxBytes is set too high.
               expr = "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes";
@@ -260,25 +260,25 @@ in
               limit = 0.10;
               pending = "15m";
               severity = "warning";
-              summary = "利用可能メモリが 10% を切りました";
-              description = "Minecraft のヒープ、ollama のモデル、ARC 上限の合計を見直してください。OOM killer が動く前に。";
+              summary = "Available memory has dropped below 10%";
+              description = "Review the total of Minecraft's heap, ollama's model, and the ARC limit -- before the OOM killer runs.";
             })
 
             (mkRule {
               uid = "cpu-saturated";
-              title = "CPU が飽和している";
+              title = "CPU is saturated";
               expr = ''1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))'';
               op = "gt";
               limit = 0.90;
               pending = "30m";
               severity = "warning";
-              summary = "CPU 使用率が 30 分以上 90% を超えています";
-              description = "LLM の推論やビルド中なら正常です。心当たりが無ければ暴走しているプロセスを探してください。";
+              summary = "CPU usage has exceeded 90% for over 30 minutes";
+              description = "Normal during LLM inference or a build. If nothing comes to mind, look for a runaway process.";
             })
 
             (mkRule {
               uid = "gpu-reboot-required";
-              title = "GPU が致命的な Xid エラーを出している (要再起動)";
+              title = "GPU is raising a fatal Xid error (reboot required)";
               # Metric from modules/gpu-xid-metrics.nix. Added after a 2026-08-28
               # incident: GPU1 dropped with "fallen off the bus" (Xid 79), ollama
               # fell back to CPU, and OpenViking's summary task failed entirely.
@@ -291,13 +291,13 @@ in
               # already fatal, so keep pending as short as possible.
               pending = "1m";
               severity = "critical";
-              summary = "GPU {{ $labels.pci }} が致命的な Xid エラーを出しています";
-              description = "journalctl -k -g 'NVRM: Xid' で内容を確認し、再起動で復旧するか確認してください (Xid 79 = fallen off the bus 等)。ollama が CPU フォールバックしていないか `ollama ps` の PROCESSOR 列も確認すること。";
+              summary = "GPU {{ $labels.pci }} is raising a fatal Xid error";
+              description = "Check the details with journalctl -k -g 'NVRM: Xid' and confirm whether a reboot recovers it (e.g. Xid 79 = fallen off the bus). Also check whether ollama has fallen back to CPU via the PROCESSOR column of `ollama ps`.";
             })
 
             (mkRule {
               uid = "gpu-xid-metrics-stale";
-              title = "GPU Xid メトリクスの収集が止まっている";
+              title = "GPU Xid metrics collection has stopped";
               # The timer runs every 2 minutes, so treat 15 minutes as stale.
               expr = "time() - gpu_xid_metrics_last_run_seconds";
               op = "gt";
@@ -305,13 +305,13 @@ in
               pending = "10m";
               severity = "warning";
               noData = "Alerting";
-              summary = "gpu-xid-metrics の出力が 15 分以上更新されていません";
-              description = "上の gpu-reboot-required ルールが信用できなくなっています。systemctl status gpu-xid-metrics.timer を確認してください。";
+              summary = "gpu-xid-metrics output has not updated for over 15 minutes";
+              description = "The gpu-reboot-required rule above can no longer be trusted. Check systemctl status gpu-xid-metrics.timer.";
             })
 
             (mkRule {
               uid = "systemd-unit-failed";
-              title = "systemd ユニットが failed";
+              title = "systemd unit is failed";
               # Catch-all for any unit; individual service liveness is the
               # "services" group below.
               expr = ''sum by (name) (node_systemd_unit_state{state="failed"})'';
@@ -319,8 +319,8 @@ in
               limit = 0;
               pending = "5m";
               severity = "warning";
-              summary = "{{ $labels.name }} が failed 状態です";
-              description = "journalctl -u {{ $labels.name }} を確認してください。";
+              summary = "{{ $labels.name }} is in a failed state";
+              description = "Check journalctl -u {{ $labels.name }}.";
             })
           ];
         }
@@ -337,7 +337,7 @@ in
 
             (mkRule {
               uid = "scrape-target-down";
-              title = "スクレイプ対象が落ちている";
+              title = "Scrape target is down";
               # If an exporter dies, every alert downstream of it goes silent too.
               # This catches "monitoring itself has gone blind" as critical.
               expr = "min by (job, instance) (up)";
@@ -345,13 +345,13 @@ in
               limit = 1;
               pending = "5m";
               severity = "critical";
-              summary = "{{ $labels.job }} ({{ $labels.instance }}) からスクレイプできません";
-              description = "この exporter が担当する指標は現在すべて欠測です。";
+              summary = "Cannot scrape {{ $labels.job }} ({{ $labels.instance }})";
+              description = "Every metric this exporter is responsible for is currently missing.";
             })
 
             (mkRule {
               uid = "service-inactive";
-              title = "常駐サービスが止まっている";
+              title = "A resident service is down";
               # All are Restart-always resident units, so "not active" can safely
               # be read as "down".
               #
@@ -374,13 +374,13 @@ in
               limit = 1;
               pending = "10m";
               severity = "critical";
-              summary = "{{ $labels.name }} が active ではありません";
-              description = "systemctl status {{ $labels.name }} を確認してください。";
+              summary = "{{ $labels.name }} is not active";
+              description = "Check systemctl status {{ $labels.name }}.";
             })
 
             (mkRule {
               uid = "minecraft-unhealthy";
-              title = "Minecraft サーバーが応答しない";
+              title = "Minecraft server is not responding";
               # A running container can still hang on world load, so this is
               # kept separate from the process-level check (service-inactive above).
               expr = "min(minecraft_status_healthy)";
@@ -388,8 +388,8 @@ in
               limit = 1;
               pending = "10m";
               severity = "warning";
-              summary = "Minecraft サーバーが status に応答していません";
-              description = "modpack の更新直後なら起動待ちの可能性があります。podman logs ftb-evolution を確認してください。";
+              summary = "Minecraft server is not responding to status pings";
+              description = "Right after a modpack update this may just be waiting to start up. Check podman logs ftb-evolution.";
             })
           ];
         }
@@ -409,7 +409,7 @@ in
 
             (mkRule {
               uid = "replication-lag";
-              title = "複製が遅れている";
+              title = "Replication is lagging";
               # Daily replication, so 24h + 12h grace = 36h (129600 seconds).
               expr = ''max by (dataset) (time() - zfs_snapshot_latest_creation_seconds{dataset=~"dpool/backup/.*"})'';
               op = "gt";
@@ -417,13 +417,13 @@ in
               pending = "30m";
               severity = "critical";
               noData = "Alerting";  # the series disappearing IS the failure (dataset lost entirely)
-              summary = "{{ $labels.dataset }} の最新バックアップが 36 時間以上前です";
-              description = "syncoid が止まっているか、送信側にスナップショットがありません。今 SSD が死んだらこの時間分のデータを失います。";
+              summary = "{{ $labels.dataset }}'s latest backup is more than 36 hours old";
+              description = "Either syncoid has stopped, or the source side has no snapshots. If the SSD died right now, this much data would be lost.";
             })
 
             (mkRule {
               uid = "syncoid-failed";
-              title = "syncoid が失敗している";
+              title = "syncoid has failed";
               # `[.]` instead of `\.`: MetricsQL parses the backslash as a string
               # escape inside double quotes before it reaches the regex, causing
               # a syntax error (confirmed on hardware). See docs/services/alerting.md.
@@ -432,13 +432,13 @@ in
               limit = 0;
               pending = "5m";
               severity = "critical";
-              summary = "{{ $labels.name }} が失敗しました";
-              description = "journalctl -u {{ $labels.name }} を確認してください。";
+              summary = "{{ $labels.name }} failed";
+              description = "Check journalctl -u {{ $labels.name }}.";
             })
 
             (mkRule {
               uid = "zfs-snapshot-metrics-stale";
-              title = "ZFS メトリクスの収集が止まっている";
+              title = "ZFS metrics collection has stopped";
               # If this is stale, the replication-lag rule above can no longer be
               # trusted. The timer runs every 5 minutes, so treat 30 minutes as stale.
               expr = "time() - zfs_snapshot_metrics_last_run_seconds";
@@ -447,8 +447,8 @@ in
               pending = "10m";
               severity = "warning";
               noData = "Alerting";
-              summary = "zfs-snapshot-metrics の出力が 30 分以上更新されていません";
-              description = "複製ラグとスナップショット数の指標が古くなっています。systemctl status zfs-snapshot-metrics.timer を確認してください。";
+              summary = "zfs-snapshot-metrics output has not updated for over 30 minutes";
+              description = "The replication-lag and snapshot-count metrics are now stale. Check systemctl status zfs-snapshot-metrics.timer.";
             })
           ];
         }
