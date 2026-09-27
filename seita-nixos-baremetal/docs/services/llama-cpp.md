@@ -40,10 +40,11 @@ GPU/VRAM allocation and measurements are collected in
 | `bonsai-vision` | same weights + mmproj (+600 MB), 8K ctx, KV q8_0 | 3060 Ti | image input |
 | `embedding` | Qwen3-Embedding-4B Q4_K_M, 2560 dims | 1660 SUPER | OpenViking, Open WebUI's RAG |
 | `laya` | Laya multilingual 322M (PyTorch, fp16) | 1660 SUPER | decision model for n8n's flow branching |
+| `qwen-image` | Qwen-Image-2.1 (stable-diffusion.cpp `sd-server`), DiT Q4_K + Qwen3-VL-8B Q4_K_M + VAE bf16 | 3060 Ti | image generation / editing |
 
-`bonsai` and `bonsai-vision` occupy the same 3060 Ti so they never coexist
-(the matrix swaps between them). Every other combination can be loaded at
-the same time.
+`bonsai`, `bonsai-vision` and `qwen-image` occupy the same 3060 Ti so none of
+them coexist (the matrix swaps between them). Every other combination can be
+loaded at the same time.
 
 ## Caller-facing notes
 
@@ -89,6 +90,45 @@ Measured (2026-09-23, 1660 SUPER, fp16):
 5/5 correct on a Japanese 4-choice test. The one near-miss also had a low
 confidence (0.15), so act-or-escalate is working as designed. Keeps serving
 on CPU when CUDA is unavailable (a slower answer beats a dead branch).
+
+### Calling qwen-image
+
+```
+POST http://127.0.0.1:8888/v1/images/generations
+{"model": "qwen-image", "prompt": "...", "size": "1024x1024"}
+```
+
+Loading it evicts `bonsai` (and vice versa); the next `bonsai` request pays
+bonsai's full reload. `ttl: 600` unloads it after 10 idle minutes, since it
+holds ~9.4 GB of RSS while loaded. `sd-server` also exposes `/sdapi/v1/*`
+(A1111-style) and its own web UI; reach those via `/upstream/qwen-image/...`.
+
+Why `--offload-to-cpu`: despite the name it does not move compute to the
+CPU. It sets the params backend to RAM, and the residency manager stages each
+component into VRAM only for its own stage; the text encoder is explicitly
+evicted when conditioning ends (`src/pipeline/image.cpp`,
+`ConditionerRunnerEndOnExit`). Without it, the DiT stays resident and VAE
+decode OOMs.
+
+Measured 2026-09-25 (3060 Ti alone, sd.cpp master-913, euler 20 steps, cfg 6.0,
+`--offload-to-cpu --fa` unless noted):
+
+| run | VRAM peak | text enc. | sampling | VAE | total | max RSS |
+|---|---|---|---|---|---|---|
+| 1024², cold page cache | 5338 MiB | 24.0 s | 146.3 s | 12.0 s | 186 s | 9.35 GiB |
+| 1024², warm | 5338 MiB | 10.9 s | 129.9 s | 10.5 s | 155 s | 9.40 GiB |
+| 1024², `--backend te=cpu` | 5330 MiB | 38.2 s | 135.9 s | 10.7 s | 188 s | 9.38 GiB |
+| 1024², no offload | 7368 MiB | 10.9 s | 128.6 s | OOM | failed | 5.50 GiB |
+| 2048² | 7280 MiB | 4.0 s | 838.1 s (41.4 s/step) | OOM even tiled | failed | 8.72 GiB |
+
+2048² is not usable as configured: sampling finishes, but VAE decode asks for
+~10.8 GB even per tile and fails, after 14 minutes of work. Keep requests at
+1024² until a smaller `--vae-tile-size` (or similar) is measured.
+
+The peak is the DiT stage (4003 MiB weights + ~970 MiB compute buffer); VAE
+decode first tries untiled (needs ~10.8 GB), fails, and retries tiled
+automatically. Running the text encoder on the CPU saves no peak VRAM and is
+slower, so it is not used.
 
 ## Where models live
 

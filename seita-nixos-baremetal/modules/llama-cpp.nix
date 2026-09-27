@@ -194,6 +194,35 @@ let
       });
 
   ##########################################################################
+  # stable-diffusion.cpp — image generation (Qwen-Image-2.1), served by its
+  # sd-server under llama-swap's [qwen-image]. Not llama.cpp, but it shares
+  # the 3060 Ti with bonsai, so it lives in the same matrix.
+  # The pinned nixpkgs-unstable ships master-849, which predates Qwen-Image-2.1
+  # support; master-913 is the first tag measured to work on this host
+  # (docs/services/llama-cpp.md).
+  ##########################################################################
+  sdCppRev = "master-913-b167b94";
+  sdCpp =
+    (pkgs.unstable.stable-diffusion-cpp.override { cudaSupport = true; }).overrideAttrs
+      (old: {
+        version = sdCppRev;
+        src = pkgs.fetchFromGitHub {
+          owner = "leejet";
+          repo = "stable-diffusion.cpp";
+          tag = sdCppRev;
+          hash = "sha256-n6qulTZD/v5ovp+GQuZiKanDWV1G+Iy93vpTB0J5xO8=";
+          fetchSubmodules = true;
+        };
+        # Same 2 architectures as llamaCppPrism above.
+        cmakeFlags =
+          (builtins.filter
+            (f: !(lib.hasPrefix "-DCMAKE_CUDA_ARCHITECTURES" f))
+            old.cmakeFlags)
+          ++ [ "-DCMAKE_CUDA_ARCHITECTURES:STRING=75;86" ];
+      });
+  qwenImageDir = "${modelsDir}/Qwen-Image-2.1";
+
+  ##########################################################################
   # llama-swap's config YAML. Each model starts llama-server as a child
   # process, and the combinations that can coexist are written as matrix
   # sets (why not the fork's own router:
@@ -303,6 +332,35 @@ let
         cmd: |
           ${layaVenv}/bin/python ${layaServer} --port ''${PORT}
 
+      # Qwen-Image-2.1 (DiT Q4_K + Qwen3-VL-8B Q4_K_M text encoder + VAE) on
+      # the 3060 Ti, so it evicts bonsai (see the matrix below).
+      # Call via POST /v1/images/generations with "model": "qwen-image".
+      # --offload-to-cpu keeps weights in RAM and stages one component at a
+      # time into VRAM (measured at 1024x1024: peaks at 5338 MiB with it;
+      # without it the DiT weights stay resident and VAE decode OOMs even
+      # after falling back to tiling).
+      # Costs ~9.4 GB of RSS while loaded, hence the ttl.
+      # sd-server has no /health; /v1/models answers once it is listening
+      # (weights load lazily on the first request).
+      "qwen-image":
+        name: "Qwen-Image-2.1 (image generation)"
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --diffusion-model ${qwenImageDir}/qwen_image_2.1-Q4_K.gguf
+          --vae ${qwenImageDir}/qwen_image_2.1_vae_bf16.safetensors
+          --llm ${qwenImageDir}/Qwen3VL-8B-Instruct-Q4_K_M.gguf
+          --offload-to-cpu
+          --fa
+          --cfg-scale 6.0
+          --sampling-method euler
+
     # Combinations allowed to run at the same time. Subsets of a set are also
     # allowed, so one is enough. bonsai and bonsai-vision are separate
     # branches because they occupy the same 3060 Ti.
@@ -320,8 +378,13 @@ let
               # Keep it longer than embedding because it blocks n8n's branching
               # synchronously; cheaper to evict than bonsai.
               laya: 30
+              # Cheap to reload relative to bonsai (weights are staged from RAM
+              # per request anyway), so it's the first to go when bonsai returns.
+              qwen-image: 10
             sets:
               generation: "(bonsai | bonsai-vision) & embedding & laya"
+              # Shares the 3060 Ti with bonsai: requesting one evicts the other.
+              image: "qwen-image & embedding & laya"
   '';
 in
 {
