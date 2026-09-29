@@ -41,8 +41,9 @@ GPU/VRAM allocation and measurements are collected in
 | `embedding` | Qwen3-Embedding-4B Q4_K_M, 2560 dims | 1660 SUPER | OpenViking, Open WebUI's RAG |
 | `laya` | Laya multilingual 322M (PyTorch, fp16) | 1660 SUPER | decision model for n8n's flow branching |
 | `qwen-image` | Qwen-Image-2.1 (stable-diffusion.cpp `sd-server`), DiT Q4_K + Qwen3-VL-8B Q4_K_M + VAE bf16 | 3060 Ti | image generation / editing |
+| `minimax-h3` | MiniMax-H3 (`sd-server`), pruned FL2VA DiT Q4_K_M + Qwen3-VL-32B Q2_K_M + video VAE fp16 + audio VAE fp32 | 3060 Ti | video + stereo audio generation |
 
-`bonsai`, `bonsai-vision` and `qwen-image` occupy the same 3060 Ti so none of
+`bonsai`, `bonsai-vision`, `qwen-image` and `minimax-h3` occupy the same 3060 Ti so none of
 them coexist (the matrix swaps between them). Every other combination can be
 loaded at the same time.
 
@@ -129,6 +130,76 @@ The peak is the DiT stage (4003 MiB weights + ~970 MiB compute buffer); VAE
 decode first tries untiled (needs ~10.8 GB), fails, and retries tiled
 automatically. Running the text encoder on the CPU saves no peak VRAM and is
 slower, so it is not used.
+
+### Calling minimax-h3
+
+Video is not on llama-swap's `/v1/*` routes (`/v1/vid_gen` is a 404). sd-server
+only has an async job API, so the llama-swap command runs it behind a small
+wrapper (`sdSyncWrapper` in `modules/llama-cpp.nix`) that adds one blocking
+endpoint:
+
+```
+POST http://127.0.0.1:8888/upstream/minimax-h3/sync/vid_gen
+{"prompt": "...", "width": 864, "height": 480, "video_frames": 56, "fps": 24}
+-> (after the whole job, ~6-11 min) {"status": "completed", "result": {"b64_json": "...",
+    "mime_type": "video/webm", "fps": 24, "frame_count": 56}}
+```
+
+Use this, not the raw async `POST /upstream/minimax-h3/sdcpp/v1/vid_gen`.
+llama-swap only refuses to evict a model while one of its HTTP requests is in
+flight (`internal/router/scheduler/fifo.go`, rule 5). The async API answers 202
+at once, so the next `bonsai` request evicted sd-server and killed the job
+(measured 2026-09-29: killed 13 s after submit). With the blocking call,
+`bonsai` requests **queue for up to the job's length** instead — callers with a
+short timeout (OpenViking's client, n8n) will see that as latency or a timeout.
+Set the caller's HTTP timeout above the job length (the video itself takes
+6-11 min).
+
+Verified 2026-09-29 through llama-swap (22 frames, `MemoryHigh=40G`): the sync
+call returned the WebM after 356 s; a `bonsai` request sent at t=150 s queued
+and answered after 233 s (bonsai reload included) without interrupting the
+job. `memory.events` high did not move; host MemAvailable bottomed at ~4.5 GB;
+Minecraft's status response time and "Can't keep up" count were unchanged.
+
+`upstream.ignorePaths` includes `^/sdcpp/v1/jobs/`, so polling a job never
+loads the model. Without it, polling a vanished job reloaded minimax-h3 every
+5 s and kept evicting bonsai (2026-09-29).
+
+The wrapper also exits when sd-server logs `failed to initialize CUDA`: that
+happened once right after a service restart, and sd-server then silently ran
+on the CPU, which looks like a hang (22 W, no progress).
+
+The result is a base64 WebM with the audio track included. Server defaults
+(`GET /sdcpp/v1/capabilities`) are 512x512, 1 frame, fps 16 — always pass the
+shape. Weights live in `models/MiniMax-H3/` (downloaded by hand from
+`leejet/MiniMax-H3-GGUF` and `Comfy-Org/MiniMax-H3`, ~29 GB); while loaded
+sd-server holds all 29,031 MB of params in RAM and 0 MB in VRAM until a job runs.
+Like qwen-image it evicts `bonsai`, and `ttl: 600` unloads it when idle.
+
+Measured 2026-09-28 with `sd-cli -M vid_gen` (3060 Ti alone, sd.cpp
+master-913, 864x480, 56 frames = 2.3 s @ 24 fps, cfg 1.0,
+`--offload-to-cpu --diffusion-fa --rng cpu`):
+
+| stage | time |
+|---|---|
+| text encoder (Qwen3-VL-32B Q2_K_M) | 76.1 s |
+| sampling | 496.7 s |
+| video VAE decode | 68.4 s |
+| audio VAE decode | 3.4 s |
+| **total** | **644.8 s** |
+
+The same shape through sd-server's `/sdcpp/v1/vid_gen` (weights already
+loaded): 637 s from submit to `completed`, VRAM peak 7320 MiB.
+
+VRAM peak 7322 MiB of 8192, max RSS 29.2 GB. Only ~800 MiB of VRAM headroom
+is left, so larger shapes (resolution / frame count) are unmeasured and
+likely OOM at VAE decode. The RSS is why nothing large can share the host
+with it: with bonsai loaded only ~14 GB of RAM was free.
+
+Trap met while measuring: without `CUDA_DEVICE_ORDER=PCI_BUS_ID`,
+`CUDA_VISIBLE_DEVICES=1` selects the **1660 SUPER** (CUDA's default is
+fastest-first). The service sets it, so this only bites manual runs. The same
+job on the 1660 SUPER took 4908 s (VAE decode 545 s).
 
 ## Where models live
 
