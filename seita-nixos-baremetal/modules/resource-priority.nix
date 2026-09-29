@@ -50,7 +50,12 @@ in
     # ollama. Budget history and current sizing rationale: docs/resource-priority.md.
     llama-cpp.serviceConfig = {
       CPUWeight = 20;
-      MemoryHigh = "20G";
+      # A safety valve, not a budget: minimax-h3's sd-server needs ~29 GB and
+      # stalled under the old 20G. Revert: MemoryHigh = "20G"; drop OOMScoreAdjust.
+      # MemoryHigh = "20G";
+      MemoryHigh = "40G";
+      # First in line for the OOM killer — children just reload on next request.
+      OOMScoreAdjust = 500;
     };
 
     # Open WebUI is mostly idle except for RAG embedding.

@@ -62,7 +62,7 @@ budget.
 | Unit | CPUWeight | MemoryHigh/Low | Notes |
 |---|---|---|---|
 | `tailscaled` | 2000 | Low 256M | see above |
-| `llama-cpp.service` | 20 | High 20G | see below |
+| `llama-cpp.service` | 20 | High 40G, `OOMScoreAdjust=500` | see below |
 | `open-webui.service` | 20 | High 4G | mostly idle except RAG embedding |
 | `n8n.service` | 20 | High 2G | Node process spikes during workflow runs |
 | `comfyui.service` | (20) | (High 8G) | commented out while ComfyUI is disabled (2026-09-24); see below |
@@ -82,7 +82,18 @@ for why the block must stay commented rather than removed.
 
 ### llama-cpp.service budget
 
-`llama-cpp.service`'s `MemoryHigh` (20G) predates the current preset set: it was
+**2026-09-29: raised to `MemoryHigh=40G` + `OOMScoreAdjust=500`.** The `minimax-h3`
+preset's sd-server holds ~29 GB of weights in RAM. Under the old 20G it did not
+fail — it stalled: reclaim throttling left the GPU at 0% and the HTTP API
+unresponsive (`memory.events` high=113006), and a job never finished. The same
+server started outside the cgroup completed in 371 s. 40G is now a safety valve
+rather than a budget; protection of the rest of the host is by kill order
+instead: `OOMScoreAdjust=500` makes llama-swap's children the first OOM victim
+(they hold no state and reload on the next request), while Minecraft keeps its
+`MemoryLow`. Revert: `MemoryHigh = "20G"` and drop `OOMScoreAdjust` (the old line
+is kept commented in `modules/resource-priority.nix`).
+
+History — the original 20G predates the current preset set: it was
 sized in 2026-09-21 for the now-deleted `bonsai-max` preset (262144 ctx,
 `--no-kv-offload`, which put the KV cache in system RAM rather than GPU VRAM).
 Measured RSS under that preset:
