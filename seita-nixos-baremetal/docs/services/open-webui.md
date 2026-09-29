@@ -53,6 +53,27 @@ dead ollama for two days without erroring, is in
 There is also a hand-edited Open WebUI Admin Panel → Functions "Pipe" that calls ollama directly
 and is not deployable from this repo at all — see the same decision doc.
 
+## MiniMax-H3 video pipe
+
+Open WebUI has no video generation engine (0.11.3 knows openai / gemini / comfyui /
+automatic1111 for images only). Video comes from a Pipe function whose source is tracked in
+`scripts/open-webui-minimax-h3-pipe.py`; like the Pipe above it lives in Open WebUI's DB, so
+**after editing the file, paste it again** into Admin Panel → Functions (the `+` button, or the
+existing function's editor) and keep the function enabled. Its name becomes the model name in
+the model picker.
+
+- Calls llama-swap's blocking `POST /upstream/minimax-h3/sync/vid_gen`
+  ([llama-cpp.md](llama-cpp.md#calling-minimax-h3)); 6-11 min per clip, bonsai requests queue
+  meanwhile.
+- Resolution (landscape, Shorts/Reels 9:16, 4:5, 1:1, 4:3, 3:4), fps and frame count are per-user
+  dropdowns under Chat Controls → Valves. Every preset stays within the measured 864x480 x 56
+  frames; add larger ones only after measuring VRAM.
+- The WebM is stored as an Open WebUI file and returned as a block-level `<video>` whose text is
+  the file URL — the only form 0.11.3's `HTMLToken.svelte` renders (its own
+  `{{VIDEO_FILE_ID_<id>}}` placeholder expands to `<video src=…>` and shows up as raw text).
+- Title/tag/follow-up tasks routed to this model return an empty string instead of starting a
+  job.
+
 ## Auth and telemetry
 
 - `WEBUI_AUTH = "True"` — without it, anyone on the tailnet gets in with no login.
