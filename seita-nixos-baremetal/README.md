@@ -90,6 +90,7 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - 2026-09-22 [fukurou: Vulkan GPU split](docs/decisions/2026-09-22-fukurou-vulkan-gpu-split.md)
 - 2026-09-23 [Laya colocated in llama-swap](docs/decisions/2026-09-23-laya-in-llama-swap.md)
 - 2026-10-03 [Jeff in llama-swap, role-name aliases](docs/decisions/2026-10-03-jeff-in-llama-swap.md)
+- 2026-10-03 [LLM models to an rpool dataset, bonsai-workspaces into the repo](docs/decisions/2026-10-03-llm-models-to-rpool.md)
 - 2026-09-23 [Migration from ollama to llama.cpp](docs/decisions/2026-09-23-ollama-to-llama-cpp.md)
 - 2026-09-23 [3060 Ti power limit for fan noise](docs/decisions/2026-09-23-3060ti-power-limit.md)
 - 2026-09-23 [Repology → direct nix eval](docs/decisions/2026-09-23-repology-to-direct-nix-eval.md)
