@@ -26,6 +26,7 @@ tick on this 4C/8T host; 30s granularity is enough for triage.
 | cadvisor | 8081 (8080 avoided as a likely future web-app port) |
 | mc-monitor (Minecraft) | 9150 |
 | n8n `/metrics` | 5678 (same port as the n8n Web UI) |
+| nix-profile re-collect trigger | 9180 (Grafana button via Infinity; `modules/nix-profile-info.nix`) |
 
 ## Storage
 

@@ -149,6 +149,27 @@ Two collectors:
    `nix_profile_channel_resolve_ok{channel}`,
    `nix_profile_channel_revision_info{channel,rev}`.
 
+### Manual re-collect from Grafana
+
+`dashboards/71-nix-profile-info.json` has a **今すぐ再収集** button (Business Forms
+panel, `volkovlabs-form-panel`) that starts both collectors immediately:
+
+button → Grafana backend → Infinity datasource (uid `nix-profile-trigger`) →
+`POST http://127.0.0.1:9180/` → socket-activated `nix-profile-trigger@.service`
+(`Accept=yes`, root) → `systemctl start --no-block nix-profile-metrics
+nix-profile-upstream-metrics`.
+
+- The request is made server-side, so the button works from any tailnet device while
+  the trigger stays on loopback; only logged-in Grafana users can press it.
+- The handler ignores the request content (it only drains it) and can only start
+  those two fixed units.
+- The Infinity instance is dedicated to this: its `allowedHosts` is only the trigger
+  URL. Both plugins come from `services.grafana.declarativePlugins`, which replaces
+  Grafana's plugin directory, so plugins installed from the UI disappear.
+- Results show up after the next scrape (tens of seconds).
+- Chosen over Grafana 12.0's built-in Actions because those only send `fetch` from
+  the browser, which would require exposing the trigger on the tailnet.
+
 Both collectors use a shared `jq` filter (`manifestToTsv`, embedded as a `.jq` file)
 to turn a manifest element into a `name/version/ref/attrPath/originalUrl` TSV row, so
 version-string parsing (stripping the 32-character store-path hash and the package

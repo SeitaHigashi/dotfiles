@@ -242,6 +242,39 @@ let
       mv -f "$staging" "$out"
     '';
   };
+
+  # Loopback-only trigger that starts both collectors now. Called only by
+  # Grafana's backend (Infinity datasource); never exposed on the tailnet.
+  # See docs/services/textfile-metrics.md.
+  triggerPort = 9180;
+  triggerUrl = "http://127.0.0.1:${toString triggerPort}";
+
+  # One process per connection (Accept=yes); stdin/stdout are the socket.
+  # The request content is ignored -- it can only start the two fixed units.
+  triggerHandler = pkgs.writeShellApplication {
+    name = "nix-profile-trigger";
+    runtimeInputs = [ pkgs.coreutils pkgs.systemd ];
+    text = ''
+      # Drain headers and any body first: closing with unread input makes
+      # the kernel send RST, which the client reports as an error.
+      len=0
+      while IFS= read -r -t 5 line; do
+        line=''${line%$'\r'}
+        [ -z "$line" ] && break
+        case "''${line,,}" in
+          content-length:*) len=''${line#*:}; len=''${len// /} ;;
+        esac
+      done
+      if [ "$len" -gt 0 ] 2>/dev/null; then
+        head -c "$len" >/dev/null
+      fi
+
+      systemctl start --no-block nix-profile-metrics.service nix-profile-upstream-metrics.service
+
+      body='{"status":"started"}'
+      printf 'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s' "''${#body}" "$body"
+    '';
+  };
 in
 {
   systemd.tmpfiles.rules = [
@@ -323,6 +356,57 @@ in
       Persistent = true;
     };
   };
+
+  # Manual re-collect button: Business Forms panel -> Grafana backend ->
+  # Infinity -> triggerUrl. Server-side request, so it works from any tailnet
+  # device while the endpoint stays on loopback.
+  systemd.sockets.nix-profile-trigger = {
+    description = "Loopback HTTP trigger for the nix profile collectors";
+    wantedBy = [ "sockets.target" ];
+    listenStreams = [ "127.0.0.1:${toString triggerPort}" ];
+    socketConfig = {
+      Accept = true;
+      MaxConnections = 4;
+    };
+  };
+
+  # Root is needed to start system units.
+  systemd.services."nix-profile-trigger@" = {
+    description = "Start the nix profile collectors (one HTTP request)";
+    serviceConfig = {
+      ExecStart = lib.getExe triggerHandler;
+      StandardInput = "socket";
+      StandardOutput = "socket";
+      StandardError = "journal";
+      RuntimeMaxSec = "30s";
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      # The accepted TCP socket is inherited, not created, so AF_UNIX
+      # (systemctl -> systemd) is enough.
+      RestrictAddressFamilies = [ "AF_UNIX" ];
+    };
+  };
+
+  # declarativePlugins replaces Grafana's plugin directory wholesale:
+  # UI-installed plugins disappear. Add any further plugin here.
+  services.grafana.declarativePlugins = with pkgs.grafanaPlugins; [
+    volkovlabs-form-panel
+    yesoreyeram-infinity-datasource
+  ];
+
+  # Dedicated Infinity instance allowed to reach only the trigger. uid is
+  # referenced by dashboards/71-nix-profile-info.json.
+  services.grafana.provision.datasources.settings.datasources = [
+    {
+      name = "nix profile trigger";
+      type = "yesoreyeram-infinity-datasource";
+      uid = "nix-profile-trigger";
+      isDefault = false;
+      jsonData.allowedHosts = [ triggerUrl ];
+    }
+  ];
 
   # Manual verification: docs/runbooks/textfile-metrics.md
 }

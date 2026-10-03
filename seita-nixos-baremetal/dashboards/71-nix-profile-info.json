@@ -215,13 +215,223 @@
       }
     },
     {
+      "type": "stat",
+      "title": "profile を最後に変更した日時",
+      "description": "現在の世代 symlink の作成日時 (nix profile install/upgrade/remove を実行した日時)。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nix_profile_generation_mtime_seconds * 1000",
+          "legendFormat": "{{user}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "パッケージ一覧の取得日時",
+      "description": "manifest.json を最後に読み取った日時。15分ごとに更新されます。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nix_profile_metrics_last_run_seconds * 1000",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "更新チェックの実行日時",
+      "description": "追従先チャンネルとのバージョン比較を最後に実行した日時。1日1回更新されます。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nix_profile_upstream_metrics_last_run_seconds * 1000",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "type": "volkovlabs-form-panel",
+      "title": "今すぐ再収集",
+      "description": "パッケージ一覧と更新チェックの収集を今すぐ実行します (nix-profile-metrics / nix-profile-upstream-metrics を start)。Grafana のサーバー側から Infinity データソース経由で 127.0.0.1 のトリガーを叩くので、どの端末から押しても動きます。反映は次の scrape 後 (数十秒)。",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 6
+      },
+      "targets": [],
+      "options": {
+        "layout": {
+          "variant": "none",
+          "orientation": "horizontal",
+          "padding": 10,
+          "sectionVariant": "default",
+          "sections": []
+        },
+        "elements": [],
+        "initial": {
+          "method": "-",
+          "code": "",
+          "highlight": false,
+          "highlightColor": "red",
+          "contentType": "application/json"
+        },
+        "updateEnabled": "auto",
+        "update": {
+          "method": "datasource",
+          "datasource": "nix-profile-trigger",
+          "confirm": true,
+          "payloadMode": "all",
+          "payload": {
+            "refId": "A",
+            "type": "json",
+            "source": "url",
+            "parser": "backend",
+            "format": "table",
+            "url": "http://127.0.0.1:9180/",
+            "url_options": {
+              "method": "POST",
+              "data": ""
+            },
+            "root_selector": "",
+            "columns": []
+          },
+          "code": "if (context.panel.response) {\n  context.grafana.notifySuccess(['nix profile', '収集を開始しました。数十秒後に反映されます。']);\n} else {\n  context.grafana.notifyError(['nix profile', '収集の開始に失敗しました。']);\n}"
+        },
+        "buttonGroup": {
+          "orientation": "center",
+          "size": "md"
+        },
+        "submit": {
+          "text": "再収集",
+          "icon": "sync",
+          "variant": "primary",
+          "backgroundColor": "purple",
+          "foregroundColor": "yellow"
+        },
+        "reset": {
+          "variant": "hidden",
+          "text": "Reset",
+          "icon": "process",
+          "backgroundColor": "purple",
+          "foregroundColor": "yellow"
+        },
+        "resetAction": {
+          "mode": "initial",
+          "code": "",
+          "confirm": false
+        },
+        "saveDefault": {
+          "variant": "hidden",
+          "text": "Save Default",
+          "icon": "save"
+        },
+        "confirmModal": {
+          "title": "再収集",
+          "body": "nix profile のメトリクスを今すぐ収集し直しますか？",
+          "confirm": "実行",
+          "cancel": "キャンセル",
+          "columns": {
+            "include": [
+              "name",
+              "oldValue",
+              "newValue"
+            ],
+            "name": "Label",
+            "oldValue": "Old Value",
+            "newValue": "New Value"
+          },
+          "elementDisplayMode": "modified"
+        }
+      }
+    },
+    {
       "type": "row",
       "title": "パッケージ",
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 10
       },
       "collapsed": false,
       "panels": []
@@ -238,7 +448,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 7
+        "y": 11
       },
       "targets": [
         {
@@ -290,7 +500,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 7
+        "y": 11
       },
       "targets": [
         {
@@ -342,7 +552,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 7
+        "y": 11
       },
       "targets": [
         {
@@ -412,7 +622,7 @@
         "h": 14,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 15
       },
       "targets": [
         {
@@ -624,7 +834,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 29
       },
       "targets": [
         {

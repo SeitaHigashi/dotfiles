@@ -157,7 +157,8 @@ Open on all interfaces (`networking.firewall.allowedTCPPorts`): SSH `22`, n8n `5
 Listening addresses (separate question from firewall exposure above):
 VictoriaMetrics `8428` / Grafana `3000` / node exporter `9100` / smartctl
 exporter `9633` / nvidia-gpu exporter `9835` / cadvisor `8081` /
-minecraft-exporter `9150` / n8n `5678` (Web UI and `/metrics` share the port).
+minecraft-exporter `9150` / n8n `5678` (Web UI and `/metrics` share the port) /
+nix-profile re-collect trigger `9180` (loopback only).
 
 LAN-open ports (not tailnet-gated): Minecraft `25565` (publish goes through
 podman DNAT, which the NixOS firewall can't filter — the listen address
