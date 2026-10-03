@@ -1,0 +1,45 @@
+{
+  "nodes": {
+    "llama-cpp-prism": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789770275,
+        "narHash": "sha256-KDecY+v9S/193mLGse5EsJPugZR1wxWzOlOU7GuMd5Y=",
+        "owner": "PrismML-Eng",
+        "repo": "llama.cpp",
+        "rev": "9a9394a895b96003ca842a6041cb28ac49a108f7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "PrismML-Eng",
+        "ref": "prism",
+        "repo": "llama.cpp",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1789785513,
+        "narHash": "sha256-B44WL6h0XoLjJ41bUPJk0X5SDinLCII//6EcBLXKiJ0=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "20b1ddd1aa5ace70c9468305030aa4f9ef79671b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "llama-cpp-prism": "llama-cpp-prism",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

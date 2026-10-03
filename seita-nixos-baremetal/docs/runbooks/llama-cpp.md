@@ -4,7 +4,7 @@ Service overview: [services/llama-cpp.md](../services/llama-cpp.md).
 
 ## Updating the PrismML fork
 
-1. Bump `~/bonsai-workspaces`' `flake.lock` first (**it is the source of truth**).
+1. Bump `llm/flake.lock` (`cd llm && nix flake update`) first (**it is the source of truth**).
 2. Set `prismRev`/`prismHash` in `modules/llama-cpp.nix` to match that lock.
    The hash can be the lock's `narHash` verbatim. If it's wrong, nix prints
    the expected value — use that.
@@ -14,7 +14,7 @@ Service overview: [services/llama-cpp.md](../services/llama-cpp.md).
 
 The CUDA source build doesn't benefit from a binary cache, and first builds
 or updates take a while. Even if `nix build .#llama-cpp-prism-cuda` was
-already built in bonsai-workspaces, the nixpkgs pin differs (theirs vs. this
+already built from `llm/`, the nixpkgs pin differs (theirs vs. this
 host's `modules/unstable.nix` nixpkgs-unstable), so the store path won't
 match and it rebuilds.
 

@@ -195,6 +195,13 @@ in
           "var/lib/ollama" =
             fsDataset "/var/lib/private/ollama" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
 
+          # LLM model store for llama-cpp (modules/llama-cpp.nix modelsDir). On
+          # rpool (NVMe) so llama-swap model switches reload fast; GGUFs are
+          # re-downloadable, so no snapshots/replication. Fixed user (seita), not
+          # DynamicUser. Create by hand before switching (see CLAUDE.md, disko).
+          "var/lib/llm-models" =
+            fsDataset "/var/lib/llm-models" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
+
           # Parent placeholder for rpool/srv/minecraft below; not mounted itself
           # (/srv proper stays on dpool/srv). Declared explicitly because neither
           # disko nor zfs recv auto-creates intermediate datasets.

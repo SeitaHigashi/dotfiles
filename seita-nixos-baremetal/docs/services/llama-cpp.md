@@ -5,7 +5,7 @@ Implementation: [`modules/llama-cpp.nix`](../../modules/llama-cpp.nix)
 ## What it is
 
 Turns the Bonsai-2 27B (ternary-quantized) model, validated in
-`~/bonsai-workspaces`, into a resident service. Puts
+`llm/` (formerly `~/bonsai-workspaces`), into a resident service. Puts
 [llama-swap](https://github.com/mostlygeek/llama-swap) in front, which reads
 the `"model"` field of a request and starts/switches the matching
 `llama-server` as a child process (equivalent to `ollama serve`).
@@ -233,34 +233,41 @@ job on the 1660 SUPER took 4908 s (VAE decode 545 s).
 
 ## Where models live
 
-Uses `/home/seita/bonsai-workspaces/models` (27 GiB) as-is; no disko dataset was added.
+`/var/lib/llm-models` (`rpool/var/lib/llm-models`, NVMe; ~67 GiB as of 2026-10-03),
+declared in `disko/default.nix` and referenced as `modelsDir` in `modules/llama-cpp.nix`.
+Moved from `~/bonsai-workspaces/models` (`dpool/home`, HDD mirror). The same
+dataset also holds Laya's and Jeff's regenerable state (`laya/`, `jeff/`: venvs,
+HF cache, checkpoint; moved 2026-10-03), which keeps venvs off the HDD and out of
+the git tree. Venvs are not relocatable, so they are rebuilt by `laya-setup` /
+`jeff-setup` rather than moved.
 
-1. `/home` is already on `dpool/home` (HDD mirror), so there's no redundancy
-   gain from a new dataset.
-2. Adding a dataset to a running system risks falling into emergency mode if
-   done wrong (see the disko section of CLAUDE.md, and the 2026-08-25
-   openviking incident). Not worth the risk for what's gained.
-3. Runs as `User=seita`, so the DynamicUser `/var/lib/private` problem
-   (the EBUSY case in `disko/default.nix`) doesn't come up in the first place.
+1. **Load time.** llama-swap reloads a model from disk on every switch. The HDD
+   mirror measured ~176-220 MB/s sequential read (`zpool iostat` during the
+   copy), i.e. ~5 min for 64 GiB; NVMe cuts that to seconds.
+2. **No redundancy needed.** GGUFs are re-downloadable, so the single-SSD
+   `rpool` is acceptable.
+3. **No snapshots/replication.** `recordsize=1M` / `compression=off` /
+   `auto-snapshot=false`, same as the retired `var/lib/ollama` dataset.
+4. Runs as `User=seita`, so no DynamicUser `/var/lib/private` problem; the
+   directory is owned by `seita:users`.
 
-That said, `dpool/home` is subject to auto-snapshot, so 27 GiB of
-re-downloadable GGUFs are being snapshotted. Moving to a dedicated dataset
-(`recordsize=1M` / `compression=off` / `auto-snapshot=false`, same settings as
-`var/lib/ollama`) is a future improvement candidate. If you do move it, be
-sure to follow the manual `zfs create` procedure before switching (CLAUDE.md).
+The dataset was created by hand before the switch (CLAUDE.md, disko section):
+`zfs create -o mountpoint=legacy -o recordsize=1M -o compression=off
+-o com.sun:auto-snapshot=false rpool/var/lib/llm-models`, then `rsync`.
+`llm/scripts/_config.sh` and the `llm/` devShell default `BONSAI_MODEL_DIR` to it.
 
-Fetching models is not declarative (putting 27 GiB in the nix store isn't an
-option). Done manually via `~/bonsai-workspaces/scripts/download-model.sh`.
+Fetching models is not declarative (putting tens of GiB in the nix store isn't an
+option). Done manually via `llm/scripts/download-model.sh` (defaults to `/var/lib/llm-models`).
 
 ## Using it interactively
 
 The package is not in `environment.systemPackages` — it ships a binary named
 `llama`, generic enough to collide on PATH. Interactively, use the
-bonsai-workspaces flake instead:
+`llm/` flake instead:
 
 ```sh
-cd ~/bonsai-workspaces && nix develop        # llama-cli / llama-bench etc.
-nix run ~/bonsai-workspaces#bench -- ...
+cd ~/.dotfiles/seita-nixos-baremetal/llm && nix develop        # llama-cli / llama-bench etc.
+nix run ~/.dotfiles/seita-nixos-baremetal/llm#bench -- ...
 ```
 
 Operational procedures: [runbooks/llama-cpp.md](../runbooks/llama-cpp.md).

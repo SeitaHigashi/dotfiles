@@ -72,6 +72,7 @@ test suite.
 | `modules/unfree.nix` | the only `allowUnfreePredicate` | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
 | `modules/unstable.nix` | leaf packages from nixpkgs-unstable | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
 | `modules/llama-cpp.nix` | llama-swap + llama.cpp (PrismML fork) on 127.0.0.1:8888, plus Laya and Jeff; auto-starts | [llama-cpp.md](docs/services/llama-cpp.md) |
+| `llm/` | llama.cpp (PrismML) dev flake, scripts, `models.ini`; `llama-cpp.service` WorkingDirectory. Models and Laya/Jeff state live in `/var/lib/llm-models` (rpool dataset) | [llama-cpp.md](docs/services/llama-cpp.md) |
 | `modules/ollama.nix` | Ollama (**disabled** since 2026-09-21) + Open WebUI (running) | [ollama.md](docs/services/ollama.md), [open-webui.md](docs/services/open-webui.md) |
 | `modules/openviking.nix` | OpenViking context DB (podman); inference via llama.cpp | [openviking.md](docs/services/openviking.md) |
 | `modules/comfyui.nix` | ComfyUI image generation (pip venv) — **disabled** since 2026-09-24 (`enable = false`) | [comfyui.md](docs/services/comfyui.md) |

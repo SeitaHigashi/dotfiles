@@ -18,17 +18,22 @@ let
 
   port = 8888;
 
-  # Working directory for models and the router. A checkout of bonsai-workspaces.
-  # Why models aren't on a disko dataset: docs/services/llama-cpp.md.
-  workDir = "/home/${m.userName}/bonsai-workspaces";
-  modelsDir = "${workDir}/models";
+  # Working directory for the router: llm/ in this repo (moved 2026-10-03 from
+  # ~/bonsai-workspaces, which was not under git).
+  # Models are elsewhere: see modelsDir and docs/services/llama-cpp.md.
+  workDir = "/home/${m.userName}/.dotfiles/seita-nixos-baremetal/llm";
+  # Models live on their own rpool dataset (disko/default.nix). Previous:
+  # modelsDir = "${workDir}/models";  (dpool/home, HDD)
+  modelsDir = "/var/lib/llm-models";
 
   ##########################################################################
   # Laya (a PyTorch decision model) — not llama.cpp, but colocated here so the
   # 1660 SUPER's VRAM is managed by the matrix in one place. Why it runs from
   # a pip venv: docs/decisions/2026-09-23-laya-in-llama-swap.md.
   ##########################################################################
-  layaDir = "${workDir}/laya";
+  # Regenerable state (venv, HF cache) lives on the rpool models dataset, not in
+  # the repo. Previous: layaDir = "${workDir}/laya";  (dpool/home, HDD)
+  layaDir = "${modelsDir}/laya";
   layaVenv = "${layaDir}/venv";
   layaHfHome = "${layaDir}/hf";
   layaRepo = "convaiinnovations/laya";
@@ -158,7 +163,8 @@ let
   # reason as Laya. Measurements and why the wrapper looks like this:
   # docs/decisions/2026-10-03-jeff-in-llama-swap.md.
   ##########################################################################
-  jeffDir = "${workDir}/jeff";
+  # Regenerable state, same placement as layaDir. Previous: jeffDir = "${workDir}/jeff";
+  jeffDir = "${modelsDir}/jeff";
   jeffVenv = "${jeffDir}/venv";
   jeffCheckpoint = "${jeffDir}/Jeff-Qwen3.5-0.8B-v1.2";
 
@@ -247,7 +253,7 @@ let
 
   ##########################################################################
   # Source of the PrismML fork. rev / hash must match
-  # ~/bonsai-workspaces/flake.lock, which is the source of truth (update
+  # llm/flake.lock, which is the source of truth (update
   # procedure: docs/runbooks/llama-cpp.md). Why the fork, and why not a
   # flake input: docs/decisions/2026-09-21-llama-cpp-prism-build.md.
   ##########################################################################
