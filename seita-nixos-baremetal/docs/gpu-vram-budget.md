@@ -115,6 +115,10 @@ as "total capacity of 5.61 GiB").
 | **total** | **~5153 MiB** |
 | free | ~590 MiB (less while Laya is busy) |
 
+- `jeff-qwen3.5-0.8b` replaces `laya` in the same slot (they are alternatives in the matrix):
+  1022 MiB right after loading, 1116 MiB after use (measured 2026-10-03). That leaves only
+  **~220 MiB** free on this card (Laya leaves ~590 MiB), so a long input or a bigger
+  `embedding` can OOM it; measure before changing anything here.
 - **Laya's figure is a reference value, not a fixed size.** 748 MiB was measured right
   after loading (2026-09-23); its footprint changes with the requests it handles
   (1128 MiB was observed on 2026-09-24 after use, leaving ~210 MiB free). Treat the

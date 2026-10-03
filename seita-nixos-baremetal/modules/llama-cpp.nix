@@ -154,6 +154,98 @@ let
   '';
 
   ##########################################################################
+  # Jeff (Jev-compatible decision model, PyTorch) — colocated for the same
+  # reason as Laya. Measurements and why the wrapper looks like this:
+  # docs/decisions/2026-10-03-jeff-in-llama-swap.md.
+  ##########################################################################
+  jeffDir = "${workDir}/jeff";
+  jeffVenv = "${jeffDir}/venv";
+  jeffCheckpoint = "${jeffDir}/Jeff-Qwen3.5-0.8B-v1.2";
+
+  # Pinned: jeff source (firelex/jeff) and the HF checkpoint (mstrasser/Jeff-Qwen3.5-0.8B, tag v1.2).
+  jeffRev = "d0173b4ee317a46dee031421b713f3fc5f868cfe";
+  jeffCheckpointRev = "f0a2b523f1b64c567d4628fadd60caea03cc6847";
+
+  # Jeff pins torch 2.14.0, but that is cu130-only and this host's driver
+  # (575, CUDA 12.9) cannot run it. 2.11.0+cu128 is the newest cu128 build and
+  # was the combination measured (2026-10-03). Reuses laya's LD_LIBRARY_PATH.
+  jeffTorchVersion = "2.11.0";
+  jeffTorchvisionVersion = "0.26.0";
+
+  # jeff-serve with a text-only, 1660-SUPER-sized backbone (stock jeff is untouched):
+  #   - vision tower deleted (192 MiB)
+  #   - embed_tokens stays on the CPU (491 MiB; lookup costs ~1 ms). On the GPU
+  #     the load OOMs: only ~310 MiB is free after the layers.
+  #   - layers fp16 on the GPU, but each Linear computes in fp32 (weights are
+  #     expanded per matmul): fp16 GEMM is ~10x slower than fp32 on TU116
+  #     (no tensor cores). 385 ms -> 113 ms, same accuracy (measured).
+  # ** Do not "simplify" this to plain .half(): it is 3.4x slower. **
+  jeffServer = pkgs.writeText "jeff-server.py" ''
+    """jeff-serve for llama-swap: text-only, fp16 weights, fp32 matmuls, embeddings on the CPU."""
+    import argparse
+    import os
+    import types
+
+    import torch
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, required=True)
+    args = ap.parse_args()
+    os.environ["PORT"] = str(args.port)  # jeff.server.main() reads PORT
+
+    import jeff.model as jm
+
+    dev = torch.device("cuda:0")
+
+
+    class CpuEmbed(torch.nn.Module):
+        def __init__(self, emb):
+            super().__init__()
+            self.emb = emb
+
+        def forward(self, ids):
+            return self.emb(ids.cpu()).to(dev, non_blocking=True)
+
+
+    def linear_fp32(self, x):
+        bias = None if self.bias is None else self.bias.float()
+        return torch.nn.functional.linear(x.float(), self.weight.float(), bias).to(x.dtype)
+
+
+    orig = jm.Qwen3_5Model.from_pretrained.__func__
+
+
+    def patched(cls, path, **kw):
+        kw.update(dtype=torch.float16)
+        model = orig(cls, path, **kw)  # on the CPU
+        del model.visual
+        lm = model.language_model
+        lm.layers.to(dev)
+        lm.norm.to(dev)
+        lm.rotary_emb.to(dev)
+        lm.embed_tokens = CpuEmbed(lm.embed_tokens)
+        for mod in lm.layers.modules():
+            if isinstance(mod, torch.nn.Linear):
+                mod.forward = types.MethodType(linear_fp32, mod)
+        return model
+
+
+    jm.Qwen3_5Model.from_pretrained = classmethod(patched)
+
+
+    def to(self, *a, **k):  # the backbone is already placed; only the readout moves
+        self.readout.to(device=dev, dtype=torch.float16)
+        return self
+
+
+    jm.DecisionModel.to = to
+
+    from jeff.server import main
+
+    main()
+  '';
+
+  ##########################################################################
   # Source of the PrismML fork. rev / hash must match
   # ~/bonsai-workspaces/flake.lock, which is the source of truth (update
   # procedure: docs/runbooks/llama-cpp.md). Why the fork, and why not a
@@ -338,8 +430,10 @@ let
       # Bonsai 2 / PTQ1_0, alone on the 3060 Ti.
       # -c 81920 is the measured ceiling with KV q4_0 (90112 fails). Do not raise it.
       # Do not drop -np 1 (the default of 4 slots OOMs the 27B).
+      # aliases: role names for callers (OK 2026-10-03); matrix/evict_costs use the real id.
       "bonsai":
         name: "Bonsai 2 27B (80K)"
+        aliases: ["chat"]
         env:
           - "CUDA_VISIBLE_DEVICES=1"
         cmd: |
@@ -358,6 +452,7 @@ let
       # Same weights + a vision projector (+600 MB). Context drops to 8192 accordingly.
       "bonsai-vision":
         name: "Bonsai 2 27B (vision)"
+        aliases: ["vision"]
         env:
           - "CUDA_VISIBLE_DEVICES=1"
         cmd: |
@@ -410,6 +505,27 @@ let
           - "HF_HUB_OFFLINE=1"
         cmd: |
           ${layaVenv}/bin/python ${layaServer} --port ''${PORT}
+
+      # Jeff v1.2 Qwen3.5-0.8B (Jev-compatible decision model, PyTorch), the
+      # English-trained but Japanese-capable alternative to laya. Alias
+      # "decision" is the role name; laya keeps its own id and is not an alias.
+      # Called via POST /upstream/decision/v1/systemone with a "model" field
+      # (docs/services/llama-cpp.md). Mutually exclusive with laya in the
+      # matrix: together they would not fit the 1660 SUPER.
+      "jeff-qwen3.5-0.8b":
+        name: "Jeff v1.2 Qwen3.5 0.8B (decision)"
+        aliases: ["decision", "jeff"]
+        checkEndpoint: /health
+        concurrencyLimit: 1
+        env:
+          - "CUDA_VISIBLE_DEVICES=0"
+          - "LD_LIBRARY_PATH=${layaLdPath}"
+          - "JEFF_CHECKPOINT=${jeffCheckpoint}"
+          - "JEFF_DEVICE=cuda"
+          - "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True"
+          - "HF_HUB_OFFLINE=1"
+        cmd: |
+          ${jeffVenv}/bin/python ${jeffServer} --port ''${PORT}
 
       # Qwen-Image-2.1 (DiT Q4_K + Qwen3-VL-8B Q4_K_M text encoder + VAE) on
       # the 3060 Ti, so it evicts bonsai (see the matrix below).
@@ -482,16 +598,18 @@ let
               # Keep it longer than embedding because it blocks n8n's branching
               # synchronously; cheaper to evict than bonsai.
               laya: 30
+              jeff-qwen3.5-0.8b: 30
               # Cheap to reload relative to bonsai (weights are staged from RAM
               # per request anyway), so it's the first to go when bonsai returns.
               qwen-image: 10
               minimax-h3: 10
             sets:
-              generation: "(bonsai | bonsai-vision) & embedding & laya"
+              # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
+              generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
-              image: "qwen-image & embedding & laya"
+              image: "qwen-image & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
-              video: "minimax-h3 & embedding & laya"
+              video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b)"
   '';
 in
 {
@@ -510,8 +628,8 @@ in
     # laya-setup is a `wants`, not `requires`: bonsai and embedding should
     # keep working even if Laya's setup fails, so it shouldn't take the
     # whole router down with it.
-    after = [ "nvidia-persistenced.service" "network.target" "laya-setup.service" ];
-    wants = [ "nvidia-persistenced.service" "laya-setup.service" ];
+    after = [ "nvidia-persistenced.service" "network.target" "laya-setup.service" "jeff-setup.service" ];
+    wants = [ "nvidia-persistenced.service" "laya-setup.service" "jeff-setup.service" ];
 
     environment = {
       # ** Do not change from PCI_BUS_ID ** swapConfig's CUDA_VISIBLE_DEVICES
@@ -606,6 +724,60 @@ import laya
 laya.load("${layaRepo}", subfolder="${layaSubfolder}", device="cpu")
 print("laya checkpoint ready")
 '
+    '';
+  };
+
+  # jeff-setup: idempotent oneshot that prepares [jeff-qwen3.5-0.8b]'s venv and
+  # checkpoint, like laya-setup. Not `requires` for llama-cpp: bonsai/embedding
+  # must keep working if this fails. First run downloads ~3 GB of torch wheels
+  # and the 1.6 GB checkpoint: journalctl -u jeff-setup -f
+  systemd.services.jeff-setup = {
+    description = "Jeff venv + checkpoint setup (for llama-swap's [jeff-qwen3.5-0.8b])";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+
+    environment.LD_LIBRARY_PATH = layaLdPath;
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      User = m.userName;
+      Group = "users";
+      TimeoutStartSec = "45min";
+    };
+
+    script = ''
+      set -euo pipefail
+
+      mkdir -p ${jeffDir}
+
+      if [ ! -x ${jeffVenv}/bin/python ]; then
+        ${pkgs.uv}/bin/uv venv --python ${pkgs.python3}/bin/python3 ${jeffVenv}
+      fi
+
+      # torch/torchvision from PyTorch's cu128 index (PyPI's are cu130, which
+      # this driver cannot run). Do not drop --index-url.
+      ${pkgs.uv}/bin/uv pip install --python ${jeffVenv}/bin/python \
+        --index-url https://download.pytorch.org/whl/cu128 \
+        "torch==${jeffTorchVersion}" "torchvision==${jeffTorchvisionVersion}"
+
+      # Jeff's other pins (pyproject.toml of ${jeffRev}); torch is deliberately
+      # not Jeff's pin, so jeff itself is installed with --no-deps.
+      ${pkgs.uv}/bin/uv pip install --python ${jeffVenv}/bin/python \
+        "transformers==5.17.0" "pillow==12.3.0" "fastapi==0.141.1" \
+        "uvicorn==0.52.4" "safetensors==0.8.0" "numpy==2.5.3" \
+        "huggingface-hub==1.31.0" "peft==0.21.1"
+      ${pkgs.uv}/bin/uv pip install --python ${jeffVenv}/bin/python --no-deps \
+        "https://github.com/firelex/jeff/archive/${jeffRev}.tar.gz"
+
+      # Checkpoint (pinned commit). Runtime is HF_HUB_OFFLINE=1.
+      if [ ! -f ${jeffCheckpoint}/model.safetensors ]; then
+        ${jeffVenv}/bin/hf download mstrasser/Jeff-Qwen3.5-0.8B \
+          --revision ${jeffCheckpointRev} --local-dir ${jeffCheckpoint} \
+          --exclude "videos/*" --exclude "assets/*"
+      fi
+      echo "jeff ready"
     '';
   };
 }

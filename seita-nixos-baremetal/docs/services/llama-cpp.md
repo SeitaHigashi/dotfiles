@@ -19,14 +19,15 @@ the `"model"` field of a request and starts/switches the matching
   `/v1/models`). **Not Ollama-compatible.**
 - Auto-starts (2026-09-23~). Background:
   [migration from ollama](../decisions/2026-09-23-ollama-to-llama-cpp.md).
-- Units: `llama-cpp.service` (the router itself), `laya-setup.service`
-  (prepares `[laya]`'s venv and weights, oneshot).
+- Units: `llama-cpp.service` (the router itself), `laya-setup.service` and
+  `jeff-setup.service` (prepare `[laya]`'s / `[jeff-qwen3.5-0.8b]`'s venv and weights, oneshot).
 
 Design decision records:
 
 - [PrismML fork build method](../decisions/2026-09-21-llama-cpp-prism-build.md)
 - [Why llama-swap (matrix) sits in front](../decisions/2026-09-22-llama-swap-matrix.md)
 - [Why Laya is colocated in llama-swap](../decisions/2026-09-23-laya-in-llama-swap.md)
+- [Jeff in llama-swap (measurements, why the wrapper is shaped this way)](../decisions/2026-10-03-jeff-in-llama-swap.md)
 - [Migration from ollama](../decisions/2026-09-23-ollama-to-llama-cpp.md)
 
 GPU/VRAM allocation and measurements are collected in
@@ -34,14 +35,22 @@ GPU/VRAM allocation and measurements are collected in
 
 ## Models
 
-| ID | contents | GPU | use |
+| ID (aliases) | contents | GPU | use |
 |---|---|---|---|
-| `bonsai` | Ternary-Bonsai-2-27B PTQ1_0, 80K ctx, KV q4_0 | 3060 Ti | general generation (n8n, OpenViking's VLM) |
-| `bonsai-vision` | same weights + mmproj (+600 MB), 8K ctx, KV q8_0 | 3060 Ti | image input |
+| `bonsai` (`chat`) | Ternary-Bonsai-2-27B PTQ1_0, 80K ctx, KV q4_0 | 3060 Ti | general generation (n8n, OpenViking's VLM) |
+| `bonsai-vision` (`vision`) | same weights + mmproj (+600 MB), 8K ctx, KV q8_0 | 3060 Ti | image input |
 | `embedding` | Qwen3-Embedding-4B Q4_K_M, 2560 dims | 1660 SUPER | OpenViking, Open WebUI's RAG |
 | `laya` | Laya multilingual 322M (PyTorch, fp16) | 1660 SUPER | decision model for n8n's flow branching |
+| `jeff-qwen3.5-0.8b` (`decision`, `jeff`) | Jeff v1.2 Qwen3.5 0.8B (PyTorch, text-only, fp16 weights / fp32 matmul) | 1660 SUPER | Jev-compatible decision model; alternative to `laya` (mutually exclusive in the matrix) |
 | `qwen-image` | Qwen-Image-2.1 (stable-diffusion.cpp `sd-server`), DiT Q4_K + Qwen3-VL-8B Q4_K_M + VAE bf16 | 3060 Ti | image generation / editing |
 | `minimax-h3` | MiniMax-H3 (`sd-server`), pruned FL2VA DiT Q4_K_M + Qwen3-VL-32B Q2_K_M + video VAE fp16 + audio VAE fp32 | 3060 Ti | video + stereo audio generation |
+
+**Aliases** (`aliases:` in the llama-swap config) are role names for callers: they work in the
+`"model"` field and in `/upstream/<alias>/...` (verified on llama-swap 249, 2026-10-03), resolve to the
+same process as the real ID, and show up in `/v1/models` only under `meta.llamaswap.aliases`.
+The matrix and `evict_costs` use the **real ID**. IDs and aliases must not contain `/`
+(`/upstream/a/b/` is a 404). `laya` and `jeff-qwen3.5-0.8b` are alternatives (`|`) in every matrix
+set: they do not fit the 1660 SUPER together.
 
 `bonsai`, `bonsai-vision`, `qwen-image` and `minimax-h3` occupy the same 3060 Ti so none of
 them coexist (the matrix swaps between them). Every other combination can be
@@ -91,6 +100,27 @@ Measured (2026-09-23, 1660 SUPER, fp16):
 5/5 correct on a Japanese 4-choice test. The one near-miss also had a low
 confidence (0.15), so act-or-escalate is working as designed. Keeps serving
 on CPU when CUDA is unavailable (a slower answer beats a dead branch).
+
+### Calling Jeff
+
+Jeff's API is not OpenAI-shaped either; use `/upstream/`. The alias `decision` can be swapped to
+another decision model later without touching callers (the request shape is still Jeff's own, and
+differs from Laya's: endpoint `/v1/systemone`, `"model"` is required, `noul` instead of yes/no).
+
+```
+POST http://127.0.0.1:8888/upstream/decision/v1/systemone
+{"model": "jeff-latest", "state": "...", "questions": {"route": {"type": "choice",
+  "instructions": "...", "criteria": {"A": "...", "B": "..."}}}}
+```
+
+The response has `answers.<name>.probabilities`, `choice` and `confidence`. Put the unchanging
+parts of a request first and the changing field last (Jeff reuses the prepared prefix); never use
+bare numbers as `criteria` keys.
+
+Measured through llama-swap (2026-10-03, 1660 SUPER, 30 Japanese cases): 26/30 correct (Laya's
+log on the same cases: 19/30, model/config not pinned down), 114 ms median warm, ~7 s for the
+first request after a swap. Results are identical to fp32-on-CPU (0 label flips, probabilities
+within 0.0014). Details: [decision record](../decisions/2026-10-03-jeff-in-llama-swap.md).
 
 ### Calling qwen-image
 
