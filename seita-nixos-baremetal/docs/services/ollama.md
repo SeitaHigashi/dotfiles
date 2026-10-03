@@ -19,6 +19,10 @@ Disabling `services.ollama` also stops, or breaks the backend of:
 
 ## How to re-enable
 
+0. The model dataset `rpool/var/lib/ollama` was destroyed on 2026-10-03 (models are
+   re-`ollama pull`-able). Uncomment its block in `disko/default.nix` and `zfs create` it by hand
+   first (`-o mountpoint=legacy -o recordsize=1M -o compression=off -o com.sun:auto-snapshot=false`),
+   or switching will drop the host into emergency mode (CLAUDE.md, disko section).
 1. Stop `llama-cpp.service` first (VRAM: both cards together have ~13.6 GiB; ollama alone can
    want ~13.3 GiB effective, so the two are not meant to run at once — see
    [GPU VRAM budget](../gpu-vram-budget.md)).
@@ -59,9 +63,9 @@ tok/s numbers behind the `loadModels` list.
   whenever `User` is set), so the real state directory is `/var/lib/private/ollama`.
   `/var/lib/ollama` is a symlink to it (same pattern as VictoriaMetrics — see
   `disko/default.nix`).
-- Models live on a dedicated ZFS dataset, `rpool/var/lib/ollama` (mounted at
-  `/var/lib/private/ollama`, `recordsize=1M`, `compression=off`). Not covered by snapshots or
-  syncoid backups — if lost, re-`ollama pull`.
+- Models lived on a dedicated ZFS dataset, `rpool/var/lib/ollama` (mounted at
+  `/var/lib/private/ollama`, `recordsize=1M`, `compression=off`), destroyed 2026-10-03 (see
+  [How to re-enable](#how-to-re-enable)). It was not covered by snapshots or syncoid backups.
 - The upstream `services.ollama.syncModels` option (removes undeclared models) is not in 25.05;
   manually `ollama pull`-ed models are never auto-removed.
 
@@ -80,7 +84,6 @@ systemctl status ollama open-webui
 ollama list          # models on disk
 ollama ps            # loaded models and GPU/CPU split
 journalctl -u ollama -b | grep "inference compute"   # should show 2 GPU lines
-zfs list rpool/var/lib/ollama                         # model storage usage
 ```
 
 To check whether the 2-card split (`OLLAMA_SCHED_SPREAD`) is actually faster than a single card:

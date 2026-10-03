@@ -188,12 +188,13 @@ in
           "var/lib/loki" =
             fsDataset "/var/lib/loki" ({ recordsize = "16K"; } // notSnapshotted);
 
-          # LLM model store (modules/ollama.nix). Split off so GGUF churn (each
-          # re-fetchable via `ollama pull`) doesn't bloat snapshots/replication;
-          # recordsize=1M + compression=off for large, already-compressed reads.
-          # Mounts at /var/lib/private/ollama (DynamicUser=true). docs/storage-zfs.md §4.
-          "var/lib/ollama" =
-            fsDataset "/var/lib/private/ollama" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
+          # Ollama model store (modules/ollama.nix) — RETIRED 2026-10-03: ollama has
+          # been disabled since 2026-09-21 and the dataset (80.8 GiB) was destroyed.
+          # Models moved to rpool/var/lib/llm-models for llama-cpp, below.
+          # To restore: uncomment this, `zfs create` it by hand BEFORE switching
+          # (same options as below), then follow docs/services/ollama.md#how-to-re-enable.
+          # "var/lib/ollama" =
+          #   fsDataset "/var/lib/private/ollama" ({ recordsize = "1M"; compression = "off"; } // notSnapshotted);
 
           # LLM model store for llama-cpp (modules/llama-cpp.nix modelsDir). On
           # rpool (NVMe) so llama-swap model switches reload fast; GGUFs are
