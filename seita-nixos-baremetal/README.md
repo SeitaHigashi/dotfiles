@@ -38,6 +38,7 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - [fukurou](docs/services/fukurou.md) — voice conversation loop (STT → LLM → TTS)
 - [Desktop](docs/services/desktop.md) — KDE Plasma (X11) for the projector
 - [Monitoring](docs/services/monitoring.md) — VictoriaMetrics, Loki, Grafana, dashboards, Grafana MCP
+- [Claude Code telemetry](docs/services/claude-code-telemetry.md) — OTLP direct into VictoriaMetrics/Loki, dashboard 80
 - [Alerting](docs/services/alerting.md) — Grafana alert rules, conventions, n8n notification
 - [Textfile-collector metrics](docs/services/textfile-metrics.md) — nix-info, nix-profile-info, zfs-snapshot, gpu-xid
 - [n8n](docs/services/n8n.md) — workflow automation
@@ -95,3 +96,4 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - 2026-09-23 [3060 Ti power limit for fan noise](docs/decisions/2026-09-23-3060ti-power-limit.md)
 - 2026-09-23 [Repology → direct nix eval](docs/decisions/2026-09-23-repology-to-direct-nix-eval.md)
 - 2026-09-24 [ComfyUI disabled](docs/decisions/2026-09-24-comfyui-disabled.md)
+- 2026-10-04 [Claude Code OTLP straight into VictoriaMetrics / Loki](docs/decisions/2026-10-04-claude-code-otlp-direct-ingest.md)

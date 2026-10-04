@@ -137,6 +137,7 @@ Inventory (uids are fixed inside each file):
 | `40-zfs-replication.json` | own | snapshot generations and syncoid replication lag (`modules/zfs-snapshot-metrics.nix`) |
 | `70-nix-info.json` | own | installed packages, per-package update status vs. tracked nixpkgs, Hydra build status (`modules/nix-info.nix`) |
 | `71-nix-profile-info.json` | own | imperative `nix profile` packages, generations, update status vs. tracked nixpkgs (`modules/nix-profile-info.nix`) |
+| `80-claude-code.json` | own | Claude Code tokens, sessions, API latency, hook duration, cost estimate, events (OTLP direct ingest, [claude-code-telemetry.md](claude-code-telemetry.md)) |
 
 The three community dashboards were edited on import: `__inputs`/`__requires`
 stripped (Grafana refuses to provision a dashboard that still has them) and the data
