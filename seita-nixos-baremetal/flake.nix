@@ -15,7 +15,8 @@
     # docs/decisions/2026-09-21-pin-nixpkgs-unstable.md
     #
     # nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/20b1ddd1aa5ace70c9468305030aa4f9ef79671b";
+    # nixpkgs-unstable.url = "github:NixOS/nixpkgs/20b1ddd1aa5ace70c9468305030aa4f9ef79671b"; # 2026-09-19, neovim 0.11.5; restore to roll back
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/c59305bab2065cfecc4944690d9eedbb56f3a9fa"; # neovim 0.12.5 (telescope-frecency needs >=0.11.7)
 
     disko = {
       url = "github:nix-community/disko/latest";

@@ -45,3 +45,20 @@ this configuration was confirmed to succeed on the real machine. The only
 package-level diff against the previous pin (checked by evaluating and diffing
 both revisions) was `opencode` 1.18.30 -> 1.18.31 and `ollama-cuda` 0.34.0 ->
 0.34.2.
+
+## 2026-10-04: bumped to `c59305b` (2026-10-01)
+
+Reason: `telescope-frecency.nvim` (master) requires Neovim >= 0.11.7, but `20b1ddd`
+shipped 0.11.5. `c59305b` ships neovim 0.12.5. `nodejs-slim` 24.21.0 was confirmed
+in the binary cache before adopting, and the full `toplevel` build succeeded.
+
+Side effects of the bump:
+
+- `stable-diffusion-cpp`'s `fetchFromGitHub` hash in `modules/llama-cpp.nix` had to
+  be replaced (same tag `master-913-b167b94`, fetcher output changed); the old hash
+  is kept in a comment there.
+- `llama-cpp-prism`, `stable-diffusion-cpp` and `ollama` rebuild from source (CUDA
+  compile, ~1h). llama-cpp units need a manual restart after `switch`.
+
+Rollback: restore the commented `20b1ddd` line in `flake.nix` and the old
+`sd-cpp` hash.

@@ -295,7 +295,7 @@ let
   # stable-diffusion.cpp — image generation (Qwen-Image-2.1), served by its
   # sd-server under llama-swap's [qwen-image]. Not llama.cpp, but it shares
   # the 3060 Ti with bonsai, so it lives in the same matrix.
-  # The pinned nixpkgs-unstable ships master-849, which predates Qwen-Image-2.1
+  # The pinned nixpkgs-unstable ships master-874 (was master-849 before the 2026-10-04 bump), which predates Qwen-Image-2.1
   # support; master-913 is the first tag measured to work on this host
   # (docs/services/llama-cpp.md).
   ##########################################################################
@@ -308,7 +308,8 @@ let
           owner = "leejet";
           repo = "stable-diffusion.cpp";
           tag = sdCppRev;
-          hash = "sha256-n6qulTZD/v5ovp+GQuZiKanDWV1G+Iy93vpTB0J5xO8=";
+          # was sha256-n6qulTZD/v5ovp+GQuZiKanDWV1G+Iy93vpTB0J5xO8= before the 2026-10-01 unstable bump (fetcher output changed)
+          hash = "sha256-DsrOvHL+UmgnaywaZeZdOQcaqSyzn8hn2MZOyuhU61c=";
           fetchSubmodules = true;
         };
         # Same 2 architectures as llamaCppPrism above.
