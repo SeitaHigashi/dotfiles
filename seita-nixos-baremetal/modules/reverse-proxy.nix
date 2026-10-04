@@ -73,6 +73,7 @@ let
     { path = null;       httpsPort = 9447;  port = 7878;                          note = "fukurou-server (wss, for fukurou-webui)"; }
     { path = null;       httpsPort = 9449;  port = 8123;                          note = "automuteus-galactus (AmongUsCapture)"; }
     { path = null;       httpsPort = 9450;  port = 8084;                          note = "automuteus-api (capture links)"; }
+    { path = null;       httpsPort = 9451;  port = 8085;                          note = "homepage (static-web-server)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
   ];
 
