@@ -86,7 +86,6 @@
         ./modules/comfyui.nix          # image generation (ComfyUI) — disabled, see enable flag in the module
         ./modules/multica.nix          # Multica (AI agent management) self-hosted via podman
         ./modules/openviking.nix       # OpenViking (context DB for AI agents) self-hosted via podman
-        ./modules/homepage.nix         # personal homepage (static-web-server, tailnet only)
         ./modules/reverse-proxy.nix    # consolidates HTTP services behind Tailscale Serve
         ./modules/resource-priority.nix # cross-service CPU / memory priority
         ./modules/automuteus.nix       # AutoMuteUs (Among Us auto-mute Discord bot) via podman
