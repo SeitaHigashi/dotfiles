@@ -10,13 +10,13 @@
     # in modules/unstable.nix come from here. Never pull kernel modules (ZFS
     # etc.) from this input; see docs/nixpkgs-channels.md.
     #
-    # Pinned to a specific revision rather than nixos-unstable — do not
-    # switch back. Full incident and required check before bumping:
-    # docs/decisions/2026-09-21-pin-nixpkgs-unstable.md
+    # Follows nixos-unstable (moving branch) again as of 2026-10-05. The pin from
+    # docs/decisions/2026-09-21-pin-nixpkgs-unstable.md is kept below, commented
+    # out; restore it if nodejs-slim (llama-cpp web UI) is missing from the cache.
     #
-    # nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     # nixpkgs-unstable.url = "github:NixOS/nixpkgs/20b1ddd1aa5ace70c9468305030aa4f9ef79671b"; # 2026-09-19, neovim 0.11.5; restore to roll back
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/c59305bab2065cfecc4944690d9eedbb56f3a9fa"; # neovim 0.12.5 (telescope-frecency needs >=0.11.7)
+    # nixpkgs-unstable.url = "github:NixOS/nixpkgs/c59305bab2065cfecc4944690d9eedbb56f3a9fa"; # neovim 0.12.5 (telescope-frecency needs >=0.11.7)
 
     disko = {
       url = "github:nix-community/disko/latest";
