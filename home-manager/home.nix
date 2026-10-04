@@ -13,7 +13,8 @@
   # The home.packages option allows you to install Nix packages into your
   # environment.
   home.packages = [
-    pkgs.neovim
+    # pkgs.neovim # stable 0.11.5 shadowed the system 0.12.5 on PATH (telescope-frecency needs >=0.11.7); restore this line to go back
+    (if pkgs ? unstable then pkgs.unstable.neovim else pkgs.neovim)
 
     # Useful utilities and Neovim dependencies
     pkgs.gcc
