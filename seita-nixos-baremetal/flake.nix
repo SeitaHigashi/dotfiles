@@ -31,6 +31,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Neovim plugins fetched by Nix, loaded by lazy.nvim (home-manager/nvim.nix, docs/neovim.md).
+    # It takes pkgs from this system, so it has no nixpkgs input to follow.
+    nix-lazy-nvim.url = "github:SeitaHigashi/nix-lazy-nvim";
+    # Plugins not in nixpkgs (git only); flake = false: plain source trees pinned by flake.lock.
+    nvim-smoothcursor = { url = "github:gen740/SmoothCursor.nvim"; flake = false; };
+    nvim-cmp-nerdfont = { url = "github:chrisgrieser/cmp-nerdfont"; flake = false; };
+    nvim-lsp-lens = { url = "github:VidocqH/lsp-lens.nvim"; flake = false; };
+    nvim-telescope-lazy = { url = "github:tsakirist/telescope-lazy.nvim"; flake = false; };
+    nvim-telescope-luasnip = { url = "github:benfowler/telescope-luasnip.nvim"; flake = false; };
+    nvim-vim-translator = { url = "github:voldikss/vim-translator"; flake = false; };
+
     # Pulls the user environment (dotfiles/home-manager/home.nix) in as a
     # NixOS module. Same pattern as nixos/ (mac/wsl) — plain import of
     # ../home-manager/home.nix — while home-manager/ itself stays a

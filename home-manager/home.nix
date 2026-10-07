@@ -14,7 +14,9 @@
   # environment.
   home.packages = [
     # pkgs.neovim # stable 0.11.5 shadowed the system 0.12.5 on PATH (telescope-frecency needs >=0.11.7); restore this line to go back
-    (if pkgs ? unstable then pkgs.unstable.neovim else pkgs.neovim)
+    # Skipped where programs.nix-lazy-nvim is enabled (home-manager/nvim.nix): it ships its own `nvim`.
+  ] ++ lib.optional (!(config.programs.nix-lazy-nvim.enable or false)) (if pkgs ? unstable then pkgs.unstable.neovim else pkgs.neovim)
+  ++ [
 
     # Useful utilities and Neovim dependencies
     pkgs.gcc
@@ -58,7 +60,7 @@
     };
   };
 
-  imports = [ ./wm/hyprland.nix ];
+  imports = [ ./wm/hyprland.nix ./nvim.nix ];
 
   programs.git = {
     enable = true;

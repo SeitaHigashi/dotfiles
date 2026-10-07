@@ -31,4 +31,9 @@ if vim.fn.has('python3') == 1 then
   end, M.performance.rtp.disabled_plugins)
 end
 
+-- Under Nix: dev.path / install.missing=false etc. from $NVIM_NIX_LAZY (see bootstrap.lua)
+if _G.nix_lazy then
+  M = vim.tbl_deep_extend("force", M, _G.nix_lazy.opts)
+end
+
 return M
