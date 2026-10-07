@@ -54,7 +54,9 @@ Currently allowed, by name: `nvidia-x11`, `nvidia-settings`, `nvidia-persistence
 `modules/n8n.nix`); `open-webui` (was MIT through 0.6.x, changed to the proprietary
 Open WebUI License — branding-removal and scale restrictions — used via
 `modules/ollama.nix`); `brave` (nixpkgs treats it unfree due to the official
-build's distribution/trademark terms — `modules/unstable.nix`).
+build's distribution/trademark terms — `modules/unstable.nix`); the Neovim plugins
+`cmp-calc`, `cmp-emoji`, `telescope-emoji.nvim`, `presence.nvim` (no license set in nixpkgs)
+and `copilot-language-server` (a plugin dependency) — `../home-manager/nvim.nix`, `docs/neovim.md`.
 
 Allowed by prefix, since CUDA packages are numerous and version-churn frequently:
 `cuda*` (`cuda_cudart`, `cuda_cccl`, `cuda_nvcc`, ...), `libcu*` (`libcublas`,

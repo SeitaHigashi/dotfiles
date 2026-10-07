@@ -71,6 +71,7 @@ test suite.
 | `modules/gpu.nix` | NVIDIA driver, 3060 Ti power limit | [gpu-driver.md](docs/gpu-driver.md) |
 | `modules/unfree.nix` | the only `allowUnfreePredicate` | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
 | `modules/unstable.nix` | leaf packages from nixpkgs-unstable | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
+| `../home-manager/nvim.nix` | Neovim plugins from Nix, lazy.nvim only loads (nix-lazy-nvim) | [neovim.md](docs/neovim.md) |
 | `modules/llama-cpp.nix` | llama-swap + llama.cpp (PrismML fork) on 127.0.0.1:8888, plus Laya and Jeff; auto-starts | [llama-cpp.md](docs/services/llama-cpp.md) |
 | `llm/` | llama.cpp (PrismML) dev flake, scripts, `models.ini`; `llama-cpp.service` WorkingDirectory. Models and Laya/Jeff state live in `/var/lib/llm-models` (rpool dataset) | [llama-cpp.md](docs/services/llama-cpp.md) |
 | `modules/ollama.nix` | Ollama (**disabled** since 2026-09-21) + Open WebUI (running) | [ollama.md](docs/services/ollama.md), [open-webui.md](docs/services/open-webui.md) |
