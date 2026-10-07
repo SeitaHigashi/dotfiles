@@ -452,6 +452,7 @@ let
           -c 81920
           --cache-type-k q4_0
           --cache-type-v q4_0
+          --cache-ram 16384
           --temp 0.5
           --top-p 0.85
           --top-k 20
