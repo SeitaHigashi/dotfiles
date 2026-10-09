@@ -5,7 +5,7 @@
 # GENERATES init.lua (inputs.nix-lazy-nvim, lib.mkLazyNvim): every spec carries
 # dir = "/nix/store/..."; lazy.nvim only loads them, nothing is cloned.
 # Lua modules (lua/config, lsp-configs, keybinds, ...) come from dotfiles/nvim,
-# filtered (see configDir below). The wrapper never reads ~/.config/nvim.
+# filtered (see configDir below). linkConfig = true links the generated config at ~/.config/nvim.
 # Details and rollback: seita-nixos-baremetal/docs/neovim.md
 #
 # Active only where the flake provides inputs.nix-lazy-nvim (seita-nixos-baremetal)
@@ -53,6 +53,8 @@ in
     enable = true;
     package = pkgs.unstable.neovim;
     inherit configDir;
+    # xdg.configFile."nvim" -> generated config; nvim then uses ~/.config/nvim and ~/.local/share/nvim. Set false to go back to the private config root.
+    linkConfig = true;
     plugins = [
             (p "lazy.nvim" vp.lazy-nvim { version = false; })
   

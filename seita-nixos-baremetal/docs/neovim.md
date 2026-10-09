@@ -2,8 +2,9 @@
 
 Plugins are declared in Nix together with their lazy.nvim fields (`event` / `cmd` / `ft` / `keys` / `opts` ...);
 Nix fetches them **and generates `init.lua`**, where every spec carries `dir = "/nix/store/..."`. lazy.nvim only
-loads them: nothing is cloned, updated or checked. The wrapper runs nvim with its own config root
-(`NVIM_APPNAME` + `XDG_CONFIG_HOME`), so `~/.config/nvim` is **not read** on this host.
+loads them: nothing is cloned, updated or checked. With `linkConfig = true` (home-manager) the generated config
+(init.lua + `configDir`) is symlinked at `~/.config/nvim` and the wrapper sets no `NVIM_APPNAME`/`XDG_CONFIG_HOME`,
+so nvim uses the normal `~/.config/nvim` and `~/.local/share/nvim`.
 Mechanism and API (`lib.mkLazyNvim`, `programs.nix-lazy-nvim`): <https://github.com/SeitaHigashi/nix-lazy-nvim>.
 
 ## Where things live
@@ -44,10 +45,20 @@ mechanism. Changing a plugin means editing both. (`bootstrap.lua` / `lazy-option
 - tmux's nordfox theme is sourced from the store path of the nightfox plugin (`nvim.nix`).
 - Verification: dump script in `~/nvim-migrate-verify/` (`run.sh <nvim> <out>`, `dump.lua`) lists plugins and options for diffing.
 
+## Config location and data dir
+
+`~/.config/nvim` -> `/nix/store/...-nvim-config-root/nix-lazy-nvim` (managed by `xdg.configFile."nvim"`). Activation
+fails if a real `~/.config/nvim` already exists (move it away first; the old `dotfiles/nvim` symlink must be removed).
+The data dir is now `~/.local/share/nvim` (before: `~/.local/share/nix-lazy-nvim`), so Mason binaries and lazy state
+start empty. Nothing else in the dotfiles (`setting.sh` only touches the legacy packer dir) manages `~/.config/nvim`.
+
 ## Rollback
 
-Remove `./nvim.nix` from `imports` in `home-manager/home.nix` (plain `pkgs.unstable.neovim` returns automatically,
-and `~/.config/nvim` -> `nvim/` is used with cloning, as on Mac/WSL). The previous `nvim.nix` is kept as a
+`linkConfig = false;` in `nvim.nix` restores the private config root (`NVIM_APPNAME=nix-lazy-nvim`, data in
+`~/.local/share/nix-lazy-nvim`). Or:
+
+Remove `./nvim.nix` from `imports` in `home-manager/home.nix` (plain `pkgs.unstable.neovim` returns automatically;
+re-create `~/.config/nvim` -> `dotfiles/nvim` by hand to clone-load as on Mac/WSL). The previous `nvim.nix` is kept as a
 comment at the bottom of the file; the previous API also needs the old `nix-lazy-nvim` revision (`1712903`) in `flake.lock`.
 
 <!-- Retired (previous API: $NVIM_NIX_LAZY contract)
