@@ -110,11 +110,11 @@
     },
     "nix-lazy-nvim": {
       "locked": {
-        "lastModified": 1791387142,
-        "narHash": "sha256-VcUNhSYcfNrH4/grZD/KgAMAkgSDDruTDzXZdTi1C5g=",
+        "lastModified": 1791532374,
+        "narHash": "sha256-NRfHJVGUePprGJpoh4Ko5sYdsR72lzaEbHDf7tdsAl0=",
         "owner": "SeitaHigashi",
         "repo": "nix-lazy-nvim",
-        "rev": "1712903960c9e0caf3ca26de562dda83870bf084",
+        "rev": "2e9e479b1f5bb8877f4d25cf619911fb67b05e50",
         "type": "github"
       },
       "original": {
@@ -168,6 +168,22 @@
       "original": {
         "owner": "chrisgrieser",
         "repo": "cmp-nerdfont",
+        "type": "github"
+      }
+    },
+    "nvim-cmp-tabnine": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1726124377,
+        "narHash": "sha256-g7H6dO+SfYSVjSs24+RcngtecuxsgntaAXb6aodFF3w=",
+        "owner": "tzachar",
+        "repo": "cmp-tabnine",
+        "rev": "c0167cdc86c15e782c5461ee62aebee89231c2ed",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tzachar",
+        "repo": "cmp-tabnine",
         "type": "github"
       }
     },
@@ -260,6 +276,7 @@
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nvim-cmp-nerdfont": "nvim-cmp-nerdfont",
+        "nvim-cmp-tabnine": "nvim-cmp-tabnine",
         "nvim-lsp-lens": "nvim-lsp-lens",
         "nvim-smoothcursor": "nvim-smoothcursor",
         "nvim-telescope-lazy": "nvim-telescope-lazy",

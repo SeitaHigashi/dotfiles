@@ -28,6 +28,7 @@
       "cmp-emoji"
       "telescope-emoji.nvim"
       "presence.nvim"
+      "codeium" # codeium.nvim, unfree (home-manager/nvim.nix)
       "copilot-language-server"
     ]
     # CUDA runtime deps (pulled in by ollama-cuda: cuda_cudart, libcublas, ...)

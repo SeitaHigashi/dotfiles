@@ -41,6 +41,7 @@
     nvim-telescope-lazy = { url = "github:tsakirist/telescope-lazy.nvim"; flake = false; };
     nvim-telescope-luasnip = { url = "github:benfowler/telescope-luasnip.nvim"; flake = false; };
     nvim-vim-translator = { url = "github:voldikss/vim-translator"; flake = false; };
+    nvim-cmp-tabnine = { url = "github:tzachar/cmp-tabnine"; flake = false; }; # removed from nixpkgs; source only, its binary (install.sh) is not fetched
 
     # Pulls the user environment (dotfiles/home-manager/home.nix) in as a
     # NixOS module. Same pattern as nixos/ (mac/wsl) — plain import of
