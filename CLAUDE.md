@@ -45,7 +45,7 @@ reference (services, ZFS/disko layout, GPU assignment, secrets via agenix, known
   NixOS module; `/etc/nixos` on those hosts symlinks here — kept as-is, not touched by the
   baremetal-host rework above
 - `home-manager/` — standalone home-manager flake, applied independently with `home-manager switch`
-- Neovim config is **not** managed by Nix — symlinked manually at `~/.config/nvim`
+- Neovim: on seita-nixos-baremetal plugins + init.lua come from `home-manager/nvim.nix` (nix-lazy-nvim; `nvim/` supplies Lua modules); `nvim/` is still symlinked at `~/.config/nvim` for Mac/WSL
 - `herdr/` — same symlink pattern: `~/.config/herdr` points here; runtime state (logs, sockets,
   session.json) is gitignored, only `config.toml` is tracked
 - WezTerm is managed via home-manager (`programs.wezterm`)

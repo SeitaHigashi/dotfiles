@@ -41,7 +41,7 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - [Claude Code telemetry](docs/services/claude-code-telemetry.md) — OTLP direct into VictoriaMetrics/Loki, dashboard 80
 - [Alerting](docs/services/alerting.md) — Grafana alert rules, conventions, n8n notification
 - [Textfile-collector metrics](docs/services/textfile-metrics.md) — nix-info, nix-profile-info, zfs-snapshot, gpu-xid
-- [Neovim plugins via nix-lazy-nvim](docs/neovim.md) — plugins from Nix, lazy.nvim only loads
+- [Neovim plugins via nix-lazy-nvim](docs/neovim.md) — plugins declared in Nix, init.lua generated, lazy.nvim only loads
 - [n8n](docs/services/n8n.md) — workflow automation
 - [Multica](docs/services/multica.md) — self-hosted AI coding-agent workspace
 - [Discord bot](docs/services/discord-bot.md) — Gateway → n8n webhook forwarder
