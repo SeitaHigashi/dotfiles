@@ -735,8 +735,12 @@ let
       # compile (57 s measured; TRITON_CACHE_DIR keeps it across restarts).
       # Weights load lazily on the first request (the health check answers at
       # once), so that request takes about a minute longer.
+      # Alias "image" is the role name, like bonsai's "chat"; qwen-image keeps
+      # only its own id. The matrix set called "image" below is a different
+      # namespace (sets are not model IDs).
       "bonsai-image":
         name: "Bonsai Image Ternary 4B (image generation)"
+        aliases: ["image"]
         checkEndpoint: /v1/models
         concurrencyLimit: 1
         ttl: 600
