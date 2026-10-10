@@ -602,38 +602,38 @@
         "type": "textbox",
         "name": "price_yen_per_kwh",
         "label": "単価 (円/kWh)",
-        "query": "31",
+        "query": "30",
         "current": {
-          "text": "31",
-          "value": "31"
+          "text": "30",
+          "value": "30"
         },
         "options": [
           {
             "selected": true,
-            "text": "31",
-            "value": "31"
+            "text": "30",
+            "value": "30"
           }
         ],
-        "description": "電力会社との契約の従量単価。既定値 31 は仮置き。恒久変更は dashboards/90-power.json の query/current を書き換える",
+        "description": "電力会社との契約の従量単価。恒久変更は dashboards/90-power.json の query/current を書き換える",
         "hide": 0
       },
       {
         "type": "textbox",
         "name": "psu_eff",
         "label": "PSU効率 (0-1)",
-        "query": "0.85",
+        "query": "0.9",
         "current": {
-          "text": "0.85",
-          "value": "0.85"
+          "text": "0.9",
+          "value": "0.9"
         },
         "options": [
           {
             "selected": true,
-            "text": "0.85",
-            "value": "0.85"
+            "text": "0.9",
+            "value": "0.9"
           }
         ],
-        "description": "電源ユニットの変換効率。既定値 0.85 は仮置き。負荷により変動する",
+        "description": "電源ユニットの変換効率。負荷により変動する",
         "hide": 0
       }
     ]

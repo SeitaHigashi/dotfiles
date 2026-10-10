@@ -166,8 +166,9 @@ Summary:
 - History starts at the first switch; earlier weeks have no RAPL data.
 - Cost panels use two textbox variables at the top of the dashboard: `price_yen_per_kwh`
   (contract per-kWh unit price) and `psu_eff` (0-1, wall power = DC power ÷ efficiency).
-  The defaults in the JSON (31, 0.85) are placeholders, not measured or contracted
-  values; UI edits last for the session only, so persist real values in
+  The defaults in the JSON are the user-supplied values (30 JPY/kWh, PSU efficiency
+  0.9; the efficiency is a stated figure, not measured). UI edits live in the URL only
+  (the dashboard is read-only), so persist changes in
   `dashboards/90-power.json` (`templating.list[].query/current`). Basic charge,
   fuel-cost adjustment and levies are not included.
 
