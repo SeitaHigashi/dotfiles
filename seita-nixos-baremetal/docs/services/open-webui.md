@@ -74,6 +74,31 @@ the model picker.
 - Title/tag/follow-up tasks routed to this model return an empty string instead of starting a
   job.
 
+## Bonsai Image pipe
+
+Text-to-image through llama-swap's `bonsai-image` ([llama-cpp.md](llama-cpp.md#calling-bonsai-image)),
+as a Pipe function whose source is tracked in `scripts/open-webui-bonsai-image-pipe.py`. Same
+deployment as the video pipe: **paste the file into** Admin Panel → Functions (`+`) and keep the
+function enabled; **after editing the file, paste it again**. Its title (`Bonsai Image`) becomes the
+model name in the model picker.
+
+- Calls `POST http://127.0.0.1:8888/v1/images/generations` with `"model": "bonsai-image"`. The
+  `Content-Type: application/json` header matters: without it llama-swap answers
+  `no model id could be identified`.
+- Resolution (1:1, 16:9, 3:2, 4:3 and their portrait forms; sides ≤ 1024, multiples of 32) and `seed`
+  (-1 = random) are per-user under Chat Controls → Valves. Only 1024x1024 was measured on the card
+  (7812 MiB of 8192); the other presets have fewer pixels. Add larger ones only after measuring.
+- The PNG is stored as an Open WebUI file and returned as a markdown image with the file URL,
+  plus the size and the seed that was used (so a random result can be reproduced).
+- Title/tag/follow-up tasks routed to this model return an empty string, so they never load the
+  image model (which would evict bonsai).
+- Time: ~10 s warm; after a swap ~95-115 s (weights load + Triton compile). A new resolution pays
+  a Triton compile once (512x512 took 14 s on the first request, measured 2026-10-10 against the
+  real endpoint with `open_webui.*` stubbed; a real in-chat run is not yet verified).
+- Not needed for the same job: Open WebUI's built-in image generation (Admin Panel → Settings →
+  Images, engine OpenAI, base URL `http://127.0.0.1:8888/v1`, model `bonsai-image`) also fits this
+  endpoint, but it has no per-user seed or resolution presets and no guard against the 1024 ceiling.
+
 ## Auth and telemetry
 
 - `WEBUI_AUTH = "True"` — without it, anyone on the tailnet gets in with no login.
