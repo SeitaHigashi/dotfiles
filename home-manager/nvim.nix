@@ -287,7 +287,8 @@ in
             (p "cellular-automaton.nvim" vp.cellular-automaton-nvim { event = "VeryLazy"; })
             (p "transparent.nvim" vp.transparent-nvim { event = "BufEnter"; })
             (p "lsp-lens.nvim" inputs.nvim-lsp-lens { event = "BufReadPre"; opts = { }; })
-            (p "markdown.nvim" vp.markdown-nvim {
+            # (p "markdown.nvim" vp.markdown-nvim {  # wrong plugin: tadmccorkle/markdown.nvim; revert by swapping back
+            (p "markdown.nvim" vp.render-markdown-nvim {
               ft = "markdown";
               main = "render-markdown";
               opts = { };
@@ -441,7 +442,8 @@ in
       vp.lsp_signature-nvim
       vp.lspsaga-nvim
       vp.lualine-nvim
-      vp.markdown-nvim
+      # vp.markdown-nvim  # wrong plugin (tadmccorkle); render-markdown.nvim is used instead
+      vp.render-markdown-nvim
       vp.mason-lspconfig-nvim
       vp.mason-nvim-dap-nvim
       vp.mason-nvim
