@@ -252,6 +252,164 @@ let
   '';
 
   ##########################################################################
+  # bonsai-image (PrismML Bonsai Image Ternary 4B, FLUX.2 Klein 4B + gemlite
+  # INT2) on the 3060 Ti — a second image model next to qwen-image, in the same
+  # `image` matrix set. Not sd.cpp: it runs through PrismML's backend_gpu
+  # (diffusers + gemlite/Triton), so it needs its own venv and HTTP wrapper.
+  # Measurements and why the pins look like this:
+  # docs/decisions/2026-10-10-bonsai-image-in-llama-swap.md.
+  ##########################################################################
+  bonsaiImageDir = "${modelsDir}/bonsai-image";
+  bonsaiImageVenv = "${bonsaiImageDir}/venv";
+  bonsaiImageModel = "${bonsaiImageDir}/model";
+  bonsaiImageTritonCache = "${bonsaiImageDir}/triton-cache";
+
+  # Pinned to the combination measured on 2026-10-10 (3060 Ti: 9.7 s warm
+  # 1024^2, 6833 MiB torch peak). Upstream's uv.lock pins torch 2.12.0, which
+  # exists only as cu130; this driver (575, CUDA 12.9) runs cu128, so 2.11.0.
+  # ** gemlite must stay 0.5.1.post1 ** 0.6.x makes W_q an nn.Parameter and
+  #   backend_gpu's `gl.W_q = gl.W_q.to(device)` raises TypeError.
+  bonsaiImageTorchVersion = "2.11.0";
+  bonsaiImageBackendRev = "31b02171634c16b5da0eec6aea075e7489d5fb39"; # PrismML-Eng/image-studio
+  bonsaiImageModelRepo = "prism-ml/bonsai-image-ternary-4B-gemlite-2bit";
+  bonsaiImageModelRev = "bf047aa80569f193d2c4960033af6ba2629988fa";
+
+  # OpenAI-style /v1/images/generations over backend_gpu's GpuPipeline
+  # (standard library HTTP; the upstream FastAPI server only has /generate
+  # behind a bearer token). Weights load lazily on the first request, like
+  # sd-server, so the health check passes immediately.
+  bonsaiImageServer = pkgs.writeText "bonsai-image-server.py" ''
+    """bonsai-image for llama-swap: POST /v1/images/generations -> b64_json PNG."""
+    import argparse
+    import base64
+    import json
+    import os
+    import random
+    import re
+    import threading
+    import time
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from pathlib import Path
+
+    MODEL_ID = "bonsai-image"
+    MODEL_DIR = Path(os.environ["BONSAI_IMAGE_DIR"])
+    # ** Measured only up to 1024x1024 (6.8 GiB torch peak of the 3060 Ti's 8). **
+    #   Do not raise without measuring (docs/services/llama-cpp.md).
+    MAX_SIDE = 1024
+    ALIGN = 32  # upstream's presets are 32-aligned
+    STEPS = 4  # the sampler is distilled for exactly 4 steps
+    GUIDANCE = 1.0
+
+    lock = threading.Lock()
+    pipe = None
+
+
+    def get_pipe():
+        global pipe
+        if pipe is None:
+            from backend_gpu.pipeline_gpu import GpuPipeline
+
+            t = time.perf_counter()
+            tr = MODEL_DIR / "transformer-gemlite-int2"
+            p = GpuPipeline(
+                backend="bonsai-ternary-gemlite",
+                ternary_transformer_path=tr,
+                binary_transformer_path=tr,  # unused by the ternary backend
+                text_encoder_path=MODEL_DIR / "text_encoder-hqq-4bit",
+                vae_path=MODEL_DIR / "vae",
+                tokenizer_path=str(MODEL_DIR / "text_encoder-hqq-4bit" / "tokenizer"),
+                device="cuda:0",
+            )
+            p.prewarm()
+            pipe = p
+            print("[bonsai-image] loaded in %.1fs" % (time.perf_counter() - t), flush=True)
+        return pipe
+
+
+    class Bad(Exception):
+        pass
+
+
+    def parse(body):
+        prompt = body.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise Bad("prompt is required")
+        if body.get("n", 1) != 1:
+            raise Bad("n must be 1")
+        m = re.fullmatch(r"(\d+)x(\d+)", str(body.get("size", "1024x1024")))
+        if not m:
+            raise Bad("size must look like 1024x1024")
+        w, h = int(m.group(1)), int(m.group(2))
+        for side in (w, h):
+            if side % ALIGN or not ALIGN <= side <= MAX_SIDE:
+                raise Bad("size sides must be multiples of %d, %d..%d" % (ALIGN, ALIGN, MAX_SIDE))
+        seed = body.get("seed")
+        if seed is None:
+            seed = random.randrange(2**31)
+        if not isinstance(seed, int):
+            raise Bad("seed must be an integer")
+        return prompt, w, h, seed
+
+
+    class Handler(BaseHTTPRequestHandler):
+        def _send(self, code, obj):
+            data = json.dumps(obj).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            if self.path in ("/health", "/healthz"):
+                self._send(200, {"status": "ok"})
+            elif self.path == "/v1/models":
+                self._send(200, {"object": "list", "data": [{"id": MODEL_ID, "object": "model"}]})
+            else:
+                self._send(404, {"error": {"message": "not found"}})
+
+        def do_POST(self):
+            if self.path != "/v1/images/generations":
+                return self._send(404, {"error": {"message": "not found"}})
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+                prompt, w, h, seed = parse(json.loads(self.rfile.read(n) or b"{}"))
+            except (Bad, ValueError, AttributeError) as e:
+                return self._send(400, {"error": {"message": str(e)}})
+            try:
+                with lock:  # one image at a time: a second one would only raise the VRAM peak
+                    t = time.perf_counter()
+                    png = get_pipe().generate_png(
+                        prompt=prompt, seed=seed, steps=STEPS, height=h, width=w,
+                        guidance=GUIDANCE, tiled_vae=None, max_sequence_length=None,
+                    )
+                    print("[bonsai-image] %dx%d seed=%d %.1fs" % (w, h, seed, time.perf_counter() - t), flush=True)
+            except Exception as e:  # surface OOM etc. to the caller instead of dropping the socket
+                print("[bonsai-image] generation failed: %r" % (e,), flush=True)
+                return self._send(500, {"error": {"message": repr(e)}})
+            self._send(200, {
+                "created": int(time.time()),
+                "data": [{"b64_json": base64.b64encode(png).decode("ascii"), "seed": seed}],
+            })
+
+        def log_message(self, fmt, *a):
+            pass
+
+
+    def main():
+        ap = argparse.ArgumentParser()
+        ap.add_argument("--port", type=int, required=True)
+        args = ap.parse_args()
+        srv = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+        print("[bonsai-image] listening on 127.0.0.1:%d" % args.port, flush=True)
+        srv.serve_forever()
+
+
+    if __name__ == "__main__":
+        main()
+  '';
+
+  ##########################################################################
   # Source of the PrismML fork. rev / hash must match
   # llm/flake.lock, which is the source of truth (update
   # procedure: docs/runbooks/llama-cpp.md). Why the fork, and why not a
@@ -567,6 +725,36 @@ let
           --cfg-scale 6.0
           --sampling-method euler
 
+      # Bonsai Image Ternary 4B (gemlite INT2) on the 3060 Ti: an alternative to
+      # qwen-image in the same matrix set, so it evicts bonsai and qwen-image.
+      # Call via POST /v1/images/generations with "model": "bonsai-image"
+      # (b64_json PNG; size up to 1024x1024, 4 steps fixed).
+      # Measured 2026-10-10 at 1024x1024: 9.7 s warm, 6833 MiB torch peak,
+      # 7812 MiB nvidia-smi peak of 8192 — ** no headroom: nothing else may
+      # share the card **. The first request after a load also pays Triton's
+      # compile (57 s measured; TRITON_CACHE_DIR keeps it across restarts).
+      # Weights load lazily on the first request (the health check answers at
+      # once), so that request takes about a minute longer.
+      "bonsai-image":
+        name: "Bonsai Image Ternary 4B (image generation)"
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_VISIBLE_DEVICES=1"
+          - "LD_LIBRARY_PATH=${layaLdPath}"
+          - "BONSAI_IMAGE_DIR=${bonsaiImageModel}"
+          - "HF_HUB_OFFLINE=1"
+          # NixOS: Triton's bundled ptxas is a generic-Linux ELF that cannot
+          # start, it shells out to /sbin/ldconfig for libcuda, and it needs a C
+          # compiler for its launcher stubs.
+          - "TRITON_PTXAS_PATH=${pkgs.cudaPackages.cuda_nvcc}/bin/ptxas"
+          - "TRITON_LIBCUDA_PATH=/run/opengl-driver/lib"
+          - "TRITON_CACHE_DIR=${bonsaiImageTritonCache}"
+          - "CC=${pkgs.gcc}/bin/gcc"
+        cmd: |
+          ${bonsaiImageVenv}/bin/python ${bonsaiImageServer} --port ''${PORT}
+
       # MiniMax-H3 (video + stereo audio) on the 3060 Ti, evicts bonsai.
       # Call POST /upstream/minimax-h3/sync/vid_gen (blocks until done, so a
       # bonsai request queues instead of killing the job — see sdSyncWrapper).
@@ -613,12 +801,15 @@ let
               # Cheap to reload relative to bonsai (weights are staged from RAM
               # per request anyway), so it's the first to go when bonsai returns.
               qwen-image: 10
+              bonsai-image: 10
               minimax-h3: 10
             sets:
               # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
               generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
-              image: "qwen-image & embedding & (laya | jeff-qwen3.5-0.8b)"
+              # qwen-image and bonsai-image are alternatives ("|"): same card, and
+              # bonsai-image alone peaks at 7.8 of its 8 GiB.
+              image: "(qwen-image | bonsai-image) & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
               video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b)"
   '';
@@ -639,8 +830,8 @@ in
     # laya-setup is a `wants`, not `requires`: bonsai and embedding should
     # keep working even if Laya's setup fails, so it shouldn't take the
     # whole router down with it.
-    after = [ "nvidia-persistenced.service" "network.target" "laya-setup.service" "jeff-setup.service" ];
-    wants = [ "nvidia-persistenced.service" "laya-setup.service" "jeff-setup.service" ];
+    after = [ "nvidia-persistenced.service" "network.target" "laya-setup.service" "jeff-setup.service" "bonsai-image-setup.service" ];
+    wants = [ "nvidia-persistenced.service" "laya-setup.service" "jeff-setup.service" "bonsai-image-setup.service" ];
 
     environment = {
       # ** Do not change from PCI_BUS_ID ** swapConfig's CUDA_VISIBLE_DEVICES
@@ -789,6 +980,61 @@ print("laya checkpoint ready")
           --exclude "videos/*" --exclude "assets/*"
       fi
       echo "jeff ready"
+    '';
+  };
+
+  # bonsai-image-setup: idempotent oneshot that prepares [bonsai-image]'s venv
+  # and weights, like jeff-setup. Not `requires` for llama-cpp. First run
+  # downloads ~3 GB of torch wheels and the 4.5 GB model:
+  # journalctl -u bonsai-image-setup -f
+  systemd.services.bonsai-image-setup = {
+    description = "Bonsai Image venv + weights setup (for llama-swap's [bonsai-image])";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+
+    environment.LD_LIBRARY_PATH = layaLdPath;
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      User = m.userName;
+      Group = "users";
+      TimeoutStartSec = "45min";
+    };
+
+    script = ''
+      set -euo pipefail
+
+      mkdir -p ${bonsaiImageDir} ${bonsaiImageTritonCache}
+
+      if [ ! -x ${bonsaiImageVenv}/bin/python ]; then
+        ${pkgs.uv}/bin/uv venv --python ${pkgs.python3}/bin/python3 ${bonsaiImageVenv}
+      fi
+
+      # torch from PyTorch's cu128 index (PyPI's is cu130, which this driver
+      # cannot run). Do not drop --index-url.
+      ${pkgs.uv}/bin/uv pip install --python ${bonsaiImageVenv}/bin/python \
+        --index-url https://download.pytorch.org/whl/cu128 \
+        "torch==${bonsaiImageTorchVersion}"
+
+      # The measured set (2026-10-10), from upstream's uv.lock except torch.
+      # diffusers/transformers pull safetensors and tokenizers prereleases, hence
+      # --prerelease allow. ** gemlite stays 0.5.1.post1 ** (see the pin comment).
+      ${pkgs.uv}/bin/uv pip install --python ${bonsaiImageVenv}/bin/python \
+        --prerelease allow \
+        "gemlite==0.5.1.post1" "hqq==0.2.8.post1" "diffusers==0.38.0" \
+        "transformers==5.8.1" "accelerate==1.13.0" "safetensors==0.8.0rc0" \
+        "huggingface-hub==1.33.0" "pillow==12.3.0" "numpy==2.5.3"
+
+      # backend_gpu (GpuPipeline) at a pinned commit; its deps are listed above.
+      ${pkgs.uv}/bin/uv pip install --python ${bonsaiImageVenv}/bin/python --no-deps \
+        "https://github.com/PrismML-Eng/image-studio/archive/${bonsaiImageBackendRev}.tar.gz#subdirectory=backend_gpu"
+
+      # Weights at a pinned revision. Runtime is HF_HUB_OFFLINE=1.
+      ${bonsaiImageVenv}/bin/hf download ${bonsaiImageModelRepo} \
+        --revision ${bonsaiImageModelRev} --local-dir ${bonsaiImageModel}
+      echo "bonsai-image ready"
     '';
   };
 }

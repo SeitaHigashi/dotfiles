@@ -43,6 +43,7 @@ GPU/VRAM allocation and measurements are collected in
 | `laya` | Laya multilingual 322M (PyTorch, fp16) | 1660 SUPER | decision model for n8n's flow branching |
 | `jeff-qwen3.5-0.8b` (`decision`, `jeff`) | Jeff v1.2 Qwen3.5 0.8B (PyTorch, text-only, fp16 weights / fp32 matmul) | 1660 SUPER | Jev-compatible decision model; alternative to `laya` (mutually exclusive in the matrix) |
 | `qwen-image` | Qwen-Image-2.1 (stable-diffusion.cpp `sd-server`), DiT Q4_K + Qwen3-VL-8B Q4_K_M + VAE bf16 | 3060 Ti | image generation / editing |
+| `bonsai-image` | Bonsai Image Ternary 4B (FLUX.2 Klein 4B, gemlite INT2; PyTorch + diffusers + Triton, own HTTP wrapper) | 3060 Ti | image generation; alternative to `qwen-image` (mutually exclusive in the matrix) |
 | `minimax-h3` | MiniMax-H3 (`sd-server`), pruned FL2VA DiT Q4_K_M + Qwen3-VL-32B Q2_K_M + video VAE fp16 + audio VAE fp32 | 3060 Ti | video + stereo audio generation |
 
 **Aliases** (`aliases:` in the llama-swap config) are role names for callers: they work in the
@@ -52,8 +53,9 @@ The matrix and `evict_costs` use the **real ID**. IDs and aliases must not conta
 (`/upstream/a/b/` is a 404). `laya` and `jeff-qwen3.5-0.8b` are alternatives (`|`) in every matrix
 set: they do not fit the 1660 SUPER together.
 
-`bonsai`, `bonsai-vision`, `qwen-image` and `minimax-h3` occupy the same 3060 Ti so none of
-them coexist (the matrix swaps between them). Every other combination can be
+`bonsai`, `bonsai-vision`, `qwen-image`, `bonsai-image` and `minimax-h3` occupy the same 3060 Ti so none of
+them coexist (the matrix swaps between them). `qwen-image` and `bonsai-image` are alternatives (`|`)
+in the `image` set. Every other combination can be
 loaded at the same time.
 
 ## Caller-facing notes
@@ -164,6 +166,47 @@ The peak is the DiT stage (4003 MiB weights + ~970 MiB compute buffer); VAE
 decode first tries untiled (needs ~10.8 GB), fails, and retries tiled
 automatically. Running the text encoder on the CPU saves no peak VRAM and is
 slower, so it is not used.
+
+### Calling bonsai-image
+
+```
+POST http://127.0.0.1:8888/v1/images/generations
+{"model": "bonsai-image", "prompt": "...", "size": "1024x1024", "seed": 42}
+```
+
+The answer is `{"data": [{"b64_json": "<PNG>", "seed": 42}]}` (always `b64_json`, never a URL).
+`n` must be 1, each side a multiple of 32 and at most 1024; `seed` is optional (random by default).
+Steps (4) and guidance (1.0) are fixed: the sampler is distilled for exactly 4 steps.
+The wrapper is `bonsaiImageServer` in `modules/llama-cpp.nix`; upstream's own FastAPI server only has
+`/generate` behind a bearer token, so it is not used. Decision record and measurements:
+[2026-10-10-bonsai-image-in-llama-swap.md](../decisions/2026-10-10-bonsai-image-in-llama-swap.md).
+
+Loading it evicts `bonsai` (and `qwen-image`), and the next `bonsai` request pays bonsai's full reload.
+`ttl: 600` unloads it after 10 idle minutes.
+
+Measured 2026-10-10 on the 3060 Ti alone, 1024x1024, 4 steps:
+
+| | |
+|---|---|
+| weights load (lazy, on the first request) | ~60 s |
+| first image after a load (Triton compile, cold cache) | 113 s in total (load included), ~53 s of it compile |
+| warm image | 9.5-9.7 s |
+| torch peak | 6833 MiB (first image), 6447 MiB (warm) |
+| `nvidia-smi` peak (incl. CUDA context) | 7812 MiB of 8192 |
+
+** There is no VRAM headroom (~380 MiB), so nothing else may share the card and the size must not be
+raised without measuring. ** The Triton cache (`TRITON_CACHE_DIR`) lives under
+`/var/lib/llm-models/bonsai-image/triton-cache` (9.4 MB after the first request).
+
+Measured through llama-swap on the running unit (2026-10-10, after `switch`): 93.7 s for the first
+request (weights load + Triton compile, cold cache), 9.3 s warm. A resolution not seen before pays a
+compile once (512x512: 14 s). Send `Content-Type: application/json`, or llama-swap answers
+`no model id could be identified`.
+
+The venv and weights come from `bonsai-image-setup.service` (like `jeff-setup`). Pins:
+torch 2.11.0+cu128, gemlite **0.5.1.post1**, diffusers 0.38.0, transformers 5.8.1 (upstream's
+`uv.lock`, except torch). To move gemlite to 0.6.x, `backend_gpu`'s `gl.W_q = ...` assignments have to
+change first.
 
 ### Calling minimax-h3
 

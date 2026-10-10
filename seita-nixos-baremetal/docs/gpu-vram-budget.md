@@ -42,6 +42,7 @@ possible because llama-swap runs each model as a separate process
 |---|---|---|
 | `bonsai` (80K ctx, KV q4_0) | almost everything left (~410 MiB free after load) | measured 2026-09-22 |
 | `qwen-image` (instead of bonsai, never alongside) | 5338 MiB peak at 1024² (sd-cli; idle residency under sd-server not yet measured) | measured 2026-09-25 ([details](services/llama-cpp.md#calling-qwen-image)) |
+| `bonsai-image` (instead of bonsai or qwen-image, never alongside) | 6833 MiB torch peak, **7812 MiB** `nvidia-smi` peak at 1024² (of 8192) | measured 2026-10-10 ([details](services/llama-cpp.md#calling-bonsai-image)) |
 | `minimax-h3` (instead of bonsai, never alongside) | 7322 MiB peak at 864x480x56 frames (sd-cli; RSS 29.2 GB) | measured 2026-09-28 ([details](services/llama-cpp.md#calling-minimax-h3)) |
 
 fukurou-server (478 MiB) was on this card as of 2026-09-21, but was moved to
