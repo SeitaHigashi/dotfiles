@@ -82,5 +82,13 @@ in
     # direct-connection ports automatically. Without this, NAT traversal
     # fails and traffic falls back to slower DERP relaying.
     openFirewall = true;
+
+    # Exit node: "server" enables IP forwarding and loose rp_filter so
+    # tailnet clients can route internet traffic through this host. The
+    # advertised route still has to be approved once in the admin console
+    # (Machines -> this host -> Edit route settings -> Use as exit node).
+    # To undo: remove these two lines, then `sudo tailscale set --advertise-exit-node=false`.
+    useRoutingFeatures = "server";
+    extraSetFlags = [ "--advertise-exit-node" ];
   };
 }
