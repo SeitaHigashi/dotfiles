@@ -110,11 +110,11 @@
     },
     "nix-lazy-nvim": {
       "locked": {
-        "lastModified": 1791533040,
-        "narHash": "sha256-glRRci62QYWVDHW2XvRvoHxWvVd2JnVaWyQzG5stQzY=",
+        "lastModified": 1791602989,
+        "narHash": "sha256-a3BbAGxawyizTQK1DbY/DDsOFx1mWkc4T85FUQ4ue6A=",
         "owner": "SeitaHigashi",
         "repo": "nix-lazy-nvim",
-        "rev": "cb1a7ee3a804bcccd590f02eaac6df86f17ba7a9",
+        "rev": "b6fcae21e45d9c10dc827baa835ae8635b7a6739",
         "type": "github"
       },
       "original": {
