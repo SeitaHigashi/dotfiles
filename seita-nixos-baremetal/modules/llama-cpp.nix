@@ -525,6 +525,9 @@ let
         aliases: ["decision", "jeff"]
         checkEndpoint: /health
         concurrencyLimit: 1
+        # Unload after 10 min idle to free ~1 GiB on the 1660 SUPER; the next
+        # request pays a cold load. To keep it resident again: remove this line.
+        ttl: 600
         env:
           - "CUDA_VISIBLE_DEVICES=0"
           - "LD_LIBRARY_PATH=${layaLdPath}"

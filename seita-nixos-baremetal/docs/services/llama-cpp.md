@@ -122,6 +122,10 @@ log on the same cases: 19/30, model/config not pinned down), 114 ms median warm,
 first request after a swap. Results are identical to fp32-on-CPU (0 label flips, probabilities
 within 0.0014). Details: [decision record](../decisions/2026-10-03-jeff-in-llama-swap.md).
 
+Jeff has `ttl: 600` (2026-10-10): it is unloaded after 10 idle minutes, freeing ~1 GiB on the
+1660 SUPER, and the next request pays the cold load (~7 s measured above). Laya has no `ttl`.
+To keep Jeff resident again, remove the `ttl` line from its entry in `modules/llama-cpp.nix`.
+
 ### Calling qwen-image
 
 ```
