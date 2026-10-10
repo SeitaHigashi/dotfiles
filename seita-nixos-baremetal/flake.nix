@@ -89,6 +89,7 @@
         ./modules/desktop.nix          # KDE Plasma (X11) — for projector output
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
         ./modules/zfs-snapshot-metrics.nix # snapshot / replication status metrics
+        ./modules/rapl-metrics.nix # CPU package energy (RAPL) textfile metric
         ./modules/gpu-xid-metrics.nix  # NVIDIA Xid ("GPU fallen off the bus" etc.) metrics
         ./modules/nix-info.nix         # installed package list / Hydra build status metrics
         ./modules/nix-profile-info.nix # user's nix profile contents / update-availability metrics

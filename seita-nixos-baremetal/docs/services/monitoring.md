@@ -138,6 +138,7 @@ Inventory (uids are fixed inside each file):
 | `70-nix-info.json` | own | installed packages, per-package update status vs. tracked nixpkgs, Hydra build status (`modules/nix-info.nix`) |
 | `71-nix-profile-info.json` | own | imperative `nix profile` packages, generations, update status vs. tracked nixpkgs (`modules/nix-profile-info.nix`) |
 | `80-claude-code.json` | own | Claude Code tokens, sessions, API latency, hook duration, cost estimate, events (OTLP direct ingest, [claude-code-telemetry.md](claude-code-telemetry.md)) |
+| `90-power.json` | own | CPU package power (RAPL), per-GPU power, per-service CPU power *estimate* (RAPL joules split by cgroup CPU-time share), Wh over the selected range (`modules/rapl-metrics.nix`) |
 
 The three community dashboards were edited on import: `__inputs`/`__requires`
 stripped (Grafana refuses to provision a dashboard that still has them) and the data
@@ -150,6 +151,25 @@ Summary:
   panels removed (cAdvisor only reports network for the root cgroup).
 - **nvidia-gpu**: no MIG/XID/PCIe-throughput/energy-counter/process-list panels
   (datacenter-GPU or newer-exporter features this hardware/exporter doesn't have).
+
+### Power (`90-power.json`)
+
+- CPU power: `modules/rapl-metrics.nix` (root oneshot, every 30 s) copies
+  `/sys/class/powercap/intel-rapl:0/energy_uj` into a textfile as
+  `node_rapl_package_joules_total`. `energy_uj` is root-only on purpose
+  (PLATYPUS side channel); it is not loosened — that was rejected, don't re-propose it.
+- Per-service CPU power is an **estimate**: `package_W × service_cpu_seconds /
+  total_cpu_seconds` (cadvisor cgroup ids). Idle base power is spread by use, and
+  kernel/IRQ time is unattributed. It is not a measurement.
+- GPU power is per GPU only (`nvidia_smi_power_draw_watts`); no per-process history.
+  No wall/PSU power is available (no meter).
+- History starts at the first switch; earlier weeks have no RAPL data.
+- Cost panels use two textbox variables at the top of the dashboard: `price_yen_per_kwh`
+  (contract per-kWh unit price) and `psu_eff` (0-1, wall power = DC power ÷ efficiency).
+  The defaults in the JSON (31, 0.85) are placeholders, not measured or contracted
+  values; UI edits last for the session only, so persist real values in
+  `dashboards/90-power.json` (`templating.list[].query/current`). Basic charge,
+  fuel-cost adjustment and levies are not included.
 
 ## Grafana MCP
 

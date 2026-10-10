@@ -1,0 +1,644 @@
+{
+  "uid": "power-estimate",
+  "title": "電力 (CPU RAPL / GPU / サービス別推定)",
+  "tags": [
+    "power",
+    "rapl",
+    "gpu"
+  ],
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "editable": true,
+  "timezone": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "CPU パッケージ電力 (RAPL)",
+      "description": "RAPL package-0 の累積ジュールの rate。CPU+内蔵 uncore のみ。電源・ディスク・ファンは含まない。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({__name__=~\"node_rapl_package.*_joules_total\"}[$__rate_interval]))",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "GPU 電力 合計",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(nvidia_smi_power_draw_watts)",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "CPU + GPU 合計 (推定)",
+      "description": "壁の消費電力ではない。マザーボード・PSU 損失・ストレージは含まれない。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({__name__=~\"node_rapl_package.*_joules_total\"}[$__rate_interval])) + scalar(sum(nvidia_smi_power_draw_watts))",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "期間内 エネルギー (CPU+GPU)",
+      "description": "選択期間の積算。単位 Wh。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "(sum(increase({__name__=~\"node_rapl_package.*_joules_total\"}[$__range])) + scalar(sum(avg_over_time(nvidia_smi_power_draw_watts[$__range])) * $__range_s)) / 3600",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watth"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "GPU 別 電力",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "nvidia_smi_power_draw_watts * on(uuid) group_left(name) nvidia_smi_gpu_info",
+          "legendFormat": "{{name}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "CPU パッケージ電力",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate({__name__=~\"node_rapl_package.*_joules_total\"}[$__rate_interval]))",
+          "legendFormat": "package",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "サービス別 CPU 電力 (推定・積み上げ)",
+      "description": "パッケージ電力を cgroup の CPU 時間比で按分した推定値。アイドル時の基底電力も使用比で配分される。按分対象外(カーネル/割り込み)の分は合計が RAPL に届かない差分として残る。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "sum by (id) (rate(container_cpu_usage_seconds_total{id=~\"/system.slice/.+|/minecraft.slice|/machine.slice|/user.slice\"}[$__rate_interval])) / scalar(sum(rate(container_cpu_usage_seconds_total{id=\"/\"}[$__rate_interval]))) * scalar(sum(rate({__name__=~\"node_rapl_package.*_joules_total\"}[$__rate_interval])))",
+          "legendFormat": "{{id}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 40,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "サービス別 CPU エネルギー (推定, 選択期間)",
+      "description": "選択期間の CPU 電力量 (Wh) を CPU 時間比で按分。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "sum by (id) (increase(container_cpu_usage_seconds_total{id=~\"/system.slice/.+|/minecraft.slice|/machine.slice|/user.slice\"}[$__range])) / scalar(sum(increase(container_cpu_usage_seconds_total{id=\"/\"}[$__range]))) * scalar(sum(increase({__name__=~\"node_rapl_package.*_joules_total\"}[$__range]))) / 3600",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watth"
+        },
+        "overrides": []
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "GPU 別 エネルギー (選択期間)",
+      "description": "GPU のプロセス別電力は取得不可。サービス別 CPU 電力とは別軸で見る。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "expr": "avg_over_time(nvidia_smi_power_draw_watts[$__range]) * $__range_s / 3600 * on(uuid) group_left(name) nvidia_smi_gpu_info",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watth"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "壁換算 電力 (CPU+GPU ÷ PSU効率)",
+      "description": "DC 側電力を PSU 効率で割った推定値。ディスク・ファン等は含まない。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate({__name__=~\"node_rapl_package.*_joules_total\"}[$__rate_interval])) + scalar(sum(nvidia_smi_power_draw_watts))) / $psu_eff",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "推定電気代 (選択期間)",
+      "description": "(CPU+GPU の Wh) ÷ PSU効率 × 単価。契約の従量単価のみで、基本料金・燃料費調整・賦課金は含まない。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 32,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "((sum(increase({__name__=~\"node_rapl_package.*_joules_total\"}[$__range])) / 3600) + scalar(sum(avg_over_time(nvidia_smi_power_draw_watts[$__range])) * $__range_s / 3600)) / $psu_eff / 1000 * $price_yen_per_kwh",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyJPY"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "推定電気代 (30日換算)",
+      "description": "直近1日の実績を30倍した概算。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "(sum(increase({__name__=~\"node_rapl_package.*_joules_total\"}[1d])) / 3600 + scalar(sum(avg_over_time(nvidia_smi_power_draw_watts[1d])) * 24)) / $psu_eff / 1000 * $price_yen_per_kwh * 30",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyJPY"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "推定電気代 (円/時)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 32,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate({__name__=~\"node_rapl_package.*_joules_total\"}[$__rate_interval])) + scalar(sum(nvidia_smi_power_draw_watts))) / $psu_eff / 1000 * $price_yen_per_kwh",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyJPY"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "サービス別 CPU 推定電気代 (選択期間)",
+      "description": "CPU 按分電力量 ÷ PSU効率 × 単価。按分は推定のため順位・桁の把握用。",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "expr": "(sum by (id) (increase(container_cpu_usage_seconds_total{id=~\"/system.slice/.+|/minecraft.slice|/machine.slice|/user.slice\"}[$__range])) / scalar(sum(increase(container_cpu_usage_seconds_total{id=\"/\"}[$__range]))) * scalar(sum(increase({__name__=~\"node_rapl_package.*_joules_total\"}[$__range]))) / 3600) / $psu_eff / 1000 * $price_yen_per_kwh",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyJPY"
+        },
+        "overrides": []
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "type": "table",
+      "title": "GPU 別 推定電気代 (選択期間)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "expr": "avg_over_time(nvidia_smi_power_draw_watts[$__range]) * $__range_s / 3600 * on(uuid) group_left(name) nvidia_smi_gpu_info / $psu_eff / 1000 * $price_yen_per_kwh",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyJPY"
+        },
+        "overrides": []
+      },
+      "options": {}
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "textbox",
+        "name": "price_yen_per_kwh",
+        "label": "単価 (円/kWh)",
+        "query": "31",
+        "current": {
+          "text": "31",
+          "value": "31"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "31",
+            "value": "31"
+          }
+        ],
+        "description": "電力会社との契約の従量単価。既定値 31 は仮置き。恒久変更は dashboards/90-power.json の query/current を書き換える",
+        "hide": 0
+      },
+      {
+        "type": "textbox",
+        "name": "psu_eff",
+        "label": "PSU効率 (0-1)",
+        "query": "0.85",
+        "current": {
+          "text": "0.85",
+          "value": "0.85"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "0.85",
+            "value": "0.85"
+          }
+        ],
+        "description": "電源ユニットの変換効率。既定値 0.85 は仮置き。負荷により変動する",
+        "hide": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  }
+}
