@@ -141,9 +141,20 @@ in
     # -o on       enable offline self-test
     # -S on       enable attribute autosave
     # -n standby  don't wake idle HDDs (avoid needless spin-up)
-    # -W 4,50,60  log/warn on a 4C jump, or crossing 50C/60C
-    # No mail transport configured, so warnings only reach the journal
-    # (journalctl -u smartd).
+    # -W 4,50,60  log a 4C jump or crossing 50C; warn (critical) at 60C
+    # No mail transport configured: critical warnings go to the journal
+    # (journalctl -u smartd) and, via the NixOS default notifier, to wall.
     defaults.autodetected = "-a -o on -S on -n standby -W 4,50,60";
+
+    # NVMe gets its own thresholds; a device listed here precedes DEVICESCAN, so
+    # the HDDs keep the defaults above. Samsung rates the 990 PRO for 0-70C and
+    # the drive reports 82C warning / 85C critical, while it measured 60C+ about
+    # 1% of the time (max 64C over 90 days) -- 60C as critical was just noise.
+    # Was covered by the autodetected default (-W 4,50,60); drop this block to
+    # go back to that.
+    devices = [{
+      device = m.ssd;
+      options = "-a -o on -S on -W 4,60,70";
+    }];
   };
 }

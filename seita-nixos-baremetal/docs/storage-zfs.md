@@ -213,10 +213,14 @@ explicitly.
   drive has since been replaced, and DRAM-backed SSDs don't exhibit the stall, so keeping the
   default surfaces a real failure within seconds instead of hiding it for up to 4 minutes.
 - **smartd** runs with `-a -o on -S on -n standby -W 4,50,60` (all attributes, offline
-  self-test, autosave, don't wake idle HDDs, log/warn on a 4°C jump or crossing 50/60°C).
-  No mail transport is configured, so warnings only reach the journal
-  (`journalctl -u smartd`). This exists because the NVMe-dropout incident's drive had reached
-  78% Percentage Used with nobody noticing.
+  self-test, autosave, don't wake idle HDDs, log a 4°C jump or crossing 50°C, warn at 60°C)
+  for autodetected drives, i.e. the HDDs. The NVMe is listed explicitly with `-W 4,60,70`:
+  Samsung rates the 990 PRO for 0–70°C and the drive itself reports 82°C warning / 85°C
+  critical, while it measured ≥60°C about 1% of the time (max 64°C over 90 days), so the
+  shared 60°C limit fired 17 times in 30 days on ordinary load.
+  No mail transport is configured, so critical warnings reach the journal
+  (`journalctl -u smartd`) and, via the NixOS default notifier, `wall`. This exists because
+  the NVMe-dropout incident's drive had reached 78% Percentage Used with nobody noticing.
 
 ---
 
