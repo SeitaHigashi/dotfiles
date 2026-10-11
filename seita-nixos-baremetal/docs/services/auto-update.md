@@ -36,7 +36,8 @@ The `nix-lazy-nvim` and `nvim-*` source inputs are **not** auto-updated (add the
    The job must never activate work the user has not switched. Consequence: updates silently pause while
    uncommitted or unswitched changes exist.
 2. `nix flake update nixpkgs-auto` (as the repo owner). No lock change → done.
-3. `nixos-rebuild switch`, then wait for the Open WebUI `/health` and n8n `/healthz` endpoints (up to ~5 min each).
+3. Build (as the repo owner — root's nix refuses a git repo it does not own) and activate the result as root
+   (`switch-to-configuration switch`), then wait for the Open WebUI `/health` and n8n `/healthz` endpoints (up to ~5 min each).
 4. Success → commits `flake.lock` locally (`chore(flake): auto-update nixpkgs-auto`). **Not pushed.**
 5. Failure (build, activation or health) → restores `flake.lock`, switches back, exits 1. The unit stays
    failed, which fires the existing "systemd unit is failed" alert ([alerting.md](alerting.md)).

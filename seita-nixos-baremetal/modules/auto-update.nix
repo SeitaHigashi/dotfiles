@@ -27,7 +27,6 @@ let
     name = "nix-auto-update";
     runtimeInputs = [
       config.nix.package.out
-      config.system.build.nixos-rebuild
       pkgs.gitMinimal
       pkgs.util-linux # runuser
       pkgs.getent
@@ -70,7 +69,16 @@ let
         done
       }
 
-      if nixos-rebuild switch --flake "$flake#$host" && healthy; then
+      # Built as the repo owner, activated as root: root's nix refuses to open a
+      # git repo it does not own (plain `nixos-rebuild` only works under sudo).
+      activate() {
+        local system
+        system=$(as_owner nix build --no-link --print-out-paths "$flake#nixosConfigurations.$host.config.system.build.toplevel") || return 1
+        nix-env -p /nix/var/nix/profiles/system --set "$system" || return 1
+        "$system/bin/switch-to-configuration" switch
+      }
+
+      if activate && healthy; then
         as_owner git commit --quiet -m "chore(flake): auto-update ${lib.concatStringsSep " " autoInputs}" -- flake.lock
         echo "updated: $(readlink -f /run/current-system)"
       else
@@ -78,7 +86,7 @@ let
         # version is NOT rolled back (docs/services/auto-update.md).
         echo "update failed; restoring flake.lock and switching back" >&2
         as_owner git checkout -- flake.lock
-        nixos-rebuild switch --flake "$flake#$host"
+        activate
         exit 1
       fi
     '';
