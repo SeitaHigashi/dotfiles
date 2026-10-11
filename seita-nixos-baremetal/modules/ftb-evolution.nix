@@ -74,6 +74,12 @@ in
     # silently change the JRE out from under a running server.
     image = "docker.io/itzg/minecraft-server:java21";
 
+    # Excluded from podman auto-update (modules/auto-update.nix labels every
+    # container "registry"): an image rebuild must not restart the server.
+    # Update by hand: podman pull + systemctl restart podman-ftb-evolution.
+    # Remove this line to opt back in.
+    labels."io.containers.autoupdate" = "disabled";
+
     ports = [ "${listenAddress}${toString port}:25565" ];
 
     volumes = [ "${dataDir}/data:/data" ];

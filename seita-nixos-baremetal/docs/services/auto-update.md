@@ -12,8 +12,9 @@ Unattended updates, configured in `modules/auto-update.nix` (added 2026-10-11). 
 - It follows the **tag** in the module. `:latest` containers (multica backend/web, openviking, mc-monitor)
   move to whatever upstream publishes; pinned tags (`pg17`, `postgres:18-alpine`, `java21`, the AutoMuteUs
   `tag`) only get rebuilds of that tag.
-- Minecraft: an `itzg/minecraft-server:java21` rebuild restarts the server at 04:00. The modpack stays pinned
-  by `FTB_MODPACK_VERSION_ID` ([minecraft.md](minecraft.md)).
+- **Minecraft (`ftb-evolution`) is excluded** (`labels."io.containers.autoupdate" = "disabled"` in
+  `modules/ftb-evolution.nix`, 2026-10-11): an image rebuild must not restart the server. Update it by hand
+  ([minecraft.md](minecraft.md)). `mc-monitor` is still auto-updated.
 - Opt one container out: `labels."io.containers.autoupdate" = "disabled";` in its module.
   Turn the whole half off: `systemd.timers.podman-auto-update.wantedBy = [ ];`.
 - Check: `podman auto-update --dry-run`, `journalctl -u podman-auto-update`.
