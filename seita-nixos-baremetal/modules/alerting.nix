@@ -440,7 +440,7 @@ in
               uid = "zfs-snapshot-metrics-stale";
               title = "ZFS metrics collection has stopped";
               # If this is stale, the replication-lag rule above can no longer be
-              # trusted. The timer runs every 5 minutes, so treat 30 minutes as stale.
+              # trusted. The timer runs every 15 minutes, so 30 minutes is two missed runs.
               expr = "time() - zfs_snapshot_metrics_last_run_seconds";
               op = "gt";
               limit = 1800;

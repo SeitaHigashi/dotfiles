@@ -28,7 +28,11 @@ let
       #
       # -p forces raw seconds/bytes instead of human units ("1.5G").
       zfs list -H -o name                        > "$work/datasets"
-      zfs get -Hp -o name,value usedbysnapshots  > "$work/usedby"
+      # `zfs list`, not `zfs get`: `zfs get` also walks every snapshot (9.7s vs
+      # 0.06s here) for rows the awk below discards. Measurement:
+      # docs/services/textfile-metrics.md.
+      # zfs get -Hp -o name,value usedbysnapshots  > "$work/usedby"
+      zfs list -H -p -o name,usedbysnapshots     > "$work/usedby"
       zfs list -t snapshot -H -p -o name,creation > "$work/snapshots"
 
       gawk -F'\t' '
@@ -136,10 +140,13 @@ in
   systemd.timers.zfs-snapshot-metrics = {
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # autoSnapshot's shortest interval is 15 minutes, so 5 minutes tracks it
-      # comfortably; polling faster surfaces no new information.
+      # Same as autoSnapshot's shortest interval (15 minutes). Each run costs
+      # ~10 CPU-seconds for the snapshot listing, which scales with snapshot
+      # count. Do not go above 15min without raising the 30-minute staleness
+      # alert in modules/alerting.nix (zfs_snapshot_metrics_last_run_seconds).
       OnBootSec = "2min";
-      OnUnitActiveSec = "5min";
+      # OnUnitActiveSec = "5min";
+      OnUnitActiveSec = "15min";
       # Stagger slightly so this doesn't overlap other services right at boot.
       RandomizedDelaySec = "30s";
       Persistent = true;

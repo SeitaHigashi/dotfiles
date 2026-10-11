@@ -77,6 +77,9 @@ in
         }
         {
           job_name = "nvidia";
+          # Every scrape forks nvidia-smi (~0.4 CPU-seconds); 60s halves that.
+          # To go back to the global 30s, drop this line.
+          scrape_interval = "60s";
           static_configs = [{ targets = [ "127.0.0.1:${toString ports.nvidia}" ]; }];
         }
         {
@@ -281,6 +284,12 @@ in
     enable = true;
     listenAddress = "127.0.0.1";
     port = ports.cadvisor;
+
+    # Only the cpu and memory groups: nothing in dashboards/ or alerting.nix
+    # reads disk, diskIO, network, pressure, cpuLoad or oom_event metrics.
+    # To get the cadvisor defaults back, comment this line out. Measured
+    # effect: docs/services/monitoring.md.
+    extraOptions = [ "-enable_metrics=cpu,memory" ];
   };
 
   # Minecraft health: itzg/mc-monitor server-list-ping (25565), no RCON.

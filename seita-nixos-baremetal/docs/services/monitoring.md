@@ -10,7 +10,9 @@ at all and why VictoriaMetrics over Prometheus — is in
 [the VictoriaMetrics decision record](../decisions/2026-08-25-victoriametrics-over-prometheus.md).
 
 Scrape interval is 30s, not 15s, to avoid taking CPU away from the Minecraft server
-tick on this 4C/8T host; 30s granularity is enough for triage.
+tick on this 4C/8T host; 30s granularity is enough for triage. Two jobs override it:
+`smartctl` (5m) and `nvidia` (60s — the exporter forks `nvidia-smi` on every scrape and
+averaged 1.39% of a core at 30s, measured 2026-10-11 over 269 h of uptime).
 
 ## Ports (all bind to `127.0.0.1` unless noted)
 
@@ -68,8 +70,15 @@ tick on this 4C/8T host; 30s granularity is enough for triage.
     `clocks_event_reasons_*` / `ecc_..._sram_*`, which this hardware does emit).
     GPU Xid errors are covered separately by `modules/gpu-xid-metrics.nix`
     (node_exporter textfile collector), because this exporter doesn't surface Xids.
-- cadvisor: per-container CPU/mem/IO for podman containers (Minecraft today, future
-  n8n container).
+- cadvisor: per-container CPU and memory for podman containers (Minecraft today, future
+  n8n container). Started with `-enable_metrics=cpu,memory` since 2026-10-11: the
+  dashboards and alert rules only read `container_cpu_usage_seconds_total`,
+  `container_memory_rss`, `container_memory_cache` and `container_start_time_seconds`,
+  while the default set made cadvisor about half of all active series (5,215 of 10,617).
+  Measured with two throwaway instances side by side: 6,459 samples per scrape with the
+  defaults, 2,801 with the flag. Disk, disk I/O, network, PSI, load-average and
+  OOM-event metrics are gone; comment out `extraOptions` in `modules/monitoring.nix` to
+  get them back.
   - **Limit**: cadvisor cannot resolve podman container names (it assumes the
     docker/containerd API). There is no `name` label; the aggregation key is the
     cgroup path (`id`) instead — Minecraft is `/minecraft.slice`, other podman

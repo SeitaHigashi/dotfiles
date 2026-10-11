@@ -211,10 +211,16 @@ glance.
 No off-the-shelf ZFS snapshot exporter exists in nixpkgs; node_exporter's own zfs
 collector reports ARC and pool I/O stats but not snapshot ages or counts.
 
-Measured: `zfs list -t snapshot` over 285 snapshots takes ~0.26s — negligible at the
-5-minute polling interval (`OnBootSec = "2min"`, `OnUnitActiveSec = "5min"`; 5 min
-is also the practical floor since `autoSnapshot`'s shortest interval is 15 min, so
-polling faster than that surfaces no new information).
+Cost scales with snapshot count. `zfs list -t snapshot` took ~0.26s over 285 snapshots
+when this was written; on 2026-10-11, with 6,266 snapshots, it took 9.6s and a whole
+run cost 19.2 CPU-seconds. Half of that was `zfs get usedbysnapshots`, which walks
+every snapshot too (9.7s) although only the 26 dataset rows are used; it was replaced
+by `zfs list -H -p -o name,usedbysnapshots` (0.06s, identical dataset values). The
+snapshot listing itself cannot be avoided, so the timer went from every 5 minutes to
+every 15 (`OnBootSec = "2min"`, `OnUnitActiveSec = "15min"`), matching `autoSnapshot`'s
+shortest interval. Consequences: `zfs_pool_health` rides on this unit, so a degraded
+pool is now seen up to 15 minutes late instead of 5, and the staleness alert's
+30-minute threshold now means two missed runs.
 
 The headline metric is **replication lag**: the gap between `dpool/backup/X`'s
 newest snapshot and the source `rpool/X`'s newest snapshot is directly "how much
@@ -279,5 +285,5 @@ neither for alerting nor for `gpu_reboot_required` — the list is deliberately
 conservative to avoid false "reboot required" alerts.
 
 Timer: 1 min after boot, then every 2 minutes — tighter than the ZFS collector's
-5 minutes, because for this failure mode, detection lag directly becomes outage
+15 minutes, because for this failure mode, detection lag directly becomes outage
 duration.
