@@ -1,6 +1,7 @@
 # Open WebUI
 
-Implementation: [`modules/ollama.nix`](../../modules/ollama.nix) (`services.open-webui`)
+Implementation: [`modules/open-webui.nix`](../../modules/open-webui.nix) (`services.open-webui`; split out of
+`modules/ollama.nix` on 2026-10-11)
 
 ## What it is
 

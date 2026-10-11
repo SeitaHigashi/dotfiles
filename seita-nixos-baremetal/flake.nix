@@ -94,7 +94,8 @@
         ./modules/nix-info.nix         # installed package list / Hydra build status metrics
         ./modules/nix-profile-info.nix # user's nix profile contents / update-availability metrics
         ./modules/alerting.nix         # Grafana alert rules (notifications via n8n webhook)
-        ./modules/ollama.nix           # local LLM (Ollama + Open WebUI) — disabled, see modules/ollama.nix
+        ./modules/ollama.nix           # local LLM (Ollama) — disabled, see modules/ollama.nix
+        ./modules/open-webui.nix       # browser chat UI in front of llama.cpp
         ./modules/llama-cpp.nix        # local LLM (llama.cpp PrismML fork router) — replaces ollama, auto-starts (systemctl is-enabled llama-cpp: enabled, verified 2026-09-24)
         ./modules/n8n.nix              # workflow automation (tracks unstable)
         ./modules/comfyui.nix          # image generation (ComfyUI) — disabled, see enable flag in the module

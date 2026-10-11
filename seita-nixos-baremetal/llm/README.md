@@ -436,7 +436,7 @@ numbers as running the model locally, so the HTTP hop costs nothing measurable.
 ## Port
 
 Everything listens on **8888** by default, not 8080: this host already runs Open WebUI
-on 8080 (`modules/ollama.nix`, `ports.openWebui`). Override with `BONSAI_PORT`
+on 8080 (`modules/open-webui.nix`). Override with `BONSAI_PORT`
 (server/router) or `BONSAI_URL` (the `bonsai-chat` client).
 
 ## JSON-schema constrained output: one form silently does nothing

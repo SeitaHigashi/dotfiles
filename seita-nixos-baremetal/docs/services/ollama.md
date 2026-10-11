@@ -13,7 +13,7 @@ Disabling `services.ollama` also stops, or breaks the backend of:
 
 - OpenViking's `embedding` / `vlm` / `query_planner` (`modules/openviking.nix`) — now points at
   llama.cpp instead.
-- Open WebUI's chat and RAG embedding (`RAG_EMBEDDING_ENGINE` below) — the actual connection
+- Open WebUI's chat and RAG embedding (`RAG_EMBEDDING_ENGINE` in `modules/open-webui.nix`) — the actual connection
   target is Open WebUI's PersistentConfig (DB), not this file; see the migration decision.
 - n8n's 4 HTTP workflows and Task Partner Brain (outside this repo).
 

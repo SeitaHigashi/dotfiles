@@ -74,7 +74,8 @@ test suite.
 | `../home-manager/nvim.nix` | Neovim plugins + generated init.lua from Nix (nix-lazy-nvim) | [neovim.md](docs/neovim.md) |
 | `modules/llama-cpp.nix` | llama-swap + llama.cpp (PrismML fork) on 127.0.0.1:8888, plus Laya, Jeff and bonsai-image; auto-starts | [llama-cpp.md](docs/services/llama-cpp.md) |
 | `llm/` | llama.cpp (PrismML) dev flake, scripts, `models.ini`; `llama-cpp.service` WorkingDirectory. Models and Laya/Jeff state live in `/var/lib/llm-models` (rpool dataset) | [llama-cpp.md](docs/services/llama-cpp.md) |
-| `modules/ollama.nix` | Ollama (**disabled** since 2026-09-21) + Open WebUI (running) | [ollama.md](docs/services/ollama.md), [open-webui.md](docs/services/open-webui.md) |
+| `modules/ollama.nix` | Ollama (**disabled** since 2026-09-21; CLI package also off) | [ollama.md](docs/services/ollama.md) |
+| `modules/open-webui.nix` | Open WebUI (unstable), RAG embedding via llama.cpp | [open-webui.md](docs/services/open-webui.md) |
 | `modules/openviking.nix` | OpenViking context DB (podman); inference via llama.cpp | [openviking.md](docs/services/openviking.md) |
 | `modules/comfyui.nix` | ComfyUI image generation (pip venv) — **disabled** since 2026-09-24 (`enable = false`) | [comfyui.md](docs/services/comfyui.md) |
 | `modules/fukurou.nix` | fukurou voice loop (built by hand in `~/fukurou`) | [fukurou.md](docs/services/fukurou.md) |

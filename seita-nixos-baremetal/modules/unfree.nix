@@ -21,7 +21,7 @@
       "nvidia-settings"
       "nvidia-persistenced"
       "n8n" # Sustainable Use License, non-redistributable (modules/n8n.nix)
-      "open-webui" # was MIT through 0.6.x, now the proprietary Open WebUI License (modules/ollama.nix)
+      "open-webui" # was MIT through 0.6.x, now the proprietary Open WebUI License (modules/open-webui.nix)
       "brave" # unfree per official build's distribution/trademark terms (modules/unstable.nix)
       # Neovim plugins with no license set in nixpkgs (home-manager/nvim.nix); copilot-language-server is pulled in as a plugin dependency
       "cmp-calc"

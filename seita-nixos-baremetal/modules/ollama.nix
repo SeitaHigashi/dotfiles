@@ -1,15 +1,14 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# Ollama (local LLM inference server) and Open WebUI.
+# Ollama (local LLM inference server).
 #
 # Ollama is disabled (services.ollama.enable = false, since 2026-09-21) — inference
-# moved to llama.cpp (modules/llama-cpp.nix, 127.0.0.1:8888). Open WebUI still runs
-# from this module.
+# moved to llama.cpp (modules/llama-cpp.nix, 127.0.0.1:8888). Open WebUI lives in
+# modules/open-webui.nix since 2026-10-11.
 #
 # Docs (history, measurements, caller-facing notes are not comments here):
 #   docs/services/ollama.md                          status, re-enable steps, ops
-#   docs/services/open-webui.md                       what it is, gotchas
 #   docs/decisions/2026-08-02-ollama-model-selection.md
 #   docs/decisions/2026-08-12-ollama-gpu-topology.md
 #   docs/decisions/2026-09-06-openviking-model-consolidation.md
@@ -24,8 +23,7 @@
 
 let
   ports = {
-    ollama = 11434;
-    openWebui = 8080; # monitoring.nix's cadvisor is 8081, no conflict
+    ollama = 11434; # also written out in modules/open-webui.nix (OLLAMA_BASE_URL)
   };
 in
 {
@@ -152,63 +150,14 @@ in
   #   wants = [ "nvidia-persistenced.service" ];
   # };
 
-  ############################################################################
-  # Open WebUI
-  #
-  # Ollama itself has no authentication; all browser access and account
-  # management goes through here instead. See docs/services/open-webui.md.
-  ############################################################################
-  services.open-webui = {
-    enable = true;
-
-    # unstable, to track ollama's version — see docs/services/open-webui.md
-    # for why, the non-free license change, and the alembic migration caveat.
-    package = pkgs.unstable.open-webui;
-
-    host = "0.0.0.0";
-    port = ports.openWebui;
-    openFirewall = false; # opened below, alongside ollama's port
-
-    environment = {
-      # ★ Required or 0.11.0 fails to start. ★ The 25.05 module passes these
-      # as relative paths, which open-webui 0.6.18+ can't handle correctly.
-      # See docs/services/open-webui.md for the exact failure and why
-      # `// cfg.environment` lets us override without patching the module.
-      STATIC_DIR = "${config.services.open-webui.stateDir}/static";
-      DATA_DIR = "${config.services.open-webui.stateDir}/data";
-      HF_HOME = "${config.services.open-webui.stateDir}/hf_home";
-      SENTENCE_TRANSFORMERS_HOME = "${config.services.open-webui.stateDir}/transformers_home";
-
-      # PersistentConfig seed only, not necessarily the live value — see
-      # docs/services/open-webui.md.
-      OLLAMA_BASE_URL = "http://127.0.0.1:${toString ports.ollama}";
-
-      # Requires the admin account created on first access. False lets anyone
-      # on the tailnet straight in.
-      WEBUI_AUTH = "True";
-
-      # No outbound telemetry — closed host, nothing to send it to.
-      ANONYMIZED_TELEMETRY = "False";
-      DO_NOT_TRACK = "True";
-      SCARF_NO_ANALYTICS = "True";
-
-      # RAG embedding, moved from ollama to llama-swap on 2026-09-23 — see
-      # docs/decisions/2026-09-23-ollama-to-llama-cpp.md for the outage this
-      # fixed (RAG silently never embedded anything for two days) and why
-      # these are PersistentConfig seeds, not necessarily the live value.
-      RAG_EMBEDDING_ENGINE = "openai";
-      RAG_OPENAI_API_BASE_URL = "http://127.0.0.1:8888/v1";
-      RAG_OPENAI_API_KEY = "dummy"; # llama-swap doesn't check this, but rejects empty
-      RAG_EMBEDDING_MODEL = "embedding";
-    };
-  };
+  # Open WebUI moved to modules/open-webui.nix on 2026-10-11.
 
   ############################################################################
   # Exposure: tailscale0 only, not the LAN. Ollama's API has no auth, so LAN
   # exposure would let anyone on the network run/delete models.
   #
-  # Open WebUI (8080) is not opened here — reachable only via Tailscale Serve
-  # (modules/reverse-proxy.nix). Ollama's 11434 is opened directly instead,
+  # Open WebUI (8080, modules/open-webui.nix) is not opened — reachable only via
+  # Tailscale Serve (modules/reverse-proxy.nix). Ollama's 11434 is opened directly instead,
   # since ollama CLI / OLLAMA_HOST clients can't target a sub-path base URL;
   # tailnet-only exposure is unchanged either way.
   ############################################################################
@@ -225,6 +174,5 @@ in
   # `enable = true` above.
   # environment.systemPackages = [ config.services.ollama.package ];
 
-  # Ops notes, benchmarking procedure, storage details: docs/services/ollama.md
-  # and docs/services/open-webui.md.
+  # Ops notes, benchmarking procedure, storage details: docs/services/ollama.md.
 }
