@@ -6,3 +6,5 @@ release-notes.json
 # plugin registry + managed checkouts (`herdr plugin install` recreates them)
 plugins.json
 plugins/
+# workspace layout snapshots written at runtime (same format as session.json)
+session-snapshots/
