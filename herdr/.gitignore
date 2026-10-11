@@ -3,3 +3,6 @@
 session.json
 release-notes.json
 .plugins.lock
+# plugin registry + managed checkouts (`herdr plugin install` recreates them)
+plugins.json
+plugins/
