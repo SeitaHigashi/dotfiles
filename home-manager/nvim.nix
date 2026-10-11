@@ -9,8 +9,8 @@
 # Details and rollback: seita-nixos-baremetal/docs/neovim.md
 #
 # Active only where the flake provides inputs.nix-lazy-nvim (seita-nixos-baremetal)
-# and pkgs.unstable; elsewhere home.nix keeps installing plain neovim.
-# Plugins come from nixpkgs-unstable: nvim-treesitter's main branch and
+# and pkgs.auto; elsewhere home.nix keeps installing plain neovim.
+# Plugins come from nixos-unstable (pkgs.auto, bumped nightly by modules/auto-update.nix): nvim-treesitter's main branch and
 # telescope-frecency (needs nvim >= 0.11.7) are not in stable. Unlicensed
 # plugins are allowlisted in seita-nixos-baremetal/modules/unfree.nix.
 #
@@ -19,7 +19,7 @@
 
 let
   enabled = inputs ? nix-lazy-nvim;
-  vp = pkgs.unstable.vimPlugins;
+  vp = pkgs.auto.vimPlugins; # auto-updated nightly; pkgs.unstable.vimPlugins = manual bumps only
   raw = inputs.nix-lazy-nvim.lib.raw;
 
   # explicit lazy.nvim name (nixpkgs pnames differ for some), plus lazy fields
@@ -51,7 +51,7 @@ in
 // lib.optionalAttrs enabled {
   programs.nix-lazy-nvim = {
     enable = true;
-    package = pkgs.unstable.neovim;
+    package = pkgs.auto.neovim;
     inherit configDir;
     # xdg.configFile."nvim" -> generated config; nvim then uses ~/.config/nvim and ~/.local/share/nvim. Set false to go back to the private config root.
     linkConfig = true;

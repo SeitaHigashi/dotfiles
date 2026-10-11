@@ -54,7 +54,8 @@ test suite.
   `nixPool`, `arcMaxBytes`, … Never hard-code host-specific values elsewhere.
 - The `modules` list in `flake.nix` is the only entry point. A new module must be added there.
 - **stable/unstable split**: the base is `nixos-25.05`. Only leaf packages listed in `modules/unstable.nix`
-  come from `nixpkgs-unstable` (`pkgs.unstable.*`). Pulling the kernel, kernel modules (ZFS, NVIDIA),
+  come from `nixpkgs-unstable` (`pkgs.unstable.*`). A second input on the same branch, `nixpkgs-auto` (`pkgs.auto.*`), is bumped
+  and switched nightly without the user ([auto-update.md](docs/services/auto-update.md)). Pulling the kernel, kernel modules (ZFS, NVIDIA),
   systemd or glibc from there makes the system unbootable ([nixpkgs-channels.md](docs/nixpkgs-channels.md)).
 - `disko/default.nix` generates partitions, pools, datasets and `fileSystems`, so `hardware-configuration.nix`
   is generated with `--no-filesystems` and has no `fileSystems`.
@@ -70,12 +71,13 @@ test suite.
 | `modules/ftb-evolution.nix` | FTB Evolution Minecraft server via podman | [minecraft.md](docs/services/minecraft.md) |
 | `modules/gpu.nix` | NVIDIA driver, 3060 Ti power limit | [gpu-driver.md](docs/gpu-driver.md) |
 | `modules/unfree.nix` | the only `allowUnfreePredicate` | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
-| `modules/unstable.nix` | leaf packages from nixpkgs-unstable | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
+| `modules/unstable.nix` | leaf packages from nixpkgs-unstable / nixpkgs-auto | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
+| `modules/auto-update.nix` | unattended updates: podman auto-update (all containers), nightly `pkgs.auto` bump + switch | [auto-update.md](docs/services/auto-update.md) |
 | `../home-manager/nvim.nix` | Neovim plugins + generated init.lua from Nix (nix-lazy-nvim) | [neovim.md](docs/neovim.md) |
 | `modules/llama-cpp.nix` | llama-swap + llama.cpp (PrismML fork) on 127.0.0.1:8888, plus Laya, Jeff and bonsai-image; auto-starts | [llama-cpp.md](docs/services/llama-cpp.md) |
 | `llm/` | llama.cpp (PrismML) dev flake, scripts, `models.ini`; `llama-cpp.service` WorkingDirectory. Models and Laya/Jeff state live in `/var/lib/llm-models` (rpool dataset) | [llama-cpp.md](docs/services/llama-cpp.md) |
 | `modules/ollama.nix` | Ollama (**disabled** since 2026-09-21; CLI package also off) | [ollama.md](docs/services/ollama.md) |
-| `modules/open-webui.nix` | Open WebUI (unstable), RAG embedding via llama.cpp | [open-webui.md](docs/services/open-webui.md) |
+| `modules/open-webui.nix` | Open WebUI (unstable, auto-updated), RAG embedding via llama.cpp | [open-webui.md](docs/services/open-webui.md) |
 | `modules/openviking.nix` | OpenViking context DB (podman); inference via llama.cpp | [openviking.md](docs/services/openviking.md) |
 | `modules/comfyui.nix` | ComfyUI image generation (pip venv) — **disabled** since 2026-09-24 (`enable = false`) | [comfyui.md](docs/services/comfyui.md) |
 | `modules/fukurou.nix` | fukurou voice loop (built by hand in `~/fukurou`) | [fukurou.md](docs/services/fukurou.md) |
@@ -83,7 +85,7 @@ test suite.
 | `modules/monitoring.nix` | VictoriaMetrics + Loki + Grafana + exporters | [monitoring.md](docs/services/monitoring.md) |
 | `modules/alerting.nix` | Grafana alert rules (provisioned; git is the source of truth) | [alerting.md](docs/services/alerting.md) |
 | `modules/nix-info.nix`, `nix-profile-info.nix`, `zfs-snapshot-metrics.nix`, `gpu-xid-metrics.nix` | textfile-collector metrics | [textfile-metrics.md](docs/services/textfile-metrics.md) |
-| `modules/n8n.nix` | n8n workflow automation (unstable) | [n8n.md](docs/services/n8n.md) |
+| `modules/n8n.nix` | n8n workflow automation (unstable, auto-updated) | [n8n.md](docs/services/n8n.md) |
 | `modules/multica.nix` | Multica (podman ×3), secrets via agenix | [multica.md](docs/services/multica.md) |
 | `modules/discord-bot.nix` | Discord Gateway bot → n8n webhook | [discord-bot.md](docs/services/discord-bot.md) |
 | `modules/automuteus.nix` | AutoMuteUs (podman ×5), secret via agenix, tailnet-only capture | [automuteus.md](docs/services/automuteus.md) |

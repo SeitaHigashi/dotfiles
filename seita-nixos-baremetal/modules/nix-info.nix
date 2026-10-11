@@ -86,10 +86,11 @@ let
     else
       let
         bases = [
-          { tag = stableChannelRef; unstable = false; }
-          { tag = "nixos-unstable"; unstable = true; }
+          { tag = stableChannelRef; base = pkgs; }
+          { tag = "nixos-unstable"; base = pkgs.unstable; }
+          { tag = "nixos-unstable"; base = pkgs.auto; } # same branch, auto-updated lock entry
         ];
-        pkgsFor = b: if b.unstable then pkgs.unstable else pkgs;
+        pkgsFor = b: b.base;
         candidates = lib.concatMap
           (b: map (scope: candidateFor b.tag (pkgsFor b) scope pname drvPath) candidateScopes)
           bases;

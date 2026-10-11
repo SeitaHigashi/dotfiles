@@ -10,7 +10,7 @@ authentication, so all end-user access is meant to go through here instead.
 
 ## Package
 
-`pkgs.unstable.open-webui` (unstable is 0.11.0 vs. 25.05's 0.6.9). Tracking unstable keeps it in
+`pkgs.auto.open-webui` (nixos-unstable, bumped nightly — [auto-update.md](auto-update.md); unstable is 0.11.0 vs. 25.05's 0.6.9). Tracking unstable keeps it in
 step with the ollama version and its API surface. No overlay is needed — `services.open-webui`
 exposes a `package` option directly.
 

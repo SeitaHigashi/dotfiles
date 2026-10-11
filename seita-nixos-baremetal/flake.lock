@@ -281,7 +281,8 @@
         "nvim-smoothcursor": "nvim-smoothcursor",
         "nvim-telescope-lazy": "nvim-telescope-lazy",
         "nvim-telescope-luasnip": "nvim-telescope-luasnip",
-        "nvim-vim-translator": "nvim-vim-translator"
+        "nvim-vim-translator": "nvim-vim-translator",
+        "nixpkgs-auto": "nixpkgs-auto"
       }
     },
     "systems": {
@@ -296,6 +297,22 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "nixpkgs-auto": {
+      "locked": {
+        "lastModified": 1791048980,
+        "narHash": "sha256-KgItSKML8Xvte0B7/uGnBDsYzSnnKHcOaiUbgWBXLXw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a7868a727837f3c09cee2ce0ca671c76b1589fed",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
         "type": "github"
       }
     }

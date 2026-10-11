@@ -16,8 +16,8 @@ let
 in
 {
   ############################################################################
-  # Overlay pkgs.n8n itself to nixpkgs-unstable (docs/services/n8n.md for
-  # why). Uses modules/unstable.nix's final.unstable; overlay evaluation
+  # Overlay pkgs.n8n itself to nixpkgs-auto (docs/services/n8n.md for
+  # why). Uses modules/unstable.nix's final.auto; overlay evaluation
   # order doesn't matter since overlays are a fixpoint.
   #
   # n8n is non-free (Sustainable Use License) — allowUnfreePredicate lives in
@@ -25,7 +25,8 @@ in
   ############################################################################
   nixpkgs.overlays = [
     (final: prev: {
-      n8n = final.unstable.n8n;
+      # auto = bumped nightly (modules/auto-update.nix); final.unstable.n8n = manual bumps only
+      n8n = final.auto.n8n;
     })
   ];
 
@@ -62,7 +63,7 @@ in
   # node must be on PATH for n8n 2.x's Code-node task runner (spawn('node', ...)),
   # or it fails silently with "spawn node ENOENT" while the main process still
   # starts. Details: docs/services/n8n.md.
-  systemd.services.n8n.path = [ pkgs.unstable.nodejs ];
+  systemd.services.n8n.path = [ pkgs.auto.nodejs ]; # same input as n8n itself
 
   # Open to the LAN (like Minecraft), not tailscale0-only. /metrics shares
   # the port (no secrets in it). docs/services/n8n.md.

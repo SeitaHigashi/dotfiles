@@ -18,6 +18,12 @@
     # nixpkgs-unstable.url = "github:NixOS/nixpkgs/20b1ddd1aa5ace70c9468305030aa4f9ef79671b"; # 2026-09-19, neovim 0.11.5; restore to roll back
     # nixpkgs-unstable.url = "github:NixOS/nixpkgs/c59305bab2065cfecc4944690d9eedbb56f3a9fa"; # neovim 0.12.5 (telescope-frecency needs >=0.11.7)
 
+    # Same branch as nixpkgs-unstable, but a separate lock entry: only this one is
+    # moved by the nightly nix-auto-update timer (modules/auto-update.nix), so
+    # llama.cpp and friends on nixpkgs-unstable never move unattended.
+    # Packages come from it as pkgs.auto.* — docs/services/auto-update.md.
+    nixpkgs-auto.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     disko = {
       url = "github:nix-community/disko/latest";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -82,7 +88,8 @@
         ./modules/zfs.nix
         ./modules/network.nix          # static IP / DHCP switch
         ./modules/replication.nix      # scheduled rpool -> dpool replication
-        ./modules/unstable.nix         # makes pkgs.unstable.* available
+        ./modules/unstable.nix         # makes pkgs.unstable.* and pkgs.auto.* available
+        ./modules/auto-update.nix      # unattended updates: podman auto-update + nightly pkgs.auto bump
         ./modules/ftb-evolution.nix    # Minecraft (FTB Evolution) via podman
         ./modules/gpu.nix              # NVIDIA driver (compute workloads + monitoring)
         ./modules/unfree.nix           # unfree package allowlist (sole definition of allowUnfreePredicate)

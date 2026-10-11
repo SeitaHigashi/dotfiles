@@ -34,8 +34,8 @@ mechanism. Changing a plugin means editing both. (`bootstrap.lua` / `lazy-option
 - Add a plugin: add `(p "name" vp.foo-nvim { ...lazy fields })` to `plugins` in `nvim.nix` (or a `flake = false`
   input for git-only plugins) **and** a spec to `nvim/lua/plugins/` for Mac/WSL. `p` sets the lazy.nvim name explicitly
   (nixpkgs pnames can differ, e.g. `LuaSnip`, `lspkind-nvim`).
-- Update: `nix flake update nixpkgs-unstable` (or `nix-lazy-nvim`, one `nvim-*` input). `lazy-lock.json` is unused under Nix.
-- Plugins come from `pkgs.unstable.vimPlugins` (nvim-treesitter `main`, telescope-frecency need unstable).
+- Update: automatic for neovim and plugins (`nixpkgs-auto`, nightly — [auto-update.md](services/auto-update.md)); by hand `nix flake update nixpkgs-auto` (or `nix-lazy-nvim`, one `nvim-*` input). `lazy-lock.json` is unused under Nix.
+- Plugins come from `pkgs.auto.vimPlugins` (nvim-treesitter `main`, telescope-frecency need unstable).
 - Non-nixpkgs: `cmp-tabnine` (removed from nixpkgs) is a `flake = false` input; its binary (`install.sh`) is **not** fetched, so it
   only works if a binary is placed manually. `codeium.nvim` needs `"codeium"` in `modules/unfree.nix`
   (nixpkgs `vimPlugins.codeium-nvim` now evaluates to windsurf.nvim and warns).
@@ -57,7 +57,7 @@ start empty. Nothing else in the dotfiles (`setting.sh` only touches the legacy 
 `linkConfig = false;` in `nvim.nix` restores the private config root (`NVIM_APPNAME=nix-lazy-nvim`, data in
 `~/.local/share/nix-lazy-nvim`). Or:
 
-Remove `./nvim.nix` from `imports` in `home-manager/home.nix` (plain `pkgs.unstable.neovim` returns automatically;
+Remove `./nvim.nix` from `imports` in `home-manager/home.nix` (plain `pkgs.auto.neovim` returns automatically;
 re-create `~/.config/nvim` -> `dotfiles/nvim` by hand to clone-load as on Mac/WSL). The previous `nvim.nix` is kept as a
 comment at the bottom of the file; the previous API also needs the old `nix-lazy-nvim` revision (`1712903`) in `flake.lock`.
 
@@ -75,8 +75,8 @@ Without the variable (Mac / WSL, or the old `nvim`) the config clones plugins as
 - Add a plugin: add it to the `plugins` list (or `extraPlugins` plus a `flake = false` input if it is not in
   nixpkgs) **and** to `nvim/lua/plugins/`. The lazy.nvim name must match (`vp.foo-nvim` has pname `foo.nvim`;
   override with `{ name = "..."; plugin = ...; }` when they differ, as for `LuaSnip` and `lspkind-nvim`).
-- Update: `nix flake update nixpkgs-unstable` (or one `nvim-*` input). `lazy-lock.json` is no longer used under Nix.
-- Plugins come from `pkgs.unstable.vimPlugins`: nvim-treesitter's `main` branch and telescope-frecency are not in stable.
+- Update: automatic for neovim and plugins (`nixpkgs-auto`, nightly — [auto-update.md](services/auto-update.md)); by hand `nix flake update nixpkgs-auto` (or one `nvim-*` input). `lazy-lock.json` is no longer used under Nix.
+- Plugins come from `pkgs.auto.vimPlugins`: nvim-treesitter's `main` branch and telescope-frecency are not in stable.
 - Treesitter grammars are `dependencies` of `nvim-treesitter.withAllGrammars`; the module merges them into one dir.
 - Not covered: `build =` steps (`:TSUpdate`, `make install_jsregexp`) are not run, and Mason still downloads
   binaries at run time (may not work on NixOS).

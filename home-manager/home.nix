@@ -15,7 +15,7 @@
   home.packages = [
     # pkgs.neovim # stable 0.11.5 shadowed the system 0.12.5 on PATH (telescope-frecency needs >=0.11.7); restore this line to go back
     # Skipped where programs.nix-lazy-nvim is enabled (home-manager/nvim.nix): it ships its own `nvim`.
-  ] ++ lib.optional (!(config.programs.nix-lazy-nvim.enable or false)) (if pkgs ? unstable then pkgs.unstable.neovim else pkgs.neovim)
+  ] ++ lib.optional (!(config.programs.nix-lazy-nvim.enable or false)) (if pkgs ? auto then pkgs.auto.neovim else pkgs.neovim)
   ++ [
 
     # Useful utilities and Neovim dependencies
@@ -38,12 +38,14 @@
     # rtk は stable nixpkgs にまだ無いので、pkgs.unstable overlay がある環境
     # (seita-nixos-baremetal/modules/unstable.nix) ではそちらから、無ければ
     # (mac/wsl の nixos/ は元から unstable 全体を使っている) pkgs から直接。
-    (if pkgs ? unstable then pkgs.unstable.rtk else pkgs.rtk)
+    (if pkgs ? auto then pkgs.auto.rtk else pkgs.rtk)
     pkgs.bottom
 
     # herdr は同様に比較的新しいパッケージなので、stable 系の pkgs しか無い環境
     # (useGlobalPkgs = true の NixOS ホストなど) では pkgs.unstable.herdr を使う。
-    (if pkgs ? unstable then pkgs.unstable.herdr else pkgs.herdr)
+    # pkgs.auto = nightly auto-updated nixos-unstable (seita-nixos-baremetal/modules/auto-update.nix);
+    # write pkgs.unstable.<name> instead to take a package out of auto-update.
+    (if pkgs ? auto then pkgs.auto.herdr else pkgs.herdr)
   ];
 
   home.sessionVariables = {

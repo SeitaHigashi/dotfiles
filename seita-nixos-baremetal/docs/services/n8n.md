@@ -27,7 +27,7 @@ Auth is n8n's own owner-account login; there's no separate gate in front of it.
 25.05's n8n is 1.91.3, too old for current node compatibility and upstream
 API changes. 25.05's `services.n8n` module has no `package` option (its
 `ExecStart` hardcodes `"${pkgs.n8n}/bin/n8n"`), so `modules/n8n.nix` overlays
-`pkgs.n8n` itself to `pkgs.unstable.n8n` instead. Safe to do because n8n is a
+`pkgs.n8n` itself to `pkgs.auto.n8n` instead (nixos-unstable, bumped nightly — [auto-update.md](auto-update.md)). Safe to do because n8n is a
 pure Node application — it doesn't touch the kernel, kernel modules, systemd,
 or glibc (see `modules/unstable.nix`'s "leaf packages only" rule).
 
@@ -65,11 +65,11 @@ Key environment variables set there:
 n8n 2.x runs Code nodes in a separate "task runner" process, spawned via
 `spawn('node', ...)` (`packages/cli/dist/task-runners/task-runner-process-js.js`)
 — a `PATH`-dependent call. The systemd unit's default `PATH` has no `node`,
-so without `systemd.services.n8n.path = [ pkgs.unstable.nodejs ]` the log
+so without `systemd.services.n8n.path = [ pkgs.auto.nodejs ]` the log
 shows `spawn node ENOENT` and the JS task runner never starts. This is easy
 to miss because n8n's own binary launches fine (its shebang points at an
 absolute `node` path) — only Code-node execution is affected.
-`pkgs.unstable.nodejs` matches the version n8n itself bundles (24.18.0).
+`pkgs.auto.nodejs` matches the version n8n itself bundles (24.18.0).
 
 The Python task runner ("Python 3 is missing from this system") is a
 separate, unaddressed gap — not enabled here. If Python Code nodes are

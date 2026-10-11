@@ -19,9 +19,10 @@ in
   services.open-webui = {
     enable = true;
 
-    # unstable, to track ollama's version — see docs/services/open-webui.md
-    # for why, the non-free license change, and the alembic migration caveat.
-    package = pkgs.unstable.open-webui;
+    # nixos-unstable via the auto-updated input (modules/auto-update.nix) — see
+    # docs/services/open-webui.md for why unstable, the non-free license change,
+    # and the alembic migration caveat. pkgs.unstable.open-webui = manual bumps only.
+    package = pkgs.auto.open-webui;
 
     # Not opened in the firewall: reachable only via Tailscale Serve
     # (modules/reverse-proxy.nix).

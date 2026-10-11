@@ -23,9 +23,8 @@ reference it directly from any module as `pkgs.unstable.<name>`.
 (`linuxPackages*`, `zfs`, the NVIDIA driver), `systemd`, `glibc`, or anything in the
 systemd-boot path. All of these lead directly to an unbootable system.
 
-Packages currently pulled from unstable, and why: `neovim` (newer than stable),
-`mcp-grafana` (not packaged in stable 25.05, used by Claude Code to read Grafana),
-`brave` (unfree, also listed in `modules/unfree.nix`), `multica-cli` (not in
+Packages currently pulled from unstable, and why: `mcp-grafana` (not packaged in stable 25.05, used by Claude Code to read Grafana),
+`multica-cli` (not in
 stable), `opencode` (used as Multica's runtime protocol so ollama's local models
 can be reached — the `claude` protocol only talks to the Anthropic API), `nodejs`
 (needed to run OpenViking's MCP server via `npx`; stable 25.05 ships 22.x).
@@ -33,6 +32,15 @@ can be reached — the `claude` protocol only talks to the Anthropic API), `node
 Cost of this split: unstable-sourced packages pull unstable-sourced dependencies
 too (no sharing with the stable closure), so downloads/builds grow a bit. Fine for
 a handful of packages; would add up for something large.
+
+## `nixpkgs-auto`: the auto-updated twin
+
+`nixpkgs-auto` tracks the same `nixos-unstable` branch under its own lock entry and is exposed as
+`pkgs.auto.*`. Only this input is bumped by the nightly `nix-auto-update` timer, so the packages that need a
+deliberate bump (llama.cpp, llama-swap, …) stay on `pkgs.unstable.*`. On `pkgs.auto`: `open-webui`, `n8n`
+(+ its `nodejs`), `neovim` + `vimPlugins`, `herdr`, `rtk`, `brave` (unfree, also in `modules/unfree.nix`).
+See [services/auto-update.md](services/auto-update.md). The "never put these on unstable" list above applies
+to it equally.
 
 ## The `nixpkgs-unstable` input pin
 

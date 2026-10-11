@@ -16,12 +16,18 @@ let
   # Packages listed here come from nixpkgs-unstable. Reasons for each:
   # docs/nixpkgs-channels.md
   unstablePackages = with pkgs.unstable; [
-    neovim
     mcp-grafana # Grafana Labs' official MCP server; launch config lives in ~/.claude.json, see CLAUDE.md
-    brave # unfree — see modules/unfree.nix
     multica-cli # server itself is hosted via modules/multica.nix (podman)
     opencode # Multica's runtime protocol for talking to ollama's local models; provider config in ~/.config/opencode/opencode.json (outside this repo)
     nodejs # runs OpenViking's MCP server via npx
+  ];
+
+  # Packages listed here come from nixpkgs-auto: same branch, but bumped
+  # nightly by modules/auto-update.nix. Move a line back to unstablePackages
+  # to take it out of auto-update.
+  autoPackages = with pkgs.auto; [
+    neovim
+    brave # unfree — see modules/unfree.nix
   ];
 in
 {
@@ -32,8 +38,13 @@ in
         # keep unfree allowance etc. consistent with the stable side
         inherit (prev) config;
       };
+      # auto-updated twin of the above (modules/auto-update.nix)
+      auto = import inputs.nixpkgs-auto {
+        inherit (final.stdenv.hostPlatform) system;
+        inherit (prev) config;
+      };
     })
   ];
 
-  environment.systemPackages = unstablePackages;
+  environment.systemPackages = unstablePackages ++ autoPackages;
 }
