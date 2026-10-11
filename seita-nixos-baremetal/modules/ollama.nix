@@ -218,7 +218,12 @@ in
 
   # ollama CLI for `ollama list/ps/pull`; same CUDA build as the service to
   # avoid version skew.
-  environment.systemPackages = [ config.services.ollama.package ];
+  #
+  # Commented out 2026-10-11: with the service disabled this still put the
+  # 1.2 GiB CUDA build in the system closure, and it is not on cache.nixos.org,
+  # so every unstable bump compiled it locally. Restore alongside
+  # `enable = true` above.
+  # environment.systemPackages = [ config.services.ollama.package ];
 
   # Ops notes, benchmarking procedure, storage details: docs/services/ollama.md
   # and docs/services/open-webui.md.

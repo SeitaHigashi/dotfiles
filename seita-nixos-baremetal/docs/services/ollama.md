@@ -31,7 +31,11 @@ Disabling `services.ollama` also stops, or breaks the backend of:
 3. Uncomment the `systemd.services.ollama = { after/wants = [ "nvidia-persistenced.service" ]; }`
    block right below `services.ollama` (it was commented out alongside `enable = false`, since a
    disabled `services.ollama` generates no `ollama.service` unit for that block to attach to).
-4. Rebuild.
+4. Uncomment `environment.systemPackages = [ config.services.ollama.package ];` at the bottom of
+   the module to get the `ollama` CLI back. It was commented out on 2026-10-11: with the service
+   off it still kept the 1.2 GiB CUDA build in the system closure, and that build is not on
+   cache.nixos.org, so every unstable bump compiled it locally.
+5. Rebuild.
 
 ## Package and acceleration
 
