@@ -77,15 +77,22 @@ the model picker.
 
 ## Bonsai Image pipe
 
-Text-to-image through llama-swap's `bonsai-image` ([llama-cpp.md](llama-cpp.md#calling-bonsai-image)),
-as a Pipe function whose source is tracked in `scripts/open-webui-bonsai-image-pipe.py`. Same
-deployment as the video pipe: **paste the file into** Admin Panel → Functions (`+`) and keep the
-function enabled; **after editing the file, paste it again**. Its title (`Bonsai Image`) becomes the
+Text-to-image and reference-image editing through llama-swap's `bonsai-image`
+([llama-cpp.md](llama-cpp.md#calling-bonsai-image)), as a Pipe function whose source is tracked in
+`scripts/open-webui-bonsai-image-pipe.py`. Same deployment as the video pipe: **paste the file into**
+Admin Panel → Functions (`+`) and keep the function enabled; **after editing the file, paste it again**.
+After this change the Function must be pasted again (the edit behaviour is inactive until then). Its title (`Bonsai Image`) becomes the
 model name in the model picker.
 
 - Calls `POST http://127.0.0.1:8888/v1/images/generations` with `"model": "bonsai-image"`. The
   `Content-Type: application/json` header matters: without it llama-swap answers
   `no model id could be identified`.
+- **Editing:** when the last user message has an attached image (a data URI), the Pipe posts multipart
+  to the new Valve `edits_endpoint` (default `http://127.0.0.1:8888/v1/images/edits`) with the reference
+  as `image`, the prompt, `model` and the seed. The resolution valve is **not** used for edits: the output
+  size follows the reference (see [llama-cpp.md](llama-cpp.md#editing-post-v1imagesedits) for the rules
+  and limitations, e.g. a 1:1 reference with a 9:16 `size` can duplicate the subject). Status: the edit
+  path is unit-checked with stubs only (2026-10-12); it is **not yet verified in a chat** in Open WebUI.
 - Resolution (1:1, 16:9, 3:2, 4:3 and their portrait forms; sides ≤ 1024, multiples of 32) and `seed`
   (-1 = random) are per-user under Chat Controls → Valves. The presets stop at 1024x1024 (7812 MiB of
   8192) although the server now accepts any size up to 2560x1440 (measured 2026-10-12; sizes that are

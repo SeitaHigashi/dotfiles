@@ -279,9 +279,11 @@ let
   # behind a bearer token). Weights load lazily on the first request, like
   # sd-server, so the health check passes immediately.
   bonsaiImageServer = pkgs.writeText "bonsai-image-server.py" ''
-    """bonsai-image for llama-swap: POST /v1/images/generations -> b64_json PNG."""
+    """bonsai-image for llama-swap: POST /v1/images/generations and /v1/images/edits -> b64_json PNG."""
     import argparse
     import base64
+    import email.parser
+    import io
     import json
     import os
     import random
@@ -298,6 +300,11 @@ let
     #   (docs/services/llama-cpp.md). **
     MAX_SIDE = 2560
     MAX_PIXELS = 2560 * 1440
+    # Reference image of /v1/images/edits, resized to at most this many pixels.
+    # Measured 2026-10-12 (3060 Ti): a 1024x1024 reference (the maximum) with outputs
+    # 1024x1024..2560x1440 and 1440x2560 all returned 200, nvidia-smi peak 7.3-7.8 GiB
+    # of 8 GiB; the output cap stays MAX_PIXELS. Do not raise without measuring.
+    MAX_PIXELS_EDIT = 1024 * 1024
     # VAE x8 and the 2x2 latent pack make 16 px the real alignment; upstream's own
     # check says 32, which relax_alignment() lowers (sizes 16-aligned but not
     # 32-aligned were generated and checked on 2026-10-12).
@@ -309,15 +316,51 @@ let
     pipe = None
 
 
+    # Reference-image path for /v1/images/edits. Upstream deleted it from
+    # diffusion_forward; each (anchor, replacement) pair is applied once and
+    # asserted unique, like the ALIGN rewrite. Proven by edits on 2026-10-12
+    # (docs/services/llama-cpp.md). The reference arrives already resized to
+    # the pixels it should be encoded at, independent of the output size.
+    REF_PATCHES = [
+        ("    scheduler: Optional[FlowMatchEulerDiscreteScheduler] = None,\n) -> Image.Image:",
+         "    scheduler: Optional[FlowMatchEulerDiscreteScheduler] = None,\n"
+         "    ref_image=None,\n) -> Image.Image:"),
+        ("    image_seq_len = latents.shape[1]\n",
+         "    image_seq_len = latents.shape[1]\n"
+         "    image_latents = image_latent_ids = None\n"
+         "    if ref_image is not None:\n"
+         "        _arr = np.asarray(ref_image.convert(\"RGB\"), dtype=np.float32) / 127.5 - 1.0\n"
+         "        _t = torch.from_numpy(_arr).permute(2, 0, 1).unsqueeze(0).to(vae_device, dtype=torch.bfloat16)\n"
+         "        with torch.no_grad():\n"
+         "            _lat = vae.encode(_t).latent_dist.mode()\n"
+         "        _lat = Flux2Pipeline._patchify_latents(_lat)\n"
+         "        _m = vae.bn.running_mean.view(1, -1, 1, 1).to(_lat.device, _lat.dtype)\n"
+         "        _s = torch.sqrt(vae.bn.running_var.view(1, -1, 1, 1) + vae.config.batch_norm_eps).to(_lat.device, _lat.dtype)\n"
+         "        _lat = (_lat - _m) / _s\n"
+         "        image_latent_ids = Flux2Pipeline._prepare_image_ids([_lat]).to(transformer_device)\n"
+         "        image_latents = Flux2Pipeline._pack_latents(_lat).to(transformer_device, activation_dtype)\n"),
+        ("            hidden_states=latents,\n",
+         "            hidden_states=(latents if image_latents is None else torch.cat([latents, image_latents], dim=1)),\n"),
+        ("            img_ids=latent_ids,\n            return_dict=False,\n        )[0]\n",
+         "            img_ids=(latent_ids if image_latent_ids is None else torch.cat([latent_ids, image_latent_ids], dim=1)),\n"
+         "            return_dict=False,\n        )[0]\n"
+         "        noise_pred = noise_pred[:, : latents.shape[1]]\n"),
+    ]
+
+
     def relax_alignment():
-        """Lower upstream's `% 32` size check in diffusion_forward to ALIGN."""
+        """Rewrite upstream's diffusion_forward once: lower the `% 32` size check
+        to ALIGN and add the `ref_image` kwarg (REF_PATCHES)."""
         from backend_gpu import diffusion_klein as dk
 
         src = Path(dk.__file__).read_text()
         old = "if height % 32 != 0 or width % 32 != 0:"
-        assert old in src, "upstream size check moved (backend rev bump?); re-read diffusion_klein.py"
-        new = "if height %% %d != 0 or width %% %d != 0:" % (ALIGN, ALIGN)
-        exec(compile(src.replace(old, new), dk.__file__, "exec"), dk.__dict__)
+        assert src.count(old) == 1, "upstream size check moved (backend rev bump?); re-read diffusion_klein.py"
+        src = src.replace(old, "if height %% %d != 0 or width %% %d != 0:" % (ALIGN, ALIGN))
+        for anchor, repl in REF_PATCHES:
+            assert src.count(anchor) == 1, "upstream anchor moved (backend rev bump?): %r" % anchor
+            src = src.replace(anchor, repl)
+        exec(compile(src, dk.__file__, "exec"), dk.__dict__)
 
 
     def center_crop_png(png, w, h):
@@ -404,6 +447,58 @@ let
         return prompt, w, h, gw, gh, seed
 
 
+    def parse_multipart(content_type, raw):
+        """multipart/form-data -> {field name: bytes}; for a repeated field (e.g.
+        `image[]`) the first part wins."""
+        if not content_type.lower().startswith("multipart/form-data"):
+            raise Bad("Content-Type must be multipart/form-data")
+        msg = email.parser.BytesParser().parsebytes(
+            b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + raw)
+        if not msg.is_multipart():
+            raise Bad("malformed multipart body")
+        fields = {}
+        for part in msg.get_payload():
+            name = part.get_param("name", header="content-disposition")
+            if name:
+                fields.setdefault(name, part.get_payload(decode=True) or b"")
+        return fields
+
+
+    def load_reference(data):
+        """Decode the reference and shrink it (aspect kept) to <= MAX_PIXELS_EDIT
+        with both sides multiples of ALIGN. Returns (image, w, h)."""
+        from PIL import Image, ImageOps
+
+        try:
+            im = ImageOps.exif_transpose(Image.open(io.BytesIO(data)))
+            im.load()
+        except Exception as e:
+            raise Bad("image could not be decoded: %s" % e)
+        w, h = im.size
+        scale = min(1.0, (MAX_PIXELS_EDIT / (w * h)) ** 0.5)
+        rw = max(ALIGN, int(w * scale) // ALIGN * ALIGN)
+        rh = max(ALIGN, int(h * scale) // ALIGN * ALIGN)
+        if rw * rh > MAX_PIXELS_EDIT:
+            raise Bad("image aspect ratio is too extreme (%dx%d)" % (w, h))
+        return im.convert("RGB").resize((rw, rh), Image.LANCZOS), rw, rh
+
+
+    def edit_png(prompt, seed, gh, gw, ref):
+        """generate_png has no reference argument; call diffusion_forward (patched
+        by relax_alignment) with the kwargs generate_png uses."""
+        from backend_gpu import diffusion_klein as dk
+
+        p = get_pipe()
+        img = dk.diffusion_forward(
+            transformer=p._transformer, text_encoder=p._text_encoder, tokenizer=p._tokenizer,
+            vae=p._vae, prompt=prompt, height=gh, width=gw, num_steps=STEPS, seed=seed,
+            guidance=GUIDANCE, scheduler=p._scheduler, ref_image=ref,
+        )
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+
+
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code, obj):
             data = json.dumps(obj).encode()
@@ -421,23 +516,12 @@ let
             else:
                 self._send(404, {"error": {"message": "not found"}})
 
-        def do_POST(self):
-            if self.path != "/v1/images/generations":
-                return self._send(404, {"error": {"message": "not found"}})
-            try:
-                n = int(self.headers.get("Content-Length", "0"))
-                prompt, w, h, gw, gh, seed = parse(json.loads(self.rfile.read(n) or b"{}"))
-            except (Bad, ValueError, AttributeError) as e:
-                return self._send(400, {"error": {"message": str(e)}})
+        def _generate(self, w, h, gw, gh, seed, make_png):
             try:
                 with lock:  # one image at a time: a second one would only raise the VRAM peak
                     try:
                         t = time.perf_counter()
-                        png = get_pipe().generate_png(
-                            prompt=prompt, seed=seed, steps=STEPS, height=gh, width=gw,
-                            guidance=GUIDANCE, tiled_vae=None, max_sequence_length=None,
-                        )
-                        png = center_crop_png(png, w, h)
+                        png = center_crop_png(make_png(), w, h)
                         print("[bonsai-image] %dx%d (generated %dx%d) seed=%d %.1fs"
                               % (w, h, gw, gh, seed, time.perf_counter() - t), flush=True)
                     finally:
@@ -450,6 +534,41 @@ let
                 "data": [{"b64_json": base64.b64encode(png).decode("ascii"), "seed": seed,
                           "generated_size": "%dx%d" % (gw, gh)}],
             })
+
+        def do_POST(self):
+            if self.path not in ("/v1/images/generations", "/v1/images/edits"):
+                return self._send(404, {"error": {"message": "not found"}})
+            ref = None
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+                raw = self.rfile.read(n)
+                if self.path == "/v1/images/edits":
+                    f = parse_multipart(self.headers.get("Content-Type", ""), raw)
+                    data = f.get("image") or f.get("image[]")
+                    if not data:
+                        raise Bad("image is required")
+                    ref, rw, rh = load_reference(data)
+                    body = {k: f[k].decode() for k in ("prompt", "size", "seed") if f.get(k)}
+                    body.setdefault("size", "%dx%d" % (rw, rh))  # no size: follow the reference
+                    if "seed" in body:
+                        body["seed"] = int(body["seed"])
+                    if f.get("n") and f["n"].decode().strip() != "1":
+                        raise Bad("n must be 1")
+                else:
+                    body = json.loads(raw or b"{}")
+                prompt, w, h, gw, gh, seed = parse(body)
+            except (Bad, ValueError, AttributeError) as e:
+                return self._send(400, {"error": {"message": str(e)}})
+            if ref is None:
+                def make_png():
+                    return get_pipe().generate_png(
+                        prompt=prompt, seed=seed, steps=STEPS, height=gh, width=gw,
+                        guidance=GUIDANCE, tiled_vae=None, max_sequence_length=None,
+                    )
+            else:
+                def make_png():
+                    return edit_png(prompt, seed, gh, gw, ref)
+            self._generate(w, h, gw, gh, seed, make_png)
 
         def log_message(self, fmt, *a):
             pass

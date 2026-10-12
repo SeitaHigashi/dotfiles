@@ -1,17 +1,23 @@
 """
 title: Bonsai Image
-description: Text-to-image through llama-swap's bonsai-image (Bonsai Image Ternary 4B, gemlite).
+description: Text-to-image, and editing of an attached image, through llama-swap's bonsai-image (Bonsai Image Ternary 4B, gemlite).
 
 Open WebUI Pipe function. Not deployed by Nix: paste this file into
 Admin Panel -> Functions -> + (see docs/services/open-webui.md#bonsai-image-pipe).
 Resolution and seed are per-user, from Chat Controls -> Valves.
+If the last user message carries an image, it is sent to /v1/images/edits as the
+reference (output size follows the reference, so the resolution valve is unused;
+only that one attached image is used, not earlier generated ones). Otherwise the
+prompt goes to /v1/images/generations as text-to-image.
 """
 
 import asyncio
 import base64
 import io
 import json
+import re
 import time
+import uuid
 import urllib.error
 import urllib.request
 from typing import Literal
@@ -47,6 +53,10 @@ class Pipe:
             default="http://127.0.0.1:8888/v1/images/generations",
             description="OpenAI-style images endpoint behind llama-swap",
         )
+        edits_endpoint: str = Field(
+            default="http://127.0.0.1:8888/v1/images/edits",
+            description="OpenAI-style image edit endpoint (multipart), used when an image is attached",
+        )
         model: str = Field(default="bonsai-image", description="llama-swap model ID")
         # Warm image: ~10 s. After a swap: ~95-115 s (weights load + Triton
         # compile on a cold cache), plus waiting for bonsai's in-flight requests.
@@ -59,12 +69,24 @@ class Pipe:
     def __init__(self):
         self.valves = self.Valves()
 
-    def _post(self, payload: dict) -> dict:
-        req = urllib.request.Request(
-            self.valves.endpoint,
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"},  # llama-swap reads "model" only with this
-        )
+    def _post(self, payload: dict, image: bytes | None = None) -> dict:
+        if image is None:
+            req = urllib.request.Request(
+                self.valves.endpoint,
+                data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"},  # llama-swap reads "model" only with this
+            )
+        else:
+            boundary = uuid.uuid4().hex
+            body = b""
+            for k, v in payload.items():
+                body += (f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n').encode()
+            body += (f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="image.png"\r\n'
+                     "Content-Type: application/octet-stream\r\n\r\n").encode() + image + f"\r\n--{boundary}--\r\n".encode()
+            req = urllib.request.Request(
+                self.valves.edits_endpoint, data=body,
+                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            )
         try:
             with urllib.request.urlopen(req, timeout=self.valves.timeout_s) as r:
                 return json.loads(r.read())
@@ -79,8 +101,16 @@ class Pipe:
         if __task__:
             return ""
 
-        content = body["messages"][-1]["content"]
+        msg = next((m for m in reversed(body["messages"]) if m.get("role") == "user"), body["messages"][-1])
+        content = msg["content"]
+        ref = None
         if isinstance(content, list):
+            for p in content:
+                m = re.match(r"data:[^;,]*;base64,(.*)", (p.get("image_url") or {}).get("url", ""), re.S) \
+                    if p.get("type") == "image_url" else None
+                if m:
+                    ref = base64.b64decode(m.group(1))
+                    break
             content = " ".join(p.get("text", "") for p in content if p.get("type") == "text")
         prompt = content.strip()
         if not prompt:
@@ -88,10 +118,9 @@ class Pipe:
 
         uv = __user__.get("valves") or self.UserValves()
         width, height = RESOLUTIONS[uv.resolution]
-        payload = {
-            "model": self.valves.model, "prompt": prompt,
-            "size": f"{width}x{height}",
-        }
+        payload = {"model": self.valves.model, "prompt": prompt}
+        if ref is None:  # edits: no size, the server follows the reference
+            payload["size"] = f"{width}x{height}"
         if uv.seed >= 0:
             payload["seed"] = uv.seed
 
@@ -99,12 +128,15 @@ class Pipe:
             if __event_emitter__:
                 await __event_emitter__({"type": "status", "data": {"description": text, "done": done}})
 
-        await status(f"Generating {width}x{height} — ~10 s, or ~2 min if the model has to be loaded (bonsai is unloaded meanwhile)")
+        what = "Editing the attached image" if ref is not None else f"Generating {width}x{height}"
+        await status(f"{what} — ~10 s, or ~2 min if the model has to be loaded (bonsai is unloaded meanwhile)")
         start = time.monotonic()
         try:
-            res = await asyncio.to_thread(self._post, payload)
+            res = await asyncio.to_thread(self._post, payload, ref)
             item = res["data"][0]
             png = base64.b64decode(item["b64_json"])
+            if ref is not None:
+                width, height = item["generated_size"].split("x")
         except Exception as e:
             await status(f"Failed: {e}", done=True)
             return f"Image generation failed: `{e}`"

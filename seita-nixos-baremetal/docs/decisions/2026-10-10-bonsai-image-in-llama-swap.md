@@ -99,3 +99,62 @@ Details and the table: [llama-cpp.md](../services/llama-cpp.md#resolution-ceilin
   (less tested with gemlite/Triton); details and numbers in
   [llama-cpp.md](../services/llama-cpp.md#calling-bonsai-image).
 - Not exercised: sizes beyond 2560x1440 (still OOM), the in-chat display of the Open WebUI Pipe.
+
+## 2026-10-12: reference-image editing (`/v1/images/edits`)
+
+- **Rationale:** the user wanted to edit an existing picture with bonsai-image, not only generate from
+  text. Upstream's `backend_gpu` had the reference path deleted, so the wrapper adds it back.
+- **Decision:** serve `POST /v1/images/edits` (multipart: `image`, `prompt`, `model`, optional `size`,
+  `seed`; `n` must be 1) from the same wrapper and the same llama-swap model. Output format is the same
+  as generations. Generations are unchanged (same seed-1 request byte-identical before and after).
+- **Mechanism:** the wrapper re-execs upstream `backend_gpu/diffusion_klein.py` with extra source rewrites.
+  The reference is VAE-encoded, patchified, BN-normalised, packed and concatenated to the latent sequence
+  with time-offset ids; the transformer output is sliced back to the output tokens. Each rewrite anchor is
+  asserted to occur exactly once, so a backend rev bump fails loudly instead of silently ignoring the
+  reference.
+- **Reference size:** decoded with PIL (EXIF transposed) and shrunk, keeping aspect, to at most
+  `MAX_PIXELS_EDIT` = 1024*1024 px, both sides a multiple of 16. Independent of the output `size`. If
+  `size` is omitted, the output is the resized reference size.
+- **Output cap:** the generation caps apply unchanged (each side <= 2560, <= 2560x1440 px generated,
+  non-multiples of 16 rounded up and centre-cropped). `MAX_PIXELS_EDIT` = 1024*1024 was kept because it was
+  measured working at exactly 1024x1024; no separate output cap for edits was needed.
+- **llama-swap:** routes by the multipart `model` field and forwards the body unchanged (llama-swap v249,
+  rev f94c94ac). `useModelName` is not set for bonsai-image.
+
+### Measurements
+
+On the 3060 Ti alone, 4 steps, through the real wrapper (raw: `~/bonsai-image-measure/20261012-153150/results.json`,
+`montage.png`):
+
+| request | HTTP | time | `nvidia-smi` peak |
+|---|---|---|---|
+| edit 1024x1024 (1024x1024 reference) | 200 | 18.5 s | 7372 MiB |
+| edit 1440x810 (generated 1440x816) | 200 | 20.7 s | 7706 MiB |
+| edit 1920x1080 (generated 1920x1088) | 200 | 32.1 s | 7772 MiB |
+| edit 2560x1440 | 200 | 52.3 s | 7750 MiB |
+| edit 1440x2560 | 200 | 52.2 s | 7750 MiB |
+| edit 768x512 (3:2 reference, no `size`) | 200 | 15.4 s | 6326 MiB |
+| first request after load (generations 1024, includes lazy load) | 200 | 75.0 s | not recorded |
+
+- A reference adds about 9 s at 1024x1024 (18.5 s vs 9.2 s for a plain generation).
+- **The reference is honoured:** 1024x1024 reference, prompt "the same tabby cat wearing a red knitted hat,
+  sitting on a wooden table, photo", seed 2. Mean absolute pixel difference between the edit and the
+  reference is 19.1; a no-reference generation with the same prompt and seed differs from the reference by
+  63.4. Earlier 768x768 probe (5 images): 22.5 / 24.9 with a reference vs 70.5 / 48.1 without.
+
+### Limitations
+
+- **HTTP 200 is not a usable picture.** A 1:1 reference with a 9:16 output (1440x2560) produced a duplicated
+  subject (two cats stacked under one hat). Keep the output aspect close to the reference, or omit `size`.
+  At 1440x810, 1920x1080 and 2560x1440 from a 1:1 reference the subject shrinks and the scene is
+  recomposed (still the same cat, hat added).
+- **VRAM headroom is small:** peak 7.3-7.8 GiB of 8 GiB at every size measured (about 0.4 GiB). Nothing
+  above 2560x1440 was tried.
+- **Downscale path not exercised by a non-square image:** the largest reference measured was exactly
+  1024x1024; the 3:2 one was 768x512. The shrink path for a reference larger than 1 megapixel is untested
+  for non-square input.
+- **Not pixel-exact:** an edit is a regeneration conditioned on the reference. Details such as the tail
+  position can change (seen in the 768x768 probe).
+- **Sample size:** one sample per condition, judged by eye.
+
+Usage and the request/response contract: [llama-cpp.md](../services/llama-cpp.md#editing-post-v1imagesedits).

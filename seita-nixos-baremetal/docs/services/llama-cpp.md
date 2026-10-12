@@ -286,6 +286,67 @@ torch 2.11.0+cu128, gemlite **0.5.1.post1**, diffusers 0.38.0, transformers 5.8.
 `uv.lock`, except torch). To move gemlite to 0.6.x, `backend_gpu`'s `gl.W_q = ...` assignments have to
 change first.
 
+#### Editing: `POST /v1/images/edits`
+
+Reference-image editing (added 2026-10-12). The reference is VAE-encoded and conditions the generation,
+so the output is a regeneration that stays close to the reference, not a pixel edit.
+
+```
+POST http://127.0.0.1:8888/v1/images/edits          (multipart/form-data)
+image=@ref.png  prompt=...  model=bonsai-image  size=1024x1024 (optional)  seed=42 (optional)  n=1
+```
+
+- `image` (or `image[]`; the first one wins) is the reference. Missing image, undecodable image or
+  `n != 1` return HTTP 400.
+- The response is the same as generations: `{"data": [{"b64_json", "seed", "generated_size"}]}`.
+- llama-swap routes by the multipart `model` field and forwards the body unchanged (`useModelName` is not
+  set for bonsai-image).
+- The reference is decoded with PIL (EXIF transposed) and shrunk, keeping aspect, to at most
+  1024*1024 px (`MAX_PIXELS_EDIT`) with both sides a multiple of 16. This does not depend on `size`.
+  If `size` is omitted, the output is the resized reference size.
+- Output size follows the generation rules: each side <= 2560, at most 2560x1440 px generated, sizes
+  that are not multiples of 16 are generated rounded up and centre-cropped.
+- Mechanism: the wrapper re-execs upstream `backend_gpu/diffusion_klein.py` with extra source rewrites,
+  because upstream deleted the reference path. The reference is VAE-encoded, patchified, BN-normalised,
+  packed and concatenated to the latent sequence with time-offset ids; the transformer output is sliced
+  back to the output tokens. Each rewrite anchor is asserted to occur exactly once, so a backend rev bump
+  fails loudly. Generations are unchanged: the same seed-1 request before and after is byte-identical.
+
+Measured 2026-10-12 on the 3060 Ti alone, 4 steps, through the real wrapper (raw results:
+`~/bonsai-image-measure/20261012-153150/results.json`, `montage.png`):
+
+| request | HTTP | time | `nvidia-smi` peak |
+|---|---|---|---|
+| edit 1024x1024 (1024x1024 reference) | 200 | 18.5 s | 7372 MiB |
+| edit 1440x810 (generated 1440x816) | 200 | 20.7 s | 7706 MiB |
+| edit 1920x1080 (generated 1920x1088) | 200 | 32.1 s | 7772 MiB |
+| edit 2560x1440 | 200 | 52.3 s | 7750 MiB |
+| edit 1440x2560 | 200 | 52.2 s | 7750 MiB |
+| edit 768x512 (3:2 reference, no `size`) | 200 | 15.4 s | 6326 MiB |
+| first request after load (generations 1024, includes lazy load) | 200 | 75.0 s | not recorded |
+
+A reference adds about 9 s at 1024x1024 (18.5 s edit vs 9.2 s plain generation).
+
+Reference is honoured (1024x1024 reference, prompt "the same tabby cat wearing a red knitted hat,
+sitting on a wooden table, photo", seed 2): mean absolute pixel difference between the edit and the
+reference is 19.1, while a no-reference generation with the same prompt and seed differs from the
+reference by 63.4. A 768x768 probe (5 images) gave 22.5 / 24.9 with a reference vs 70.5 / 48.1 without.
+
+Limitations:
+
+- HTTP 200 does not mean a usable picture. A 1:1 reference with a 9:16 output (1440x2560) produced a
+  duplicated subject (two cats stacked under one hat). Keep the output aspect close to the reference,
+  or omit `size`. From a 1:1 reference at 1440x810, 1920x1080 and 2560x1440 the subject shrinks and the
+  scene is recomposed (still the same cat, hat added).
+- Peak VRAM is 7.3-7.8 GiB of 8 GiB at every size measured, about 0.4 GiB headroom. Nothing above
+  2560x1440 was tried.
+- The downscale path for a reference larger than 1 megapixel was not exercised by a non-square image.
+  The largest reference measured was exactly 1024x1024; the 3:2 one was 768x512.
+- Edits are not pixel-exact: details such as tail position can change (seen in the 768x768 probe).
+- One sample per condition, judged by eye.
+
+Decision record: [2026-10-10-bonsai-image-in-llama-swap.md](../decisions/2026-10-10-bonsai-image-in-llama-swap.md#2026-10-12-reference-image-editing-v1imagesedits).
+
 ### Calling minimax-h3
 
 Video is not on llama-swap's `/v1/*` routes (`/v1/vid_gen` is a 404). sd-server
