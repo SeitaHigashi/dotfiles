@@ -126,3 +126,11 @@ Each item has its full story in the linked doc; the one-liner is what must not b
   [network.md](docs/network.md) — re-evaluate it rather than trusting a remembered list.
 - `switch` does not restart units whose unit file did not change, and never frees resources held by
   already-running processes — say which units still need a restart when reporting a change.
+- **Never `POST /api/models/unload/bonsai` blind to free the 3060 Ti.** `bonsai` (ttl 0) is in constant use —
+  podman-openviking posts chat completions to it (`AsyncOpenAI` from 127.0.0.1, ~2 min each) and re-requests
+  within seconds of an unload. A bare unload killed an in-flight request (502, 2026-10-12; same on 2026-10-10)
+  and the card was re-taken at once. Use `~/bonsai-image-measure/run.sh` (`MEASURE=<script>.py`): it waits for
+  `GET :18900/slots` to report `is_processing:false` five polls in a row, unloads, confirms the card is under
+  1500 MiB, and sets the `bonsai-image` env; the script itself should re-check free VRAM and claim it
+  (`torch.empty` then `del`, no `empty_cache`) before loading. The user approved unloading `bonsai` for
+  measurements on 2026-10-12, but only through such an idle-gated script.
