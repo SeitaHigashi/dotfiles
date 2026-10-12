@@ -28,7 +28,8 @@ next to `qwen-image`, in the same form: a llama-swap model ID called through
 - The model card's own numbers (RTX 3060 6 GB laptop 17.5 s, RTX 3080 4.5 s) bracket this.
 - Two runs with the same seed differ by at most 1/255 per pixel (mean 0.02): Triton picks different kernels
   on the first (compile) and later runs. Not investigated further; the images look identical.
-- No VRAM headroom (~380 MiB): nothing may share the card, and 1024x1024 is the measured ceiling.
+- No VRAM headroom (~380 MiB): nothing may share the card. (1024x1024 was the ceiling here; raised to
+  2560x1440 on 2026-10-12, see the addendum at the end.)
 
 ## What did not work first (kept so it is not rediscovered)
 
@@ -62,3 +63,39 @@ Remove (or comment out, keeping the way back next to it) the `"bonsai-image"` en
 `bonsai-image-setup` unit and `bonsaiImage*` bindings can stay (the unit is idempotent and only
 downloads once). State lives in `/var/lib/llm-models/bonsai-image` (venv, model, triton cache) and is
 regenerable.
+
+## Addendum 2026-10-12: resolution ceiling raised to 2560x1440
+
+The user asked whether 1920x1080 / 4K is possible. Measured on the 3060 Ti alone (4 steps, seed 42):
+
+- Without VAE tiling, 1792x1024 passes and 1920x1088 OOMs in the VAE decode (1020 MiB allocation).
+- With tiling, 1920x1088 (20.1 s) and 2560x1440 (38.7 s, 7748 MiB `nvidia-smi` peak) pass; 3072x1728 and
+  4K OOM inside the transformer. 4K does not fit this card with the current code.
+- **Decision:** `MAX_SIDE` 2560 plus a `MAX_PIXELS` cap of 2560*1440, and the wrapper calls
+  `pipe._vae.enable_tiling()` after `prewarm()`. Sides stay multiples of 32.
+- **First left undone, done the same day (below):** relaxing the 32-px check to 16 (the real
+  constraint) and cropping, since 1080 is not a multiple of 16.
+- **Gotcha kept:** `generate_png(tiled_vae=...)` is ignored upstream (`del tiled_vae`), so passing it does
+  nothing; tiling has to be enabled on the VAE object.
+
+Details and the table: [llama-cpp.md](../services/llama-cpp.md#resolution-ceiling-measured-2026-10-12-3060-ti-alone-4-steps-seed-42-vae-tiling-on).
+
+## Addendum 2026-10-12 (later): 16-px alignment and centre-crop
+
+- **16-px verified:** 1024x1008, 1008x1008, 1920x1072 and 1936x1088 (seed 42, tiling on) generate PNGs of
+  exactly the requested size with no artefacts and the same time/VRAM as 32-aligned neighbours.
+  `ALIGN` is now 16; the wrapper re-execs upstream's `diffusion_klein` with its `% 32` check lowered to
+  `% 16` (patched at load time, venv untouched, `assert` guards a backend bump).
+- **Any size accepted:** the wrapper generates at the size rounded up to `ALIGN` and centre-crops. The
+  excess is split evenly (8 px -> 4 px top + 4 px bottom; an odd pixel comes off the bottom/right).
+  `MAX_SIDE` / `MAX_PIXELS` apply to the generated size because that is what uses VRAM.
+  1920x1080 = 1920x1088 generated, 4 px off top and bottom. The response carries `generated_size`.
+- Checked afterwards: the alias `image` gives byte-identical output to `bonsai-image`; portrait 1440x2560
+  generates in a fresh process.
+- **Defect found and fixed:** a different-shaped request right after another one OOMed in the
+  long-lived wrapper (no `torch.cuda.empty_cache()` between requests; allocator fragmentation).
+  **Decision:** the wrapper calls `torch.cuda.empty_cache()` after every request (in a `finally`).
+  `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` also worked in one sequence but was not adopted
+  (less tested with gemlite/Triton); details and numbers in
+  [llama-cpp.md](../services/llama-cpp.md#calling-bonsai-image).
+- Not exercised: sizes beyond 2560x1440 (still OOM), the in-chat display of the Open WebUI Pipe.

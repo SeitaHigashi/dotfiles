@@ -293,10 +293,15 @@ let
 
     MODEL_ID = "bonsai-image"
     MODEL_DIR = Path(os.environ["BONSAI_IMAGE_DIR"])
-    # ** Measured only up to 1024x1024 (6.8 GiB torch peak of the 3060 Ti's 8). **
-    #   Do not raise without measuring (docs/services/llama-cpp.md).
-    MAX_SIDE = 1024
-    ALIGN = 32  # upstream's presets are 32-aligned
+    # ** Measured up to 2560x1440 with VAE tiling (2026-10-12); 3072x1728 and 4K
+    #   OOM inside the transformer. Do not raise without measuring
+    #   (docs/services/llama-cpp.md). **
+    MAX_SIDE = 2560
+    MAX_PIXELS = 2560 * 1440
+    # VAE x8 and the 2x2 latent pack make 16 px the real alignment; upstream's own
+    # check says 32, which relax_alignment() lowers (sizes 16-aligned but not
+    # 32-aligned were generated and checked on 2026-10-12).
+    ALIGN = 16
     STEPS = 4  # the sampler is distilled for exactly 4 steps
     GUIDANCE = 1.0
 
@@ -304,11 +309,50 @@ let
     pipe = None
 
 
+    def relax_alignment():
+        """Lower upstream's `% 32` size check in diffusion_forward to ALIGN."""
+        from backend_gpu import diffusion_klein as dk
+
+        src = Path(dk.__file__).read_text()
+        old = "if height % 32 != 0 or width % 32 != 0:"
+        assert old in src, "upstream size check moved (backend rev bump?); re-read diffusion_klein.py"
+        new = "if height %% %d != 0 or width %% %d != 0:" % (ALIGN, ALIGN)
+        exec(compile(src.replace(old, new), dk.__file__, "exec"), dk.__dict__)
+
+
+    def center_crop_png(png, w, h):
+        """Crop a PNG to w x h around the centre: the excess is split evenly
+        (8 px -> 4 px each side), an odd pixel is taken from the bottom/right."""
+        import io
+
+        from PIL import Image
+
+        im = Image.open(io.BytesIO(png))
+        gw, gh = im.size
+        if (gw, gh) == (w, h):
+            return png
+        left, top = (gw - w) // 2, (gh - h) // 2
+        buf = io.BytesIO()
+        im.crop((left, top, left + w, top + h)).save(buf, format="PNG")
+        return buf.getvalue()
+
+
+    def release_cache():
+        """Hand the allocator's cached blocks back after every request (also after
+        an OOM). Without it, blocks cached for one shape fragment the 8 GiB card
+        and the next, differently shaped request OOMs (measured 2026-10-12)."""
+        if pipe is not None:
+            import torch
+
+            torch.cuda.empty_cache()
+
+
     def get_pipe():
         global pipe
         if pipe is None:
             from backend_gpu.pipeline_gpu import GpuPipeline
 
+            relax_alignment()
             t = time.perf_counter()
             tr = MODEL_DIR / "transformer-gemlite-int2"
             p = GpuPipeline(
@@ -321,6 +365,9 @@ let
                 device="cuda:0",
             )
             p.prewarm()
+            # Upstream drops `tiled_vae` (generate_png does `del tiled_vae`), so tile
+            # the VAE decode here: without it 1920x1088 OOMs in the decode.
+            p._vae.enable_tiling()
             pipe = p
             print("[bonsai-image] loaded in %.1fs" % (time.perf_counter() - t), flush=True)
         return pipe
@@ -341,14 +388,20 @@ let
             raise Bad("size must look like 1024x1024")
         w, h = int(m.group(1)), int(m.group(2))
         for side in (w, h):
-            if side % ALIGN or not ALIGN <= side <= MAX_SIDE:
-                raise Bad("size sides must be multiples of %d, %d..%d" % (ALIGN, ALIGN, MAX_SIDE))
+            if not 1 <= side <= MAX_SIDE:
+                raise Bad("size sides must be 1..%d" % MAX_SIDE)
+        # What is generated is the size rounded up to ALIGN; the PNG is then
+        # centre-cropped to w x h. The caps apply to the generated size (VRAM).
+        gw, gh = -(-w // ALIGN) * ALIGN, -(-h // ALIGN) * ALIGN
+        if gw * gh > MAX_PIXELS:
+            raise Bad("size is generated as %dx%d (multiples of %d), %d px > %d (2560x1440)"
+                      % (gw, gh, ALIGN, gw * gh, MAX_PIXELS))
         seed = body.get("seed")
         if seed is None:
             seed = random.randrange(2**31)
         if not isinstance(seed, int):
             raise Bad("seed must be an integer")
-        return prompt, w, h, seed
+        return prompt, w, h, gw, gh, seed
 
 
     class Handler(BaseHTTPRequestHandler):
@@ -373,23 +426,29 @@ let
                 return self._send(404, {"error": {"message": "not found"}})
             try:
                 n = int(self.headers.get("Content-Length", "0"))
-                prompt, w, h, seed = parse(json.loads(self.rfile.read(n) or b"{}"))
+                prompt, w, h, gw, gh, seed = parse(json.loads(self.rfile.read(n) or b"{}"))
             except (Bad, ValueError, AttributeError) as e:
                 return self._send(400, {"error": {"message": str(e)}})
             try:
                 with lock:  # one image at a time: a second one would only raise the VRAM peak
-                    t = time.perf_counter()
-                    png = get_pipe().generate_png(
-                        prompt=prompt, seed=seed, steps=STEPS, height=h, width=w,
-                        guidance=GUIDANCE, tiled_vae=None, max_sequence_length=None,
-                    )
-                    print("[bonsai-image] %dx%d seed=%d %.1fs" % (w, h, seed, time.perf_counter() - t), flush=True)
+                    try:
+                        t = time.perf_counter()
+                        png = get_pipe().generate_png(
+                            prompt=prompt, seed=seed, steps=STEPS, height=gh, width=gw,
+                            guidance=GUIDANCE, tiled_vae=None, max_sequence_length=None,
+                        )
+                        png = center_crop_png(png, w, h)
+                        print("[bonsai-image] %dx%d (generated %dx%d) seed=%d %.1fs"
+                              % (w, h, gw, gh, seed, time.perf_counter() - t), flush=True)
+                    finally:
+                        release_cache()
             except Exception as e:  # surface OOM etc. to the caller instead of dropping the socket
                 print("[bonsai-image] generation failed: %r" % (e,), flush=True)
                 return self._send(500, {"error": {"message": repr(e)}})
             self._send(200, {
                 "created": int(time.time()),
-                "data": [{"b64_json": base64.b64encode(png).decode("ascii"), "seed": seed}],
+                "data": [{"b64_json": base64.b64encode(png).decode("ascii"), "seed": seed,
+                          "generated_size": "%dx%d" % (gw, gh)}],
             })
 
         def log_message(self, fmt, *a):
@@ -728,10 +787,10 @@ let
       # Bonsai Image Ternary 4B (gemlite INT2) on the 3060 Ti: an alternative to
       # qwen-image in the same matrix set, so it evicts bonsai and qwen-image.
       # Call via POST /v1/images/generations with "model": "bonsai-image"
-      # (b64_json PNG; size up to 1024x1024, 4 steps fixed).
-      # Measured 2026-10-10 at 1024x1024: 9.7 s warm, 6833 MiB torch peak,
-      # 7812 MiB nvidia-smi peak of 8192 — ** no headroom: nothing else may
-      # share the card **. The first request after a load also pays Triton's
+      # (b64_json PNG; any size up to 2560x1440 px: generated at the size rounded
+      # up to 16 px and centre-cropped; 4 steps fixed). Measured 2026-10-10 at 1024x1024: 9.7 s warm, 6833 MiB torch
+      # peak, 7812 MiB nvidia-smi peak of 8192; 2026-10-12 up to 2560x1440
+      # (38.7 s, 7748 MiB) — ** no headroom: nothing else may share the card **. The first request after a load also pays Triton's
       # compile (57 s measured; TRITON_CACHE_DIR keeps it across restarts).
       # Weights load lazily on the first request (the health check answers at
       # once), so that request takes about a minute longer.

@@ -174,11 +174,16 @@ slower, so it is not used.
 
 ```
 POST http://127.0.0.1:8888/v1/images/generations
-{"model": "bonsai-image", "prompt": "...", "size": "1024x1024", "seed": 42}   # alias "image" is also registered (listed by llama-swap; not yet exercised end to end)
+{"model": "bonsai-image", "prompt": "...", "size": "1024x1024", "seed": 42}   # alias "image" is also registered (checked 2026-10-12: byte-identical output to the model id)
 ```
 
 The answer is `{"data": [{"b64_json": "<PNG>", "seed": 42}]}` (always `b64_json`, never a URL).
-`n` must be 1, each side a multiple of 32 and at most 1024; `seed` is optional (random by default).
+`n` must be 1; `seed` is optional (random by default). **Any size is accepted** (each side 1..2560):
+the wrapper generates at the size rounded up to a multiple of 16 and **centre-crops** the PNG to the
+requested size, splitting the excess evenly (1920x1080 is generated as 1920x1088 and loses 4 px at the
+top and 4 px at the bottom; an odd excess takes the extra pixel from the bottom/right). The caps apply to
+the *generated* size: at most 2560 per side and 2560x1440 pixels in total (HTTP 400 otherwise). The
+response item carries `"generated_size"` next to `"seed"`.
 Steps (4) and guidance (1.0) are fixed: the sampler is distilled for exactly 4 steps.
 The wrapper is `bonsaiImageServer` in `modules/llama-cpp.nix`; upstream's own FastAPI server only has
 `/generate` behind a bearer token, so it is not used. Decision record and measurements:
@@ -198,8 +203,78 @@ Measured 2026-10-10 on the 3060 Ti alone, 1024x1024, 4 steps:
 | `nvidia-smi` peak (incl. CUDA context) | 7812 MiB of 8192 |
 
 ** There is no VRAM headroom (~380 MiB), so nothing else may share the card and the size must not be
-raised without measuring. ** The Triton cache (`TRITON_CACHE_DIR`) lives under
+raised without measuring. ** Sizes up to 2560x1440 were measured on 2026-10-12 (table below). The Triton cache (`TRITON_CACHE_DIR`) lives under
 `/var/lib/llm-models/bonsai-image/triton-cache` (9.4 MB after the first request).
+
+#### Resolution ceiling (measured 2026-10-12, 3060 Ti alone, 4 steps, seed 42, VAE tiling on)
+
+| size | result | warm time | torch peak | `nvidia-smi` peak |
+|---|---|---|---|---|
+| 1024x1024 | ok | 9.1 s | 6833 MiB | 7644 MiB |
+| 1536x864 | ok | 11.9 s | 6454 MiB | 7662 MiB |
+| 1792x1024 | ok | 17.3 s | 6456 MiB | 7706 MiB |
+| 1920x1088 | ok (OOM in the VAE decode without tiling) | 20.1 s | 6457 MiB | 7678 MiB |
+| 2048x1152 | ok | 74.4 s (first shape, Triton compile) | 6837 MiB | 7644 MiB |
+| **2560x1440** | **ok, the ceiling** | 38.7 s | 6468 MiB | 7748 MiB |
+| 3072x1728 | OOM in the transformer (attention RoPE) | - | 6938-7061 MiB | 7710-7822 MiB |
+| 3840x2176, 3840x2160 (4K) | OOM in the transformer (MLP `gate_fn`) | - | 7136-7156 MiB | 7492-7520 MiB |
+
+- **VAE tiling is switched on by the wrapper** (`pipe._vae.enable_tiling()` after `prewarm()`). Upstream's
+  `generate_png(tiled_vae=...)` is a no-op (`del tiled_vae`). Output at 1024x1024 is byte-identical with
+  and without tiling; from 1280x704 up the decode is tiled and the pixels differ slightly.
+- Tiling only lowers the VAE decode peak. Beyond 2560x1440 the transformer activations (which grow with
+  the token count) exceed 8 GiB, so **4K does not fit on the 3060 Ti with the current code**. Untried:
+  `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, chunked MLP/attention (needs patching upstream),
+  or generating at 2560x1440 and upscaling.
+- The real alignment is 16 px (VAE x8, 2x2 patch pack); upstream checks 32 (`diffusion_klein.py`,
+  `% 32`). The wrapper re-execs that module with the check lowered to `ALIGN` (16; `assert`s that the
+  line still exists, so a backend bump fails loudly). Verified 2026-10-12 (seed 42, tiling on): 1024x1008,
+  1008x1008, 1920x1072 and 1936x1088 all produced PNGs of exactly the requested size, no exception and no
+  visible stripes or edge artefacts (checked by eye on 1920x1072 and 1008x1008), with the same time and
+  VRAM as their 32-aligned neighbours (1920x1072 19.6 s / 7678 MiB vs 1920x1088 19.4 s / 7770 MiB).
+  1080 is not a multiple of 16, hence the crop above.
+- The pixel cap (`MAX_PIXELS` = 2560*1440) is the measured pixel count; portrait 1440x2560 has the same
+  token count and generated fine in a fresh process (113.3 s with the cold compile, 6841 MiB torch /
+  7828 MiB `nvidia-smi` peak), **but see the fragmentation gotcha below**.
+- Scripts and raw results: `~/bonsai-image-measure/` (`run.sh` waits for `bonsai` to idle, unloads it,
+  then runs a measure script; `results.json` per run directory).
+
+Exercised end to end through llama-swap on 2026-10-12 (after `switch` of the 2560 ceiling; model id
+`bonsai-image`, the alias `image` was not used): `POST /v1/images/generations` 2560x1440 seed 42 ->
+HTTP 200, a 2560x1440 PNG and `"seed": 42`; `nvidia-smi` peak 7828 MiB of 8192 (a direct run showed
+7748). 3072x1728 and 1920x1080 answered HTTP 400. The total time was not captured (an upper bound of
+~3.5 min including the idle wait, weights load and Triton compile); the warm time is the 38.7 s above.
+`bonsai` is evicted by this call and reloads on its next request.
+
+** Gotcha (found 2026-10-12): a request of a *different shape* right after another one can OOM in the
+long-lived wrapper. ** `1920x1080` (generated 1920x1088) followed by `1440x2560` through llama-swap
+answered HTTP 500 `OutOfMemoryError: Tried to allocate 350 MiB ... 5.79 GiB allocated, 1.28 GiB reserved
+by PyTorch but unallocated`. Direct runs reproduce it exactly (same numbers) and isolate the cause: the
+wrapper never calls `torch.cuda.empty_cache()` between requests, so the caching allocator's blocks from
+the first shape fragment the 8 GiB card for the second. Same two sizes in one process (seed 42, tiling
+on):
+
+| allocator / between requests | 1920x1088, then 1440x2560 |
+|---|---|
+| default, no `empty_cache()` (what the wrapper does) | **OOM** at the second (10.9 s) |
+| default, `empty_cache()` between requests | ok, 39.3 s, 6476 MiB torch peak |
+| `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, no `empty_cache()` | ok, 38.6 s, 6802 MiB torch peak |
+
+A fresh-process portrait alone is fine (above), so the ceiling itself is unchanged; it is the shape
+change inside one process that fails. **Fix: the wrapper calls `torch.cuda.empty_cache()` after every
+request (`release_cache()`, in a `finally`, so also after an OOM)** — the same condition under which all
+the numbers above were measured. `expandable_segments:True` also worked but was only tried on one
+sequence, so it was not adopted.
+
+Verified through llama-swap after the `switch` (2026-10-12, one process, seed 42): `1920x1080` (100.3 s
+cold) -> `1440x2560` 38.2 s -> `1024x1024` 8.9 s -> `2560x1440` 38.2 s -> `1080x1920` 20.4 s, all HTTP
+200, PNG sizes exactly as requested, `nvidia-smi` peak 7524-7726 MiB.
+
+Centre-crop checked end to end the same day (after the 16-px/crop `switch`, seed 42): `1920x1080` ->
+HTTP 200, PNG exactly 1920x1080, `"generated_size": "1920x1088"`, 103.1 s cold (weights load + Triton
+compile for the new shape), `nvidia-smi` peak 7524 MiB; `1920x1088` -> 20.0 s warm, 7532 MiB. Rows
+4..1083 of the 1088 image equal the 1080 image (max difference 2/255, mean 0.006; offsets 3 and 5 differ
+by a mean of ~5.4), i.e. exactly 4 px came off the top and 4 px off the bottom.
 
 Measured through llama-swap on the running unit (2026-10-10, after `switch`): 93.7 s for the first
 request (weights load + Triton compile, cold cache), 9.3 s warm. A resolution not seen before pays a

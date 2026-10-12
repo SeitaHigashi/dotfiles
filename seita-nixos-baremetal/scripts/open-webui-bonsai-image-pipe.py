@@ -25,9 +25,9 @@ from open_webui.routers.files import upload_file_handler
 
 # Measured ceiling: 1024x1024 = 6833 MiB torch peak, 7812 MiB nvidia-smi peak of
 # 8192 on the 3060 Ti (docs/services/llama-cpp.md#calling-bonsai-image). Every
-# preset keeps both sides <= 1024 and pixels <= 1024*1024, sides multiples of 32
-# (what the server accepts); do not add larger ones without measuring. Only
-# 1024x1024 itself was measured, the others only have fewer pixels.
+# preset keeps both sides <= 1024 and pixels <= 1024*1024, sides multiples of 32.
+# The server accepts up to 2560x1440 (measured 2026-10-12, with VAE tiling); the
+# presets were left at 1024 and larger ones can be added on request.
 RESOLUTIONS = {
     "1:1 square 1024x1024": (1024, 1024),
     "1:1 square 512x512": (512, 512),

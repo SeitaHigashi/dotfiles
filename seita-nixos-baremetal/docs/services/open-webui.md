@@ -87,8 +87,10 @@ model name in the model picker.
   `Content-Type: application/json` header matters: without it llama-swap answers
   `no model id could be identified`.
 - Resolution (1:1, 16:9, 3:2, 4:3 and their portrait forms; sides ≤ 1024, multiples of 32) and `seed`
-  (-1 = random) are per-user under Chat Controls → Valves. Only 1024x1024 was measured on the card
-  (7812 MiB of 8192); the other presets have fewer pixels. Add larger ones only after measuring.
+  (-1 = random) are per-user under Chat Controls → Valves. The presets stop at 1024x1024 (7812 MiB of
+  8192) although the server now accepts any size up to 2560x1440 (measured 2026-10-12; sizes that are
+  not multiples of 16 are generated rounded up and centre-cropped, see
+  [llama-cpp.md](llama-cpp.md#calling-bonsai-image)); add larger presets (e.g. 1920x1080) only on request.
 - The PNG is stored as an Open WebUI file and returned as a markdown image with the file URL,
   plus the size and the seed that was used (so a random result can be reproduced).
 - Title/tag/follow-up tasks routed to this model return an empty string, so they never load the
@@ -98,7 +100,7 @@ model name in the model picker.
   real endpoint with `open_webui.*` stubbed; a real in-chat run is not yet verified).
 - Not needed for the same job: Open WebUI's built-in image generation (Admin Panel → Settings →
   Images, engine OpenAI, base URL `http://127.0.0.1:8888/v1`, model `bonsai-image`) also fits this
-  endpoint, but it has no per-user seed or resolution presets and no guard against the 1024 ceiling.
+  endpoint, but it has no per-user seed or resolution presets and no guard against the 2560x1440 ceiling (the server itself answers 400 above it).
 
 ## Auth and telemetry
 
