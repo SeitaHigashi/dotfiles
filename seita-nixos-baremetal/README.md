@@ -33,6 +33,7 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - [llama.cpp](docs/services/llama-cpp.md) — llama-swap + PrismML fork: local LLM, embeddings, Laya, Jeff
 - [Ollama](docs/services/ollama.md) — disabled since 2026-09-21; how to re-enable
 - [Open WebUI](docs/services/open-webui.md) — browser chat UI, PersistentConfig gotcha
+- [Notify](docs/services/notify.md) — `host-notify`: one generic n8n → Discord notification CLI/webhook for host jobs
 - [Auto-update](docs/services/auto-update.md) — podman auto-update for all containers, nightly `nixpkgs-auto` bump + switch
 - [OpenViking](docs/services/openviking.md) — context DB for AI agents
 - [ComfyUI](docs/services/comfyui.md) — image generation, **disabled** since 2026-09-24; how to re-enable

@@ -53,6 +53,21 @@ which `services.zfs.autoSnapshot` snapshots every 15 minutes — restore from th
 A regression that still answers the health check gets through (e.g. the 0.11.4 scheduler breakage would have).
 Pin by pointing that package back at `pkgs.unstable.<name>`.
 
+## Result notification (Discord via n8n)
+
+Both halves report through `host-notify` ([notify.md](notify.md)); the Nix side only picks a level and the
+n8n workflow renders it. `host-notify` always exits 0, so a notification problem never fails or rolls back an
+update, and a night with n8n down is simply not reported.
+
+| `source` | Sent by | Title / level |
+|---|---|---|
+| `nix-auto-update` | `nix-auto-update` (EXIT trap, every run) | `updated` info · `unchanged` debug (dropped by n8n) · `skipped` warning · `failed` error, with the last 40 journal lines as `log` |
+| `podman-auto-update` | wrapper that replaces the packaged `ExecStart` (`image prune` still runs after) | nothing changed debug · some `Updated` ≠ `"false"` info · any `failed`/`rolled back` warning · non-zero exit error; podman's raw JSON is the `log` |
+
+The message lists `name: Updated` per changed container. The podman field names (`ContainerName`/`Container`/
+`Unit`, `Updated`) are unconfirmed from a root run: lookups fall back, so a rename degrades the message
+instead of silencing it. Confirm from the first real run (`journalctl -u podman-auto-update` echoes the JSON).
+
 ### Operating it
 
 ```bash

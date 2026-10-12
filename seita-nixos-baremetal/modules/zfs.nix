@@ -120,6 +120,17 @@ in
   # };
   services.zfs.zed.enableMail = false;
 
+  # Pool events (scrub finished with errors, checksum/IO errors, state changes)
+  # go to Discord: the stock zedlets pipe their report into ZED_EMAIL_PROG, so
+  # point that at host-notify (modules/notify.nix, docs/services/notify.md).
+  # ZED_EMAIL_ADDR only has to be non-empty. Verbose stays off, so a scrub that
+  # finds nothing is silent. To revert: drop these three settings.
+  services.zfs.zed.settings = {
+    ZED_EMAIL_ADDR = [ "discord" ];
+    ZED_EMAIL_PROG = lib.getExe config.local.notify.package;
+    ZED_EMAIL_OPTS = "zed warning '@SUBJECT@'";
+  };
+
   ############################################################################
   # Convenience tools
   ############################################################################

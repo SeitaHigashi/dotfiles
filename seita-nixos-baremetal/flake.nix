@@ -89,6 +89,7 @@
         ./modules/network.nix          # static IP / DHCP switch
         ./modules/replication.nix      # scheduled rpool -> dpool replication
         ./modules/unstable.nix         # makes pkgs.unstable.* and pkgs.auto.* available
+        ./modules/notify.nix           # host-notify: generic n8n -> Discord notification CLI
         ./modules/auto-update.nix      # unattended updates: podman auto-update + nightly pkgs.auto bump
         ./modules/ftb-evolution.nix    # Minecraft (FTB Evolution) via podman
         ./modules/gpu.nix              # NVIDIA driver (compute workloads + monitoring)
