@@ -236,7 +236,7 @@ raised without measuring. ** Sizes up to 2560x1440 were measured on 2026-10-12 (
 - The pixel cap (`MAX_PIXELS` = 2560*1440) is the measured pixel count; portrait 1440x2560 has the same
   token count and generated fine in a fresh process (113.3 s with the cold compile, 6841 MiB torch /
   7828 MiB `nvidia-smi` peak), **but see the fragmentation gotcha below**.
-- Scripts and raw results: `~/bonsai-image-measure/` (`run.sh` waits for `bonsai` to idle, unloads it,
+- Scripts and raw results: `~/src/bonsai-image-measure/` (`run.sh` waits for `bonsai` to idle, unloads it,
   then runs a measure script; `results.json` per run directory).
 
 Exercised end to end through llama-swap on 2026-10-12 (after `switch` of the 2560 ceiling; model id
@@ -313,7 +313,7 @@ image=@ref.png  prompt=...  model=bonsai-image  size=1024x1024 (optional)  seed=
   fails loudly. Generations are unchanged: the same seed-1 request before and after is byte-identical.
 
 Measured 2026-10-12 on the 3060 Ti alone, 4 steps, through the real wrapper (raw results:
-`~/bonsai-image-measure/20261012-153150/results.json`, `montage.png`):
+`~/src/bonsai-image-measure/20261012-153150/results.json`, `montage.png`):
 
 | request | HTTP | time | `nvidia-smi` peak |
 |---|---|---|---|

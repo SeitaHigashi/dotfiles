@@ -123,7 +123,7 @@ Details and the table: [llama-cpp.md](../services/llama-cpp.md#resolution-ceilin
 
 ### Measurements
 
-On the 3060 Ti alone, 4 steps, through the real wrapper (raw: `~/bonsai-image-measure/20261012-153150/results.json`,
+On the 3060 Ti alone, 4 steps, through the real wrapper (raw: `~/src/bonsai-image-measure/20261012-153150/results.json`,
 `montage.png`):
 
 | request | HTTP | time | `nvidia-smi` peak |

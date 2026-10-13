@@ -5,7 +5,7 @@ Overview: [services/fukurou.md](../services/fukurou.md).
 ## Rebuilding after a code change
 
 ```sh
-cd ~/fukurou && nix develop --command cargo build --release -p fukurou-server -p fukurou-webui
+cd ~/src/fukurou && nix develop --command cargo build --release -p fukurou-server -p fukurou-webui
 sudo systemctl restart fukurou-server fukurou-webui
 ```
 

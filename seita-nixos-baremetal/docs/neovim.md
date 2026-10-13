@@ -43,7 +43,7 @@ mechanism. Changing a plugin means editing both. (`bootstrap.lua` / `lazy-option
 - Not covered: `build =` steps (`:TSUpdate`, `make install_jsregexp`) are not run; Mason still downloads binaries at run time.
 - `programs.nix-lazy-nvim` ships its own `nvim`; `home.nix` skips plain neovim when it is enabled.
 - tmux's nordfox theme is sourced from the store path of the nightfox plugin (`nvim.nix`).
-- Verification: dump script in `~/nvim-migrate-verify/` (`run.sh <nvim> <out>`, `dump.lua`) lists plugins and options for diffing.
+- Verification: dump script in `~/lab/2026-10-nvim-migrate-verify/` (`run.sh <nvim> <out>`, `dump.lua`) lists plugins and options for diffing.
 
 ## Config location and data dir
 

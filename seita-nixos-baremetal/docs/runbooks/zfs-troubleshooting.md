@@ -96,7 +96,7 @@ log files inside the flake tree triggers this.
 **Fix**: don't put generated artifacts inside the flake directory.
 
 ```bash
-rm -f ~/nixos-zfs/install.log
+rm -f ~/src/nixos-zfs/install.log
 ```
 
 `install.sh` writes its log to `/tmp` (falling back to `$HOME` if unwritable), and never

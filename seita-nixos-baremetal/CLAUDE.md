@@ -81,7 +81,7 @@ test suite.
 | `modules/open-webui.nix` | Open WebUI (unstable, auto-updated), RAG embedding via llama.cpp | [open-webui.md](docs/services/open-webui.md) |
 | `modules/openviking.nix` | OpenViking context DB (podman); inference via llama.cpp | [openviking.md](docs/services/openviking.md) |
 | `modules/comfyui.nix` | ComfyUI image generation (pip venv) — **disabled** since 2026-09-24 (`enable = false`) | [comfyui.md](docs/services/comfyui.md) |
-| `modules/fukurou.nix` | fukurou voice loop (built by hand in `~/fukurou`) | [fukurou.md](docs/services/fukurou.md) |
+| `modules/fukurou.nix` | fukurou voice loop (built by hand in `~/src/fukurou`) | [fukurou.md](docs/services/fukurou.md) |
 | `modules/desktop.nix` | KDE Plasma (X11) for the projector | [desktop.md](docs/services/desktop.md) |
 | `modules/monitoring.nix` | VictoriaMetrics + Loki + Grafana + exporters | [monitoring.md](docs/services/monitoring.md) |
 | `modules/alerting.nix` | Grafana alert rules (provisioned; git is the source of truth) | [alerting.md](docs/services/alerting.md) |
@@ -130,7 +130,7 @@ Each item has its full story in the linked doc; the one-liner is what must not b
 - **Never `POST /api/models/unload/bonsai` blind to free the 3060 Ti.** `bonsai` (ttl 0) is in constant use —
   podman-openviking posts chat completions to it (`AsyncOpenAI` from 127.0.0.1, ~2 min each) and re-requests
   within seconds of an unload. A bare unload killed an in-flight request (502, 2026-10-12; same on 2026-10-10)
-  and the card was re-taken at once. Use `~/bonsai-image-measure/run.sh` (`MEASURE=<script>.py`): it waits for
+  and the card was re-taken at once. Use `~/src/bonsai-image-measure/run.sh` (`MEASURE=<script>.py`): it waits for
   `GET :18900/slots` to report `is_processing:false` five polls in a row, unloads, confirms the card is under
   1500 MiB, and sets the `bonsai-image` env; the script itself should re-check free VRAM and claim it
   (`torch.empty` then `del`, no `empty_cache`) before loading. The user approved unloading `bonsai` for

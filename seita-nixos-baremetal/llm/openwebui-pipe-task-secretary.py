@@ -10,7 +10,7 @@ version: 0.4.0
 #
 #   このファイルはリポジトリから配備できません。Open WebUI の
 #   Admin Panel -> Functions に貼り付けて保存し、Enabled にしてください。
-#   (原本の控えは ~/bonsai-workspaces.old/openwebui-pipe-task-secretary.py)
+#   (原本の控えは ~/src/bonsai-workspaces.old/openwebui-pipe-task-secretary.py)
 #
 # Ollama 版からの変更点と、それぞれの理由:
 #

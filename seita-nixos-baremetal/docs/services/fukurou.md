@@ -4,7 +4,7 @@ Implementation: [`modules/fukurou.nix`](../../modules/fukurou.nix)
 
 ## What it is
 
-fukurou is a self-developed Rust voice-conversation loop app (`~/fukurou`, developed on
+fukurou is a self-developed Rust voice-conversation loop app (`~/src/fukurou`, developed on
 this host). `fukurou-server` runs STT (whisper.cpp) → LLM (`claude` CLI) → TTS (VOICEVOX
 core). `fukurou-webui` is a push-to-talk browser test page for it (a development test page
 per its README, not a finished GUI). Both were previously started manually in the
@@ -24,13 +24,13 @@ tailnet.
 
 ## Build
 
-Not packaged in nixpkgs. `~/fukurou` (a working checkout on this host) is used directly as
+Not packaged in nixpkgs. `~/src/fukurou` (a working checkout on this host) is used directly as
 `WorkingDirectory`, and the systemd unit's `ExecStart` runs the already-built
 `target/release/` binary — the same "Nix only manages process lifecycle" pattern as
 `modules/comfyui.nix`'s pip venv. Rebuild manually:
 
 ```sh
-cd ~/fukurou && nix develop --command cargo build --release -p fukurou-server -p fukurou-webui
+cd ~/src/fukurou && nix develop --command cargo build --release -p fukurou-server -p fukurou-webui
 sudo systemctl restart fukurou-server fukurou-webui
 ```
 
