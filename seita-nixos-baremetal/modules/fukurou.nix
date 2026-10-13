@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 
 ##############################################################################
-# fukurou (local voice-conversation loop, Rust, developed at ~/fukurou):
+# fukurou (local voice-conversation loop, Rust, developed at ~/src/fukurou):
 # fukurou-server (STT -> LLM -> TTS) and fukurou-webui (browser test page).
 #
 # Docs: docs/services/fukurou.md (what it is, ports, PATH injection, Vulkan
@@ -13,7 +13,7 @@
 
 let
   m = import ../machine.nix;
-  fukurouDir = "/home/${m.userName}/fukurou";
+  fukurouDir = "/home/${m.userName}/src/fukurou";
   ports = {
     server = 7878; # fukurou-server WebSocket
     webui = 8765;  # fukurou-webui (dev test page)

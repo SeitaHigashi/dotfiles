@@ -113,7 +113,7 @@
         ./modules/resource-priority.nix # cross-service CPU / memory priority
         ./modules/automuteus.nix       # AutoMuteUs (Among Us auto-mute Discord bot) via podman
         ./modules/discord-bot.nix      # Discord Gateway bot -> n8n webhook
-        ./modules/fukurou.nix          # systemd wiring for fukurou (voice dialogue loop, ~/fukurou)
+        ./modules/fukurou.nix          # systemd wiring for fukurou (voice dialogue loop, ~/src/fukurou)
         home-manager.nixosModules.home-manager
         {
           home-manager.useGlobalPkgs = true;
