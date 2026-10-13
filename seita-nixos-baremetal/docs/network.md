@@ -141,6 +141,7 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 | 9448 | llama.cpp via Serve | `modules/reverse-proxy.nix` |
 | 9449 | AutoMuteUs galactus via Serve | `modules/reverse-proxy.nix` |
 | 9450 | AutoMuteUs API via Serve | `modules/reverse-proxy.nix` |
+| 9451 | `~/share` static files (HTML/PNG) via Serve, tailnet only. A dedicated dir, never `~` or `/`: tailscaled runs as root, so anything under the served path is readable by the whole tailnet. Directory is created by `systemd.tmpfiles.rules` in the same module. `~/share/index.html` is the homepage (not in git; JS lists `out/<project>/<ts>/`) | `modules/reverse-proxy.nix` |
 | 10000 | Multica GitHub webhook (Funnel, public internet) | `modules/reverse-proxy.nix` |
 | 1933 | OpenViking (direct) | `modules/openviking.nix` |
 | 7878 | fukurou-server (direct WebSocket) | `modules/fukurou.nix` |

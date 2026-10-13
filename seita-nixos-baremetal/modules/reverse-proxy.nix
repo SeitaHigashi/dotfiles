@@ -73,6 +73,8 @@ let
     { path = null;       httpsPort = 9447;  port = 7878;                          note = "fukurou-server (wss, for fukurou-webui)"; }
     { path = null;       httpsPort = 9449;  port = 8123;                          note = "automuteus-galactus (AmongUsCapture)"; }
     { path = null;       httpsPort = 9450;  port = 8084;                          note = "automuteus-api (capture links)"; }
+    # Static files from ~/share only (tailscaled runs as root: never point this at ~ or /).
+    { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
   ];
 
@@ -155,6 +157,9 @@ in
   # evaluated 2026-09-24: docs/network.md.
   ############################################################################
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = httpsPorts;
+
+  # Directory served on 9451; must exist and be readable by tailscaled.
+  systemd.tmpfiles.rules = [ "d /home/${m.userName}/share 0755 ${m.userName} users -" ];
 
   ############################################################################
   # Relay nginx for the Multica GitHub webhook.
