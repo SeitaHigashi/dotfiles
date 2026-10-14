@@ -101,3 +101,4 @@ When a `.nix` file changes, the docs it points to are updated in the same commit
 - 2026-09-24 [ComfyUI disabled](docs/decisions/2026-09-24-comfyui-disabled.md)
 - 2026-10-04 [Claude Code OTLP straight into VictoriaMetrics / Loki](docs/decisions/2026-10-04-claude-code-otlp-direct-ingest.md)
 - 2026-10-10 [bonsai-image in llama-swap (gemlite on the 3060 Ti)](docs/decisions/2026-10-10-bonsai-image-in-llama-swap.md)
+- 2026-10-14 [nix-ld for the Claude Code remote CLI](docs/decisions/2026-10-14-nix-ld-for-claude-remote-cli.md)

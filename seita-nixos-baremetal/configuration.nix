@@ -107,6 +107,14 @@ in
   };
 
   ############################################################################
+  # Generic-Linux binary support
+  ############################################################################
+  # Claude Code remote-control downloads a generic glibc CLI into
+  # ~/.claude/remote/ccd-cli; without nix-ld it fails with CLI_NOT_RUNNABLE
+  # (stub-ld). Way back: set enable = false (2026-10-14).
+  programs.nix-ld.enable = true;
+
+  ############################################################################
   # Base packages
   ############################################################################
   # neovim comes from unstable via modules/unstable.nix.
