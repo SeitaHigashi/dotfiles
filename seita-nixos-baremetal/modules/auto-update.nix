@@ -158,7 +158,7 @@ in
     });
   };
 
-  config = {
+  config = lib.mkMerge [ {
     # Replace the packaged ExecStart ("" clears it) with the notifying wrapper;
     # the packaged ExecStartPost (image prune) stays. To revert: drop this block.
     systemd.services.podman-auto-update.serviceConfig.ExecStart = [ "" (lib.getExe podmanAutoUpdate) ];
@@ -191,5 +191,16 @@ in
         ExecStart = lib.getExe nixAutoUpdate;
       };
     };
-  };
+  }
+  {
+    # podman auto-update stops a container with SIGTERM -> exit 143, which
+    # systemd would count as "failed" and fire OnFailure= (false alert, see
+    # modules/notify.nix). Treat 143 as success for every container unit.
+    # To revert: drop this block.
+    systemd.services = lib.mapAttrs'
+      (name: _: lib.nameValuePair "${config.virtualisation.oci-containers.backend}-${name}" {
+        serviceConfig.SuccessExitStatus = "143";
+      })
+      config.virtualisation.oci-containers.containers;
+  } ];
 }

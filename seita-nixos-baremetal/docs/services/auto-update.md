@@ -8,7 +8,9 @@ Unattended updates, configured in `modules/auto-update.nix` (added 2026-10-11). 
   (set once as a submodule default, so new container modules are covered automatically).
 - `podman-auto-update.timer` (ships with podman, not enabled by default) runs at **04:00** (+ up to 15 min).
   It pulls each container's image tag; if the digest changed it restarts the `podman-*.service` unit, and
-  rolls back to the previous image if the restart fails.
+  rolls back to the previous image if the restart fails. The stop is a SIGTERM (exit 143); every container
+  unit has `SuccessExitStatus=143` so it does not count as failed and fire `OnFailure=` (false Discord
+  alert, fixed 2026-10-14). Real crashes (other exit codes) still notify.
 - It follows the **tag** in the module. `:latest` containers (multica backend/web, openviking, mc-monitor)
   move to whatever upstream publishes; pinned tags (`pg17`, `postgres:18-alpine`, `java21`, the AutoMuteUs
   `tag`) only get rebuilds of that tag.
