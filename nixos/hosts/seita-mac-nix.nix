@@ -7,7 +7,8 @@
       ../commons
       inputs.hyprland.nixosModules.default
       inputs.dms.nixosModules.dank-material-shell
-      inputs.dms.nixosModules.greeter
+      # inputs.dms.nixosModules.greeter  # old: removed from dms stable, use dank-greeter (revert by restoring this line + old option below)
+      inputs.dank-greeter.nixosModules.default
     ];
 
   # Bootloader.
@@ -31,7 +32,7 @@
   # Enable the GNOME Desktop Environment.
   services.desktopManager.cosmic.enable = true;
 
-  programs.dank-material-shell.greeter = {
+  programs.dms-greeter = {  # old name: programs.dank-material-shell.greeter
     enable = true;
     compositor.name = "hyprland";  # Or "hyprland" or "sway"
   };
@@ -50,13 +51,39 @@
     # withUWSM = true;
   };
 
+  # Shell selection: caelestia-shell replaces DMS as the desktop shell (the DMS greeter stays).
+  # Revert: set enable = true here and drop the caelestia block below.
   programs.dank-material-shell = {
-    enable = true;
+    enable = false;  # old: true
     systemd = {
       enable = true;             # Systemd service for auto-start
       restartIfChanged = true;   # Auto-restart dms.service when dank-material-shell changes
     };
   };
+
+  home-manager.sharedModules = [
+    inputs.caelestia-shell.homeManagerModules.default
+    ({ pkgs, ... }:
+      let
+        sys = pkgs.stdenv.hostPlatform.system;
+        shellPkgs = inputs.caelestia-shell.packages.${sys};
+        # caelestia-cli sets SETUPTOOLS_SCM_PRETEND_VERSION as a plain attr, which new nixpkgs no longer exports
+        # to the build env (structuredAttrs), so hatch-vcs fails without .git. Pass it via env. Drop once upstream fixes it.
+        cli = inputs.caelestia-shell.inputs.caelestia-cli.packages.${sys}.default.overrideAttrs (o: {
+          preBuild = (o.preBuild or "") + "export SETUPTOOLS_SCM_PRETEND_VERSION=1\n";
+        });
+      in {
+        programs.caelestia = {
+          enable = true;
+          systemd.enable = true;
+          package = shellPkgs.caelestia-shell.override { withCli = true; caelestia-cli = cli; };
+          cli = {
+            enable = true;
+            package = cli;
+          };
+        };
+      })
+  ];
 
   # Configure keymap in X11
   services.xserver.xkb = {
@@ -89,6 +116,32 @@
     dedicatedServer.openFirewall = true;
     localNetworkGameTransfers.openFirewall = true;
   };
+
+  # VM-only workaround: khal's man output fails to build on nixpkgs 5adc508 (tests pass, no man produced).
+  # Real host unaffected; drop this once nixpkgs fixes khal.
+  virtualisation.vmVariant.programs.dank-material-shell.enableCalendarEvents = false;
+
+  # VM-only: wine is not in the binary cache (hours of source build); swap it for empty dirs.
+  # Real host unaffected. Remove this block to build wine in the VM too.
+  virtualisation.vmVariant.nixpkgs.overlays = [
+    (final: prev: {
+      wineWowPackages = prev.wineWowPackages // {
+        stable = final.emptyDirectory;
+        waylandFull = final.emptyDirectory;
+      };
+      winetricks = final.emptyDirectory;
+    })
+  ];
+
+  # VM-only sizing for GUI checks (default is 1 GiB / 1 core).
+  virtualisation.vmVariant.virtualisation = {
+    memorySize = 4096;
+    cores = 4;
+    diskSize = 8192;
+  };
+
+  # VM-only login for GUI checks (the VM listens on localhost only; real host has no password here).
+  virtualisation.vmVariant.users.users.seita.initialPassword = "vm";
 
   nix.settings.allowed-users = [ "*" ];
 

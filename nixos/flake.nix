@@ -1,6 +1,7 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # old: nixpkgs-unstable (branch head, cache gaps: mozc/wine built from source). Revert to it if desired.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -12,6 +13,15 @@
     };
     dms = {
       url = "github:AvengeMedia/DankMaterialShell/stable";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # dms stable moved the greeter to its own repo (old: dms.nixosModules.greeter + programs.dank-material-shell.greeter).
+    dank-greeter = {
+      url = "github:duxlabs-dev/dux-greeter";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    caelestia-shell = {
+      url = "github:caelestia-dots/shell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     agenix.url = "github:ryantm/agenix";
