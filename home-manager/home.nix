@@ -1,4 +1,4 @@
-{ inputs, config, pkgs, lib, osConfig, ... }:
+{ inputs, config, options, pkgs, lib, osConfig, ... }:
 
 {
   # Home Manager needs a bit of information about you and the paths it should
@@ -64,14 +64,23 @@
 
   imports = [ ./wm/hyprland.nix ./nvim.nix ];
 
+  # Newer home-manager removed userName/userEmail/extraConfig in favour of `settings`;
+  # older pins (baremetal, standalone) only know the old names, so pick by option presence.
   programs.git = {
     enable = true;
+  } // (if options.programs.git ? settings then {
+    settings = {
+      user.name = "Seita Higashi";
+      user.email = "higashi110902@gmail.com";
+      init.defaultBranch = "main";
+    };
+  } else {
     userName = "Seita Higashi";
     userEmail = "higashi110902@gmail.com";
     extraConfig = {
       init.defaultBranch = "main";
     };
-  };
+  });
 
   programs.gh = {
     enable = true;

@@ -1,9 +1,13 @@
-{ inputs, config, pkgs, lib, osConfig, ... }:
+{ inputs, config, options, pkgs, lib, osConfig, ... }:
 
 # Only enable Hyprland related configuration when Hyprland is enabled
 lib.mkIf osConfig.programs.hyprland.enable {
   wayland.windowManager.hyprland =  {
     enable = true;
+    # Newer home-manager defaults to "lua"; `settings` below is hyprlang-style. Option absent on older pins.
+  } // lib.optionalAttrs (options.wayland.windowManager.hyprland ? configType) {
+    configType = "hyprlang";
+  } // {
     package = null;
     portalPackage = null;
     plugins = [
