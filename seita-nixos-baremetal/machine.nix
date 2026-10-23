@@ -21,6 +21,7 @@
   userDescription = "seita";
   userSshKeys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKFIFPYjToMt3AhTrWpgdtl9liIgP+08XZMzpoW8JvIK higashi110902@gmail.com"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAWA2Q0DEJpnEEJO5zCGOtX09mhApgeciGa73JYyfRdD hatch"
   ];
   userHashedPassword = null;
   rootHashedPassword = null;
