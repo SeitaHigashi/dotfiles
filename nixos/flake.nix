@@ -24,6 +24,8 @@
       url = "github:caelestia-dots/shell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # MacBook Pro 13" Early 2015 (MacBookPro12,1) profile, used by seita-mac-nix.
+    nixos-hardware.url = "github:NixOS/nixos-hardware";
     agenix.url = "github:ryantm/agenix";
     hermes-agent.url = "github:NousResearch/hermes-agent";
   };

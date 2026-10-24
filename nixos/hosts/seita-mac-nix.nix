@@ -5,6 +5,8 @@
       ./seita-mac-nix-hardware.nix
       ../user.nix
       ../commons
+      # MacBookPro12,1: Intel-only GPU, brcmfmac suspend/USB-wakeup quirks, SSD trim. Remove this line to go back to the plain hardware scan.
+      inputs.nixos-hardware.nixosModules.apple-macbook-pro-12-1
       inputs.hyprland.nixosModules.default
       inputs.dms.nixosModules.dank-material-shell
       # inputs.dms.nixosModules.greeter  # old: removed from dms stable, use dank-greeter (revert by restoring this line + old option below)
