@@ -16,9 +16,12 @@ let
 in
 {
   ############################################################################
-  # Overlay pkgs.n8n itself to nixpkgs-auto (docs/services/n8n.md for
-  # why). Uses modules/unstable.nix's final.auto; overlay evaluation
-  # order doesn't matter since overlays are a fixpoint.
+  # Overlay pkgs.n8n itself to nixpkgs-unstable (docs/services/n8n.md
+  # for why). Uses modules/unstable.nix's final.unstable; overlay
+  # evaluation order doesn't matter since overlays are a fixpoint.
+  # Pinned off nixpkgs-auto on 2026-10-25 so the nightly auto-update
+  # cannot pull n8n 3.0 unplanned (3.0 drops the npm/source install
+  # upstream; nixpkgs builds from source, so it would still arrive).
   #
   # n8n is non-free (Sustainable Use License) — allowUnfreePredicate lives in
   # modules/unfree.nix (nixpkgs.config can only be defined in one place).
@@ -26,7 +29,7 @@ in
   nixpkgs.overlays = [
     (final: prev: {
       # auto = bumped nightly (modules/auto-update.nix); final.unstable.n8n = manual bumps only
-      n8n = final.auto.n8n;
+      n8n = final.unstable.n8n;
     })
   ];
 

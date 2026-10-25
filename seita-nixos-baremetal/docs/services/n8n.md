@@ -27,7 +27,7 @@ Auth is n8n's own owner-account login; there's no separate gate in front of it.
 25.05's n8n is 1.91.3, too old for current node compatibility and upstream
 API changes. 25.05's `services.n8n` module has no `package` option (its
 `ExecStart` hardcodes `"${pkgs.n8n}/bin/n8n"`), so `modules/n8n.nix` overlays
-`pkgs.n8n` itself to `pkgs.auto.n8n` instead (nixos-unstable, bumped nightly — [auto-update.md](auto-update.md)). Safe to do because n8n is a
+`pkgs.n8n` itself to `pkgs.unstable.n8n` instead (nixos-unstable, manual bumps only). It tracked `pkgs.auto.n8n` (bumped nightly — [auto-update.md](auto-update.md)) until 2026-10-25, when it was pinned to stay on 2.x: n8n 3.0 is expected to go Docker-only upstream, and since nixpkgs builds n8n from source, the nightly auto-update would otherwise pull the major upgrade unplanned (its health check only probes /healthz, which cannot see workflows broken by removed nodes). Safe to do because n8n is a
 pure Node application — it doesn't touch the kernel, kernel modules, systemd,
 or glibc (see `modules/unstable.nix`'s "leaf packages only" rule).
 
