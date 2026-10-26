@@ -1,42 +1,19 @@
-{ lib, ... }:
+{ ... }:
 
 ##############################################################################
-# The single, only place nixpkgs.config.allowUnfreePredicate is defined.
-# It's a function, so it can't be merged across modules — a second definition
-# elsewhere is a hard conflict. Individually allowlisted rather than a
-# blanket allowUnfree = true, to avoid accidentally pulling in unrelated
-# non-free packages. Details and per-package rationale: docs/nixpkgs-channels.md
+# The single, only place this host's unfree policy is defined:
+# nixpkgs.config.allowUnfree = true (unfree packages are allowed by default).
+#
+# Until 2026-10-26 this file held an allowUnfreePredicate allowlist, so
+# unrelated non-free packages could not slip in unnoticed. That stance was
+# retired by Seita's decision after nixpkgs-auto bumped rtk 0.50.0 -> 1.0.1,
+# whose license gained BSL 1.1 (unfree in nixpkgs); rtk was not on the
+# allowlist, so the nightly nix-auto-update failed evaluation and the
+# channel stalled. Details: docs/nixpkgs-channels.md
 #
 # When you change this file, update docs/nixpkgs-channels.md in the same commit.
 ##############################################################################
 
 {
-  nixpkgs.config.allowUnfreePredicate =
-    pkg:
-    let
-      name = lib.getName pkg;
-    in
-    builtins.elem name [
-      "nvidia-x11" # proprietary NVIDIA driver (modules/gpu.nix)
-      "nvidia-settings"
-      "nvidia-persistenced"
-      "n8n" # Sustainable Use License, non-redistributable (modules/n8n.nix)
-      "open-webui" # was MIT through 0.6.x, now the proprietary Open WebUI License (modules/open-webui.nix)
-      "brave" # unfree per official build's distribution/trademark terms (modules/unstable.nix)
-      # Neovim plugins with no license set in nixpkgs (home-manager/nvim.nix); copilot-language-server is pulled in as a plugin dependency
-      "cmp-calc"
-      "cmp-emoji"
-      "telescope-emoji.nvim"
-      "presence.nvim"
-      "codeium" # codeium.nvim, unfree (home-manager/nvim.nix)
-      "copilot-language-server"
-    ]
-    # CUDA runtime deps (pulled in by ollama-cuda: cuda_cudart, libcublas, ...)
-    # are also NVIDIA's non-free license. Too many, and too version-churny,
-    # to list individually — allowed by prefix instead. Still far narrower
-    # than allowUnfree = true.
-    || lib.hasPrefix "cuda" name      # cuda_cudart, cuda_cccl, cuda_nvcc, ...
-    || lib.hasPrefix "libcu" name     # libcublas, libcurand, libcusparse, ...
-    || lib.hasPrefix "libnv" name     # libnvjitlink, libnvidia-container, ...
-    || builtins.elem name [ "cudnn" "nccl" ];
+  nixpkgs.config.allowUnfree = true;
 }

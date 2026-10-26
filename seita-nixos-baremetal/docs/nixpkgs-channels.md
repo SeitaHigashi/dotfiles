@@ -38,7 +38,7 @@ a handful of packages; would add up for something large.
 `nixpkgs-auto` tracks the same `nixos-unstable` branch under its own lock entry and is exposed as
 `pkgs.auto.*`. Only this input is bumped by the nightly `nix-auto-update` timer, so the packages that need a
 deliberate bump (llama.cpp, llama-swap, …) stay on `pkgs.unstable.*`. On `pkgs.auto`: `open-webui`, `n8n`
-(+ its `nodejs`), `neovim` + `vimPlugins`, `herdr`, `rtk`, `brave` (unfree, also in `modules/unfree.nix`).
+(+ its `nodejs`), `neovim` + `vimPlugins`, `herdr`, `rtk`, `brave` (unfree).
 See [services/auto-update.md](services/auto-update.md). The "never put these on unstable" list above applies
 to it equally.
 
@@ -49,35 +49,31 @@ to it equally.
 [2026-09-21 pin nixpkgs-unstable to a cached revision](decisions/2026-09-21-pin-nixpkgs-unstable.md)
 for the full incident and the check required before bumping it.
 
-## `allowUnfreePredicate`: one place only
+## Unfree packages: allowed by default
 
-`nixpkgs.config.allowUnfreePredicate` is a function, so it can't be merged across
-modules — defining it in two places is a hard conflict. Every package that needs
-individual unfree allowance is collected in `modules/unfree.nix` (deliberately not
-a blanket `allowUnfree = true`, to avoid accidentally pulling in unrelated
-non-free packages).
+This host sets `nixpkgs.config.allowUnfree = true`, defined solely in
+`modules/unfree.nix`. Unfree packages need no individual allowance.
 
-Currently allowed, by name: `nvidia-x11`, `nvidia-settings`, `nvidia-persistenced`
-(`modules/gpu.nix`); `n8n` (Sustainable Use License, non-redistributable —
-`modules/n8n.nix`); `open-webui` (was MIT through 0.6.x, changed to the proprietary
-Open WebUI License — branding-removal and scale restrictions — used via
-`modules/open-webui.nix`); `brave` (nixpkgs treats it unfree due to the official
-build's distribution/trademark terms — `modules/unstable.nix`); the Neovim plugins
-`cmp-calc`, `cmp-emoji`, `telescope-emoji.nvim`, `presence.nvim` (no license set in nixpkgs)
-and `copilot-language-server` (a plugin dependency), `codeium` (codeium.nvim) — `../home-manager/nvim.nix`, `docs/neovim.md`.
+Until 2026-10-26 this was an `allowUnfreePredicate` allowlist in the same
+file — by name: `nvidia-x11`, `nvidia-settings`, `nvidia-persistenced`,
+`n8n`, `open-webui`, `brave`, the Neovim plugins `cmp-calc`, `cmp-emoji`,
+`telescope-emoji.nvim`, `presence.nvim`, `codeium` and
+`copilot-language-server`; by prefix: `cuda*`, `libcu*`, `libnv*`, plus
+`cudnn` and `nccl` — kept narrow so unrelated non-free packages could not
+slip in unnoticed.
 
-Allowed by prefix, since CUDA packages are numerous and version-churn frequently:
-`cuda*` (`cuda_cudart`, `cuda_cccl`, `cuda_nvcc`, ...), `libcu*` (`libcublas`,
-`libcurand`, `libcusparse`, ...), `libnv*` (`libnvjitlink`,
-`libnvidia-container`, ...), plus `cudnn` and `nccl` by exact name. Still far
-narrower than `allowUnfree = true`.
-
-**A package can be free on stable and become unfree on unstable** — this happened
-with `open-webui`'s license change. When bumping the unstable pin, re-check
-licenses of anything pulled from it.
+**A package can be free on one channel and become unfree on another** —
+this happened with `open-webui`'s license change, and again when
+`nixpkgs-auto` bumped `rtk` 0.50.0 → 1.0.1, whose license gained BSL 1.1.
+`rtk` was not on the allowlist, so the nightly `nix-auto-update` failed
+evaluation and the channel stalled at the 2026-10-15 revision. Seita
+retired the allowlist in favour of the blanket default. The channel's
+recovery additionally waits on an upstream fix for `posthog`, marked
+broken on the 2026-10-23 revision (one test fails under Python 3.14),
+which blocks Open WebUI's build.
 
 There is a second, unrelated unfree toggle: `environment.variables.NIXPKGS_ALLOW_UNFREE = "1"`
 in `configuration.nix`, which only affects interactive `nix profile install`/`nix shell`
 commands (reads the `NIXPKGS_ALLOW_UNFREE` env var). It has no effect on
-`nixos-rebuild`'s evaluation, which only consults `allowUnfreePredicate` above — the
-two are separate code paths.
+`nixos-rebuild`'s evaluation, which consults `nixpkgs.config.allowUnfree`
+above — the two are separate code paths.

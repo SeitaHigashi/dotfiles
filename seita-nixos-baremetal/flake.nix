@@ -93,7 +93,7 @@
         ./modules/auto-update.nix      # unattended updates: podman auto-update + nightly pkgs.auto bump
         ./modules/ftb-evolution.nix    # Minecraft (FTB Evolution) via podman
         ./modules/gpu.nix              # NVIDIA driver (compute workloads + monitoring)
-        ./modules/unfree.nix           # unfree package allowlist (sole definition of allowUnfreePredicate)
+        ./modules/unfree.nix           # unfree policy (sole definition of allowUnfree = true)
         ./modules/desktop.nix          # KDE Plasma (X11) — for projector output
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
         ./modules/zfs-snapshot-metrics.nix # snapshot / replication status metrics

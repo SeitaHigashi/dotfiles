@@ -70,7 +70,7 @@ test suite.
 | `modules/reverse-proxy.nix` | Tailscale Serve as the single HTTPS entry point | [network.md](docs/network.md) |
 | `modules/ftb-evolution.nix` | FTB Evolution Minecraft server via podman | [minecraft.md](docs/services/minecraft.md) |
 | `modules/gpu.nix` | NVIDIA driver, 3060 Ti power limit | [gpu-driver.md](docs/gpu-driver.md) |
-| `modules/unfree.nix` | the only `allowUnfreePredicate` | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
+| `modules/unfree.nix` | the unfree policy (`allowUnfree = true`) | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
 | `modules/unstable.nix` | leaf packages from nixpkgs-unstable / nixpkgs-auto | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
 | `modules/notify.nix` | `host-notify` CLI + `local.notify.package`: generic n8n → Discord notification; also boot/crash report and OnFailure log tail | [notify.md](docs/services/notify.md) |
 | `modules/auto-update.nix` | unattended updates: podman auto-update (all containers), nightly `pkgs.auto` bump + switch | [auto-update.md](docs/services/auto-update.md) |
@@ -110,8 +110,8 @@ Each item has its full story in the linked doc; the one-liner is what must not b
 - **Resource limits for podman containers do not work via `systemd.services.podman-*.serviceConfig`** — conmon
   moves the container into `machine.slice`. Use `--cgroup-parent` and put weights on `systemd.slices`;
   `IOWeight` is ineffective on ZFS ([resource-priority.md](docs/resource-priority.md)).
-- **`allowUnfreePredicate` is defined only in `modules/unfree.nix`** (a function; two definitions collide).
-  A package can turn unfree when it moves to unstable (open-webui did).
+- **The unfree policy is defined only in `modules/unfree.nix`** (`nixpkgs.config.allowUnfree = true`).
+  A package can turn unfree when it moves to unstable (open-webui did; rtk's BSL relicense retired the allowlist in 2026-10).
 - After an NVIDIA driver version change, **reboot** — switch alone gives `Driver/library version mismatch`.
 - After changing `m.hostName` or `tailnetSuffix`, **restart `tailscale-serve` by hand**; the unit doesn't change,
   so switch won't restart it. Renaming the host has three more traps ([network.md](docs/network.md)).
