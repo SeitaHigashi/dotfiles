@@ -83,6 +83,7 @@ test suite.
 | `modules/openviking.nix` | OpenViking context DB (podman); inference via llama.cpp | [openviking.md](docs/services/openviking.md) |
 | `modules/comfyui.nix` | ComfyUI image generation (pip venv) — **disabled** since 2026-09-24 (`enable = false`) | [comfyui.md](docs/services/comfyui.md) |
 | `modules/fukurou.nix` | fukurou voice loop (built by hand in `~/src/fukurou`) | [fukurou.md](docs/services/fukurou.md) |
+| `modules/health.nix` | seita-health web UI + ingest (package from flake input `~/src/seita-health`, DB in that dir), Serve 9452 | [health.md](docs/services/health.md) |
 | `modules/desktop.nix` | KDE Plasma (X11) for the projector | [desktop.md](docs/services/desktop.md) |
 | `modules/monitoring.nix` | VictoriaMetrics + Loki + Grafana + exporters | [monitoring.md](docs/services/monitoring.md) |
 | `modules/alerting.nix` | Grafana alert rules (provisioned; git is the source of truth) | [alerting.md](docs/services/alerting.md) |

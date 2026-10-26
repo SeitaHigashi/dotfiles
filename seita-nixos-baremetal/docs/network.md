@@ -55,6 +55,7 @@ the Serve root instead.
 | Multica (backend) | `9445` root (separate port) | See "Multica has two Serve ports" below. |
 | fukurou-webui | `9446` root (separate port) | Single dev test page, `index.html` embedded in the binary — no subpath awareness. |
 | fukurou-server (wss) | `9447` root (separate port) | See "fukurou-server wss" below. |
+| seita-health | `9452` root (separate port) | Axum app with absolute paths (`/static`, form posts); no subpath support. Backend is `127.0.0.1:8090` (`modules/health.nix`). |
 | llama.cpp | `9448` root (separate port), 2026-09-21 | OpenAI-compatible clients can't always put a path in their base URL, same reasoning as Open WebUI. `443`/`8443` taken. **No auth** — tailnet-reachable but any tailnet member can use the model; deliberately not put on Funnel. |
 | Ollama | not on Serve at all | See below. |
 
@@ -142,6 +143,7 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 | 9449 | AutoMuteUs galactus via Serve | `modules/reverse-proxy.nix` |
 | 9450 | AutoMuteUs API via Serve | `modules/reverse-proxy.nix` |
 | 9451 | `~/share` static files (HTML/PNG) via Serve, tailnet only. A dedicated dir, never `~` or `/`: tailscaled runs as root, so anything under the served path is readable by the whole tailnet. Directory is created by `systemd.tmpfiles.rules` in the same module. `~/share/index.html` is the homepage (not in git; JS lists `out/<project>/<ts>/`) | `modules/reverse-proxy.nix` |
+| 9452 | seita-health (web UI) via Serve, tailnet only | `modules/reverse-proxy.nix` |
 | 10000 | Multica GitHub webhook (Funnel, public internet) | `modules/reverse-proxy.nix` |
 | 1933 | OpenViking (direct) | `modules/openviking.nix` |
 | 7878 | fukurou-server (direct WebSocket) | `modules/fukurou.nix` |

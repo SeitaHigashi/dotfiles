@@ -75,6 +75,7 @@ let
     { path = null;       httpsPort = 9450;  port = 8084;                          note = "automuteus-api (capture links)"; }
     # Static files from ~/share only (tailscaled runs as root: never point this at ~ or /).
     { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
+    { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
   ];
 

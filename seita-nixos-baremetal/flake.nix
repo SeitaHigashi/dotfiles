@@ -39,6 +39,9 @@
 
     # Neovim plugins fetched by Nix, loaded by lazy.nvim (home-manager/nvim.nix, docs/neovim.md).
     # It takes pkgs from this system, so it has no nixpkgs input to follow.
+    # seita-health app (~/src/seita-health, own crane flake); used by modules/health.nix.
+    # git+file: only sees committed files; update with `nix flake update seita-health`.
+    seita-health.url = "git+file:///home/seita/src/seita-health";
     nix-lazy-nvim.url = "github:SeitaHigashi/nix-lazy-nvim";
     # Plugins not in nixpkgs (git only); flake = false: plain source trees pinned by flake.lock.
     nvim-smoothcursor = { url = "github:gen740/SmoothCursor.nvim"; flake = false; };
@@ -115,6 +118,7 @@
         ./modules/automuteus.nix       # AutoMuteUs (Among Us auto-mute Discord bot) via podman
         ./modules/discord-bot.nix      # Discord Gateway bot -> n8n webhook
         ./modules/fukurou.nix          # systemd wiring for fukurou (voice dialogue loop, ~/src/fukurou)
+        ./modules/health.nix           # seita-health web UI / ingest endpoint (flake input ~/src/seita-health, Serve 9452)
         home-manager.nixosModules.home-manager
         {
           home-manager.useGlobalPkgs = true;
