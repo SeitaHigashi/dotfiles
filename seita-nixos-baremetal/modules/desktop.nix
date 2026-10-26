@@ -19,6 +19,10 @@
   # X11, not Wayland — see docs/services/desktop.md (projector hot-plug via xrandr/autorandr).
   services.displayManager.defaultSession = "plasmax11";
 
+  # CJK glyphs for Japanese text. Also needed by headless Chromium (Playwright),
+  # which otherwise renders tofu. See docs/services/desktop.md.
+  fonts.packages = [ pkgs.noto-fonts-cjk-sans ];
+
   # Greeter forced to Xorg too: the sddm module defaults the pre-login greeter
   # to Wayland even when the session is pinned to X11 below, and the greeter
   # is outside the deviceSection BusID pin — caused corrupted projected output

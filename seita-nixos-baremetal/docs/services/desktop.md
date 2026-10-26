@@ -42,3 +42,9 @@ to keep running). Disabled at two layers so PowerDevil settings can't reintroduc
 
 - `systemd.targets.{sleep,suspend,hibernate,hybrid-sleep}.enable = false`
 - `services.logind.lidSwitch*` set to `"ignore"`, plus `IdleAction=ignore`
+
+## Japanese fonts
+
+`fonts.packages = [ pkgs.noto-fonts-cjk-sans ]` in `modules/desktop.nix`. Without a CJK font,
+headless Chromium (Playwright) renders Japanese as tofu. It is system-wide, so it applies to
+headless use too, not only the Plasma session. Check after switch: `fc-list :lang=ja | grep -i "Noto Sans CJK"`.
