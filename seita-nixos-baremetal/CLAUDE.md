@@ -72,6 +72,7 @@ test suite.
 | `modules/gpu.nix` | NVIDIA driver, 3060 Ti power limit | [gpu-driver.md](docs/gpu-driver.md) |
 | `modules/unfree.nix` | the unfree policy (`allowUnfree = true`) | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
 | `modules/unstable.nix` | leaf packages from nixpkgs-unstable / nixpkgs-auto | [nixpkgs-channels.md](docs/nixpkgs-channels.md) |
+| `modules/xrdp.nix` | RDP remote desktop (xrdp, tailnet only) | [xrdp.md](docs/services/xrdp.md) |
 | `modules/notify.nix` | `host-notify` CLI + `local.notify.package`: generic n8n → Discord notification; also boot/crash report and OnFailure log tail | [notify.md](docs/services/notify.md) |
 | `modules/auto-update.nix` | unattended updates: podman auto-update (all containers), nightly `pkgs.auto` bump + switch | [auto-update.md](docs/services/auto-update.md) |
 | `../home-manager/nvim.nix` | Neovim plugins + generated init.lua from Nix (nix-lazy-nvim) | [neovim.md](docs/neovim.md) |

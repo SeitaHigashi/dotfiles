@@ -95,6 +95,7 @@
         ./modules/gpu.nix              # NVIDIA driver (compute workloads + monitoring)
         ./modules/unfree.nix           # unfree policy (sole definition of allowUnfree = true)
         ./modules/desktop.nix          # KDE Plasma (X11) — for projector output
+        ./modules/xrdp.nix             # RDP remote desktop (tailnet only)
         ./modules/monitoring.nix       # VictoriaMetrics + Grafana
         ./modules/zfs-snapshot-metrics.nix # snapshot / replication status metrics
         ./modules/rapl-metrics.nix # CPU package energy (RAPL) textfile metric
