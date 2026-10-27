@@ -43,11 +43,8 @@ in
     # unstable for CUDA support and a current version — see docs/services/ollama.md.
     package = pkgs.unstable.ollama-cuda;
 
-    # **Required alongside `package`, or the CUDA build is silently discarded.**
-    # The upstream module overrides cfg.package with `acceleration` (default
-    # null), which strips CUDA back out unless set explicitly here. See
-    # docs/services/ollama.md for the failure mode hit on this host.
-    acceleration = "cuda";
+    # 26.05 removed the module's `acceleration` option (it used to override
+    # `package`); naming the -cuda package directly is now sufficient.
 
     # DynamicUser (user/group left at default null) — do not "fix" this to a
     # static user, it won't change where the state directory actually lives.

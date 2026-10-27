@@ -203,13 +203,12 @@ in
   # --- n8n -----------------------------------------------------------------
   # N8N_PATH is deliberately not set (docs/network.md — it would break LAN
   # direct access). N8N_PROXY_HOPS makes rate-limit/audit-log IPs meaningful
-  # (otherwise n8n sees tailscaled's own IP as the client). webhookUrl uses
-  # the dedicated option, not environment, because the n8n NixOS module
-  # unconditionally defines WEBHOOK_URL = "" and a duplicate in `environment`
-  # would conflict at eval time.
-  services.n8n.webhookUrl = "${n8nUrl}/";
-
+  # (otherwise n8n sees tailscaled's own IP as the client). WEBHOOK_URL
+  # goes through `environment` since 26.05: the module's dedicated
+  # webhookUrl option was removed and it no longer pre-defines
+  # WEBHOOK_URL itself, so there is no conflict anymore.
   systemd.services.n8n.environment = {
+    WEBHOOK_URL = "${n8nUrl}/";
     N8N_PROXY_HOPS = "1";
     N8N_EDITOR_BASE_URL = "${n8nUrl}/";
   };

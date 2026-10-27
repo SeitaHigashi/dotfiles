@@ -20,7 +20,7 @@ let
   # Services restarted by an update that have a health endpoint to wait on.
   healthUrls = [
     "http://127.0.0.1:${toString config.services.open-webui.port}/health"
-    "http://127.0.0.1:${toString config.services.n8n.settings.port}/healthz"
+    "http://127.0.0.1:5678/healthz" # n8n's port, paired with modules/n8n.nix (26.05 removed services.n8n.settings)
   ];
 
   # Results go through host-notify (modules/notify.nix, docs/services/notify.md).

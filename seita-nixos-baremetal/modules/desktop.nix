@@ -49,7 +49,6 @@
   services.logind.lidSwitch = "ignore";
   services.logind.lidSwitchExternalPower = "ignore";
   services.logind.lidSwitchDocked = "ignore";
-  services.logind.extraConfig = ''
-    IdleAction=ignore
-  '';
+  # 26.05 removed logind.extraConfig; structured settings instead.
+  services.logind.settings.Login.IdleAction = "ignore";
 }

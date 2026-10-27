@@ -11,8 +11,12 @@
 ##############################################################################
 
 let
+  # n8n's port, paired with modules/n8n.nix. (26.05 removed
+  # services.n8n.settings, which used to carry it for readers like this.)
+  port = 5678;
+
   # Path matches the n8n workflow "Host notify to Discord" (docs/services/notify.md).
-  url = "http://127.0.0.1:${toString config.services.n8n.settings.port}/webhook/notify";
+  url = "http://127.0.0.1:${toString port}/webhook/notify";
 
   hostNotify = pkgs.writeShellApplication {
     name = "host-notify";
@@ -35,7 +39,7 @@ let
     '';
   };
   # n8n comes up after the host does; wait for it so the boot report is not lost.
-  healthUrl = "http://127.0.0.1:${toString config.services.n8n.settings.port}/healthz";
+  healthUrl = "http://127.0.0.1:${toString port}/healthz";
 
   # One report per boot. ExecStop drops a marker at clean shutdown; a boot that
   # finds no marker follows a crash / power loss (or is the first boot after this

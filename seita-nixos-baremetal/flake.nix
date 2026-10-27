@@ -4,7 +4,7 @@
   inputs = {
     # The system base is stable. Kernel, ZFS, systemd, initrd — everything
     # where "broken" means "won't boot" — comes from here. See docs/nixpkgs-channels.md.
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     # Extra input for updating individual tools only — only packages listed
     # in modules/unstable.nix come from here. Never pull kernel modules (ZFS
@@ -57,15 +57,15 @@
     # ../home-manager/home.nix — while home-manager/ itself stays a
     # standalone flake, still usable separately via
     # `home-manager switch --flake ./home-manager`.
-    # Pinned to the release-25.05 branch, matching the system's stable
-    # (nixos-25.05) line. Combining home-manager's master (assumes unstable)
+    # Pinned to the release-26.05 branch, matching the system's stable
+    # (nixos-26.05) line. Combining home-manager's master (assumes unstable)
     # with stable nixpkgs fails evaluation — home-manager's modules require
     # lib functions not present in the stable release (confirmed on this host
     # 2026-08-29). For an unstable package inside home-manager, go through the
     # same pkgs.unstable overlay as modules/unstable.nix (useGlobalPkgs = true
     # below makes pkgs.unstable.<name> reachable from home.nix directly).
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

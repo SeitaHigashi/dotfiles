@@ -18,7 +18,7 @@ let
   ports = {
     victoriametrics = 8428;
     loki            = 3100;
-    promtail        = 9080;   # own health/metrics; default 80 fails to bind unprivileged
+    alloy           = 12345;  # own UI/metrics, 127.0.0.1 only
     grafana         = 3000;
     node            = 9100;
     smartctl        = 9633;
@@ -178,45 +178,42 @@ in
     };
   };
 
-  services.promtail = {
-    enable = true;
+  # Promtail reached end-of-life and its NixOS module was removed in
+  # 26.05; Alloy is the designated successor. It ships the systemd
+  # journal to Loki, same as promtail did (unit name promoted to the
+  # `unit` label, so LogQL filters like {unit=~"podman-.+"} keep
+  # working). Journal read access comes from the module's own
+  # SupplementaryGroups; the UI/metrics listener stays on 127.0.0.1.
+  services.alloy.enable = true;
+  services.alloy.extraFlags = [
+    "--server.http.listen-addr=127.0.0.1:${toString ports.alloy}"
+    "--disable-reporting"
+  ];
 
-    configuration = {
-      # Own health/metrics listener, 127.0.0.1 only like the other exporters
-      # (default is 0.0.0.0). Port must be explicit — the default is 80, which the
-      # unprivileged promtail user cannot bind (confirmed on hardware).
-      server.http_listen_address = "127.0.0.1";
-      server.http_listen_port = ports.promtail;
-      server.grpc_listen_address = "127.0.0.1";
-      server.grpc_listen_port = ports.promtail + 1;
+  environment.etc."alloy/journal.alloy".text = ''
+    discovery.relabel "journal" {
+      targets = []
 
-      positions.filename = "/var/cache/promtail/positions.yaml";
+      rule {
+        source_labels = ["__journal__systemd_unit"]
+        target_label  = "unit"
+      }
+    }
 
-      clients = [
-        { url = "http://127.0.0.1:${toString ports.loki}/loki/api/v1/push"; }
-      ];
+    loki.source.journal "journal" {
+      path          = "/var/log/journal"
+      max_age       = "12h"
+      labels        = { job = "journal" }
+      relabel_rules = discovery.relabel.journal.rules
+      forward_to    = [loki.write.default.receiver]
+    }
 
-      scrape_configs = [
-        {
-          job_name = "journal";
-          journal = {
-            path = "/var/log/journal";
-            max_age = "12h";
-            labels.job = "journal";
-          };
-          # Promote the unit name to a label. Minecraft shows up as
-          # "podman-ftb-evolution.service", so LogQL can filter with
-          # {unit=~"podman-.+"}.
-          relabel_configs = [
-            {
-              source_labels = [ "__journal__systemd_unit" ];
-              target_label = "unit";
-            }
-          ];
-        }
-      ];
-    };
-  };
+    loki.write "default" {
+      endpoint {
+        url = "http://127.0.0.1:${toString ports.loki}/loki/api/v1/push"
+      }
+    }
+  '';
 
   # exporters: all 127.0.0.1-only, same as VictoriaMetrics itself, so nothing here
   # is reachable from outside this host.
@@ -335,6 +332,10 @@ in
         # $__file{} is Grafana's own file-expansion; keeps the password out of the
         # nix store and git. See docs/services/monitoring.md for first-time setup.
         admin_password = "$__file{${grafanaPasswordFile}}";
+        # 26.05 dropped Grafana's built-in default secret key; this file
+        # holds the former default value, so secrets already encrypted in
+        # Grafana's DB stay readable. Setup: docs/services/monitoring.md.
+        secret_key = "$__file{/var/lib/grafana/secret-key}";
       };
 
       # Anonymous access and sign-up left disabled: even inside the tailnet, a

@@ -4,7 +4,7 @@ Implementation: [`modules/monitoring.nix`](../../modules/monitoring.nix)
 
 ## What this is
 
-Metrics (VictoriaMetrics, scraped by itself every 30s) and logs (Loki + Promtail,
+Metrics (VictoriaMetrics, scraped by itself every 30s) and logs (Loki + Alloy,
 tailing journald) feeding a single Grafana. Design rationale — why this stack exists
 at all and why VictoriaMetrics over Prometheus — is in
 [the VictoriaMetrics decision record](../decisions/2026-08-25-victoriametrics-over-prometheus.md).
@@ -20,7 +20,7 @@ averaged 1.39% of a core at 30s, measured 2026-10-11 over 269 h of uptime).
 |---|---|
 | VictoriaMetrics | 8428 |
 | Loki | 3100 |
-| Promtail (self health/metrics) | 9080 (default 80 fails to bind unprivileged) |
+| Alloy (self UI/metrics) | 12345 |
 | Grafana | 3000 (binds `0.0.0.0`, reachable only via `tailscale0` — see Firewall below) |
 | node_exporter | 9100 |
 | smartctl_exporter | 9633 |
@@ -107,6 +107,16 @@ averaged 1.39% of a core at 30s, measured 2026-10-11 over 269 h of uptime).
   ```
   Forgetting the `chown` fails the service at startup with
   `got error while expanding security.admin_password with expander 'file': permission denied`.
+- `secret_key` is read from a file the same way (`$__file{/var/lib/grafana/secret-key}`).
+  Since 26.05 Grafana has no built-in default key; this file deliberately
+  holds the former well-known default value, so secrets already encrypted
+  in Grafana's database remain readable. One-time setup (before the 26.05
+  system first starts Grafana):
+  ```sh
+  printf %s '<the secret_key value previously configured on this host — never commit it>' | sudo tee /var/lib/grafana/secret-key
+  sudo chown grafana:grafana /var/lib/grafana/secret-key
+  sudo chmod 0400 /var/lib/grafana/secret-key
+  ```
 - Anonymous access and sign-up are both disabled — even inside the tailnet, a
   borrowed device should not get free access.
 - Analytics reporting/update-checks are disabled (no external phone-home).
@@ -237,6 +247,6 @@ curl -s localhost:3100/ready
 # Labels present (logcli ships with the loki package)
 logcli --addr=http://127.0.0.1:3100 labels
 
-# Promtail reading journald
-journalctl -u promtail --no-pager -n 50
+# Alloy reading journald
+journalctl -u alloy --no-pager -n 50
 ```

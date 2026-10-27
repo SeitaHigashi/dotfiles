@@ -40,10 +40,9 @@ in
     # (this option would open the port on every interface).
     openFirewall = false;
 
-    # n8n 2.x reads config from env vars only, not the JSON this module
-    # writes from `settings` (docs/services/n8n.md). `port` stays here only
-    # because the module needs it at eval time to decide openFirewall.
-    settings = { inherit port; };
+    # n8n 2.x reads config from env vars only (docs/services/n8n.md);
+    # runtime config lives in systemd.services.n8n.environment below.
+    # (The 26.05 module dropped the `settings` option entirely.)
   };
 
   ############################################################################
