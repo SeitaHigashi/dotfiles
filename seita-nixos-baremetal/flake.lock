@@ -380,11 +380,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1793081993,
-        "narHash": "sha256-sqX5RKtvTlH6Lw3x9zjr/hjRMryQn8mJS8rS0vP9qk4=",
+        "lastModified": 1793095423,
+        "narHash": "sha256-sewnzMMZk12qRXURevpqN72GqYf9gX5n+M2t6l/lEmQ=",
         "ref": "refs/heads/main",
-        "rev": "8909d8a500b833373e5ed6b8b60d3b91e7b727c4",
-        "revCount": 12,
+        "rev": "898c2efcefa839302f8bd77ade5eccb259c31639",
+        "revCount": 15,
         "type": "git",
         "url": "file:///home/seita/src/seita-health"
       },
