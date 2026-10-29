@@ -35,8 +35,8 @@
     },
     {
       "type": "stat",
-      "title": "サーバー死活",
-      "description": "mc-monitor による server list ping の結果。1 = 応答あり。",
+      "title": "サーバー状態",
+      "description": "lazymc によるオンデマンド起動。コンテナ停止 = スリープ (正常)、コンテナ起動中で ping 無応答 = 起動中 (または固まり)、ping 応答あり = 稼働中。",
       "datasource": {
         "type": "prometheus",
         "uid": "victoriametrics"
@@ -50,8 +50,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "minecraft_status_healthy",
-          "legendFormat": "healthy"
+          "expr": "max(node_systemd_unit_state{name=\"podman-ftb-evolution.service\",state=\"active\"}) + (max(minecraft_status_healthy) or vector(0))",
+          "legendFormat": "state"
         }
       ],
       "fieldConfig": {
@@ -61,14 +61,19 @@
               "type": "value",
               "options": {
                 "0": {
-                  "text": "停止",
-                  "color": "red",
+                  "text": "スリープ中",
+                  "color": "blue",
                   "index": 0
                 },
                 "1": {
+                  "text": "起動中",
+                  "color": "yellow",
+                  "index": 1
+                },
+                "2": {
                   "text": "稼働中",
                   "color": "green",
-                  "index": 1
+                  "index": 2
                 }
               }
             }
@@ -77,12 +82,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "blue",
                 "value": null
               },
               {
-                "color": "green",
+                "color": "yellow",
                 "value": 1
+              },
+              {
+                "color": "green",
+                "value": 2
               }
             ]
           }

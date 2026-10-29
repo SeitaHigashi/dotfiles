@@ -27,6 +27,46 @@ let
 
   port = 25565;
 
+  # Loopback port the container really listens on; lazymc proxies to it.
+  backendPort = 25566;
+
+  # lazymc spawns this as its "server process". Starting the unit makes
+  # lazymc's SIGTERM-on-idle a normal unit stop (keeps --stop-timeout=120).
+  serverUnit = "podman-ftb-evolution.service";
+  serverWrapper = pkgs.writeShellApplication {
+    name = "ftb-evolution-lazymc-wrapper";
+    runtimeInputs = [ pkgs.systemd ];
+    text = ''
+      trap 'systemctl stop ${serverUnit}; exit 0' TERM INT
+      systemctl start ${serverUnit}
+      while systemctl is-active --quiet ${serverUnit}; do sleep 5 & wait $!; done
+    '';
+  };
+
+  lazymcConfig = (pkgs.formats.toml { }).generate "lazymc.toml" {
+    public.address = "${listenAddress}${toString port}";
+    server = {
+      address = "127.0.0.1:${toString backendPort}";
+      directory = "${dataDir}/data";
+      command = lib.getExe serverWrapper;
+      # Modpack boot is slow; default 300s would give up early.
+      start_timeout = 900;
+      stop_timeout = 150;
+      freeze_process = false;
+      # Spawn the wrapper at lazymc start so an already-running container is
+      # adopted (lazymc can only stop a server it spawned). Side effect: every
+      # lazymc (re)start wakes the server until the 10 min idle stop.
+      wake_on_start = true;
+      # Needed for modded (NeoForge) handshakes; flip if clients fail to join.
+      forge = true;
+    };
+    # Default true rewrote server-ip/server-port in server.properties to the
+    # loopback values, which would break the container's own bind on next start.
+    advanced.rewrite_server_properties = false;
+    time.sleep_after = 600;
+    join.methods = [ "kick" ];
+  };
+
   # LAN-only. podman's published ports go through DNAT + FORWARD, bypassing
   # the NixOS firewall's INPUT chain, so the listen address itself is pinned
   # to the LAN static IP instead. Falls back to all addresses if no static IP
@@ -80,7 +120,10 @@ in
     # Remove this line to opt back in.
     labels."io.containers.autoupdate" = "disabled";
 
-    ports = [ "${listenAddress}${toString port}:25565" ];
+    # Backend only: the public port belongs to lazymc (below).
+    # Way back to always-on: restore the old line, set autoStart = true, drop lazymc.
+    #   ports = [ "${listenAddress}${toString port}:25565" ];
+    ports = [ "127.0.0.1:${toString backendPort}:25565" ];
 
     volumes = [ "${dataDir}/data:/data" ];
 
@@ -118,7 +161,8 @@ in
       "--cgroup-parent=minecraft.slice"
     ];
 
-    autoStart = true;
+    # Started on demand by lazymc (below); not at boot.
+    autoStart = false;
   };
 
   # systemd-side timeouts are already set by the oci-containers module
@@ -132,6 +176,23 @@ in
   # (some podman network setups still route through it).
   ############################################################################
   networking.firewall.allowedTCPPorts = [ port ];
+
+  ############################################################################
+  # lazymc: owns the public port, starts the container on first join and
+  # stops it after 10 min with nobody online. Docs: docs/services/minecraft.md
+  ############################################################################
+  systemd.services.lazymc = {
+    description = "lazymc (on-demand Minecraft start/stop)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    serviceConfig = {
+      # Root: the wrapper runs systemctl start/stop on the container unit.
+      ExecStart = "${lib.getExe pkgs.lazymc} -c ${lazymcConfig} start";
+      Restart = "on-failure";
+      # Longer than stop_timeout so the world save finishes.
+      TimeoutStopSec = 180;
+    };
+  };
 
   # Operations, backups, and the update procedure: docs/services/minecraft.md
 }

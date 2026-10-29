@@ -113,3 +113,30 @@ put across restarts and rebuilds. To bump it:
 podman pull docker.io/itzg/minecraft-server:java21
 systemctl restart podman-ftb-evolution
 ```
+
+## On-demand start (lazymc)
+
+Added 2026-10-29. `lazymc.service` (modules/ftb-evolution.nix) owns the LAN port
+`25565`; the container (`podman-ftb-evolution`, `autoStart = false`) listens on
+`127.0.0.1:25566` only.
+
+- Asleep: lazymc answers server-list pings itself. A join attempt starts the container
+  (client is kicked with a "starting" message; reconnect after the modpack boots).
+- Idle: 10 min with nobody online -> lazymc sends SIGTERM to its wrapper, which runs
+  `systemctl stop podman-ftb-evolution` (normal 120 s world save).
+- Manual start/stop still works: `systemctl start|stop podman-ftb-evolution`. lazymc can
+  only stop a server it spawned (no RCON), so `wake_on_start = true` makes every lazymc
+  (re)start spawn the wrapper, which adopts an already-running container. Side effect:
+  each lazymc restart (switch, reboot) wakes the server until the 10 min idle stop.
+  Verified 2026-10-29: without it, a container started outside lazymc was never stopped
+  (`Failed to stop server, no more suitable stopping method`).
+- mc-monitor runs with `--network=host` so it can reach the loopback-only backend.
+- If clients fail the handshake, try `server.forge = false` in the lazymc config.
+- Way back to always-on: restore the old `ports` line, `autoStart = true`, remove the
+  lazymc unit, and point mc-monitor (modules/monitoring.nix) back at `:25565`.
+
+Monitoring: mc-monitor probes the backend (`:25566`), so `minecraft_status_healthy`
+is 0 while asleep. The overview dashboard's "サーバー状態" stat shows
+スリープ中 / 起動中 / 稼働中 (container unit active + healthy). Alerts: `service-inactive`
+watches `lazymc.service` instead of the container; `minecraft-unhealthy` is suppressed
+while the container unit is inactive.

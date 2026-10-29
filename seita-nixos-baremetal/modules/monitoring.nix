@@ -38,7 +38,7 @@ let
   # across boots).
   smartDevices = [ m.ssd m.hdd1 m.hdd2 ];
 
-  # Minecraft listen address; same derivation as modules/ftb-evolution.nix
+  # (Unused since lazymc: mc-monitor now targets the loopback backend.) Minecraft listen address; same derivation as modules/ftb-evolution.nix
   # (LAN IP if a static IP is configured).
   minecraftHost =
     if m.staticAddress == null
@@ -298,11 +298,15 @@ in
     # GNU-style "--bind" is rejected (exit code 2).
     cmd = [
       "export-for-prometheus"
-      "-servers" "${minecraftHost}:25565"
+      # Backend port (lazymc owns 25565 and fakes a status while asleep).
+      "-servers" "127.0.0.1:25566"
       "-port" (toString ports.minecraft)
     ];
 
-    ports = [ "127.0.0.1:${toString ports.minecraft}:${toString ports.minecraft}" ];
+    # Host network: the backend is published on host loopback only, which a
+    # bridged container can't reach. Exporter then listens on :9150 on the
+    # host (not in the firewall's allowed ports). Old: ports = [ "127.0.0.1:9150:9150" ];
+    extraOptions = [ "--network=host" ];
 
     autoStart = true;
   };

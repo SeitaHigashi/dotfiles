@@ -369,7 +369,7 @@ in
               # docs/decisions/2026-09-23-ollama-to-llama-cpp.md (owned by the
               # llama-cpp module docs). If llama-cpp ever goes back to manual
               # start, remove it from this expression again.
-              expr = ''min by (name) (node_systemd_unit_state{state="active",name=~"grafana.service|victoriametrics.service|n8n.service|open-webui.service|llama-cpp.service|tailscaled.service|podman-ftb-evolution.service|podman-mc-monitor.service"})'';
+              expr = ''min by (name) (node_systemd_unit_state{state="active",name=~"grafana.service|victoriametrics.service|n8n.service|open-webui.service|llama-cpp.service|tailscaled.service|lazymc.service|podman-mc-monitor.service"})'';
               op = "lt";
               limit = 1;
               pending = "10m";
@@ -383,7 +383,9 @@ in
               title = "Minecraft server is not responding";
               # A running container can still hang on world load, so this is
               # kept separate from the process-level check (service-inactive above).
-              expr = "min(minecraft_status_healthy)";
+              # Asleep (container unit inactive) is normal under lazymc: the
+              # second term lifts the value to 1 so it can't fire.
+              expr = ''min(minecraft_status_healthy) + (1 - max(node_systemd_unit_state{name="podman-ftb-evolution.service",state="active"}))'';
               op = "lt";
               limit = 1;
               pending = "10m";
