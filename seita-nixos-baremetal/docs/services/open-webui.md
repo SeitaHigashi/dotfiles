@@ -75,6 +75,23 @@ the model picker.
 - Title/tag/follow-up tasks routed to this model return an empty string instead of starting a
   job.
 
+## Photo Image pipe
+
+Text-to-image through llama-swap's `z-image-turbo` and `realvisxl`
+([llama-cpp.md](llama-cpp.md#calling-z-image-turbo--realvisxl)), source tracked in
+`scripts/open-webui-photo-image-pipe.py`. Deployment as for the other pipes: **paste the file into**
+Admin Panel → Functions (`+`), keep it enabled, paste again after editing.
+
+- Why it exists: both models are in llama-swap's `/v1/models`, so Open WebUI also lists them as chat
+  models, and a chat message to them is `POST /v1/chat/completions` → 404 (`sd-server` has no chat API;
+  seen 2026-10-30). The Pipe is a manifold (`pipes()`): one paste adds two picker entries, and each calls
+  `POST /v1/images/generations` with its own model ID. Pick the Pipe's entries, not the raw models.
+- Text-to-image only (no edits). Resolution presets stop at 1024x1024 (sides multiples of 64, since peak
+  VRAM of these models is **not measured**); `seed` (-1 = random) is per-user under Chat Controls → Valves.
+- Title/tag/follow-up tasks return an empty string so they never load an image model.
+- Status: written 2026-10-30 and syntax-checked only; **not yet run in Open WebUI**. Whether `sd-server`
+  honours the `seed` field of `/v1/images/generations` has not been checked.
+
 ## Bonsai Image pipe
 
 Text-to-image and reference-image editing through llama-swap's `bonsai-image`
