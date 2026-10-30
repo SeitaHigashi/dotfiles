@@ -44,6 +44,8 @@ GPU/VRAM allocation and measurements are collected in
 | `jeff-qwen3.5-0.8b` (`decision`, `jeff`) | Jeff v1.2 Qwen3.5 0.8B (PyTorch, text-only, fp16 weights / fp32 matmul) | 1660 SUPER | Jev-compatible decision model; alternative to `laya` (mutually exclusive in the matrix) |
 | `qwen-image` | Qwen-Image-2.1 (stable-diffusion.cpp `sd-server`), DiT Q4_K + Qwen3-VL-8B Q4_K_M + VAE bf16 | 3060 Ti | image generation / editing |
 | `bonsai-image` (`image`) | Bonsai Image Ternary 4B (FLUX.2 Klein 4B, gemlite INT2; PyTorch + diffusers + Triton, own HTTP wrapper) | 3060 Ti | image generation; alternative to `qwen-image` (mutually exclusive in the matrix) |
+| `z-image-turbo` (`image-photo`) | Z-Image Turbo (`sd-server`), DiT Q4_K + Qwen3-4B-Instruct-2507 Q4_K_M + FLUX ae VAE | 3060 Ti | photorealistic image generation (8 steps, cfg 1.0); alternative in the `image` set |
+| `realvisxl` (`image-sdxl`) | RealVisXL V5.0 (SDXL fp16 checkpoint, `sd-server`) | 3060 Ti | photorealistic image generation (25 steps, cfg 5.0); alternative in the `image` set |
 | `minimax-h3` | MiniMax-H3 (`sd-server`), pruned FL2VA DiT Q4_K_M + Qwen3-VL-32B Q2_K_M + video VAE fp16 + audio VAE fp32 | 3060 Ti | video + stereo audio generation |
 
 **Aliases** (`aliases:` in the llama-swap config) are role names for callers: they work in the
@@ -55,11 +57,35 @@ set: they do not fit the 1660 SUPER together.
 `image` is the role name for `bonsai-image` (like `chat` for `bonsai`); `qwen-image` has no alias,
 so `"model": "image"` always means bonsai-image. The matrix set that is also called `image`
 is a separate namespace and does not conflict (loaded and listed by llama-swap 249, 2026-10-10).
+`image-photo` (`z-image-turbo`) and `image-sdxl` (`realvisxl`) follow the same pattern (added 2026-10-30).
 
-`bonsai`, `bonsai-vision`, `qwen-image`, `bonsai-image` and `minimax-h3` occupy the same 3060 Ti so none of
-them coexist (the matrix swaps between them). `qwen-image` and `bonsai-image` are alternatives (`|`)
-in the `image` set. Every other combination can be
+`bonsai`, `bonsai-vision`, `qwen-image`, `bonsai-image`, `z-image-turbo`, `realvisxl` and `minimax-h3` occupy
+the same 3060 Ti so none of them coexist (the matrix swaps between them). The four image models
+are alternatives (`|`) in the `image` set. Every other combination can be
 loaded at the same time.
+
+### Calling z-image-turbo / realvisxl
+
+```
+POST http://127.0.0.1:8888/v1/images/generations
+{"model": "image-photo", "prompt": "...", "size": "1024x1024"}   # z-image-turbo
+{"model": "image-sdxl",  "prompt": "...", "size": "1024x1024"}   # realvisxl
+```
+
+Weights live in `/var/lib/llm-models/Z-Image-Turbo/` (DiT Q4_K from `leejet/Z-Image-Turbo-GGUF`,
+`ae.safetensors` from `Comfy-Org/z_image_turbo`, `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` from
+`unsloth/Qwen3-4B-Instruct-2507-GGUF`) and `/var/lib/llm-models/RealVisXL-V5.0/`
+(`SG161222/RealVisXL_V5.0`, fp16 file). Both run `sd-server --offload-to-cpu` like `qwen-image`.
+
+Measured 2026-10-30 with `sd-cli` (same flags as the llama-swap entries), 3060 Ti, 1024x1024, seed 1, cold
+process each time: `z-image-turbo` 40 s (portrait) / 32 s (full body); `realvisxl` 44 s / 40 s. Weights in RAM:
+6.2 GB / 6.6 GB. **Peak VRAM was not measured**; measure it before relying on either as resident.
+Quality: `z-image-turbo` followed a two-handed instruction ("coffee cup in one hand, waving with the other")
+correctly; `realvisxl` dropped the waving hand but rendered close-up faces and skin very well. Both
+rendered the portrait prompt (the one also run on `bonsai-image` / `qwen-image`) photographically; nudity
+was not tested on the new models.
+Not yet checked through llama-swap (alias load, `/v1/images/generations` request shape): do that after the
+first `switch`; the numbers above come from direct `sd-cli` runs.
 
 ## Caller-facing notes
 

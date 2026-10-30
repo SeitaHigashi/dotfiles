@@ -656,6 +656,8 @@ let
           ++ [ "-DCMAKE_CUDA_ARCHITECTURES:STRING=75;86" ];
       });
   qwenImageDir = "${modelsDir}/Qwen-Image-2.1";
+  zImageDir = "${modelsDir}/Z-Image-Turbo";
+  realVisXlDir = "${modelsDir}/RealVisXL-V5.0";
   minimaxH3Dir = "${modelsDir}/MiniMax-H3";
 
   # Blocking front for sd-server's async video API (standard library only).
@@ -903,6 +905,56 @@ let
           --cfg-scale 6.0
           --sampling-method euler
 
+      # Z-Image Turbo (DiT Q4_K + Qwen3-4B-Instruct-2507 Q4_K_M text encoder +
+      # FLUX ae VAE) on the 3060 Ti; photorealistic, 8 steps, cfg 1.0.
+      # Alias "image-photo". Peak VRAM NOT measured (docs/services/llama-cpp.md).
+      "z-image-turbo":
+        name: "Z-Image Turbo Q4_K (photorealistic image generation)"
+        aliases: ["image-photo"]
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --diffusion-model ${zImageDir}/z_image_turbo-Q4_K.gguf
+          --vae ${zImageDir}/ae.safetensors
+          --llm ${zImageDir}/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+          --offload-to-cpu
+          --diffusion-fa
+          --vae-tiling
+          --cfg-scale 1.0
+          --steps 8
+
+      # RealVisXL V5.0 (SDXL fp16 checkpoint) on the 3060 Ti; strong faces and
+      # skin, weaker instruction following than z-image-turbo.
+      # Alias "image-sdxl". Peak VRAM NOT measured (docs/services/llama-cpp.md).
+      "realvisxl":
+        name: "RealVisXL V5.0 (SDXL photorealistic image generation)"
+        aliases: ["image-sdxl"]
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --model ${realVisXlDir}/RealVisXL_V5.0_fp16.safetensors
+          --offload-to-cpu
+          --fa
+          --vae-tiling
+          --cfg-scale 5.0
+          --steps 25
+          --sampling-method euler
+          --negative-prompt "cartoon, painting, deformed, extra fingers, bad hands, blurry"
+
       # Bonsai Image Ternary 4B (gemlite INT2) on the 3060 Ti: an alternative to
       # qwen-image in the same matrix set, so it evicts bonsai and qwen-image.
       # Call via POST /v1/images/generations with "model": "bonsai-image"
@@ -984,14 +1036,16 @@ let
               # per request anyway), so it's the first to go when bonsai returns.
               qwen-image: 10
               bonsai-image: 10
+              z-image-turbo: 10
+              realvisxl: 10
               minimax-h3: 10
             sets:
               # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
               generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
-              # qwen-image and bonsai-image are alternatives ("|"): same card, and
+              # The image models are alternatives ("|"): same card, and
               # bonsai-image alone peaks at 7.8 of its 8 GiB.
-              image: "(qwen-image | bonsai-image) & embedding & (laya | jeff-qwen3.5-0.8b)"
+              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl) & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
               video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b)"
   '';
