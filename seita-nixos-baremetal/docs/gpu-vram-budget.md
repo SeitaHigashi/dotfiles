@@ -83,7 +83,7 @@ raise it even if other resident usage drops.**
   allocates recurrent-state cache per slot, multiplying VRAM use several
   times over even at the same context, and OOMs the 27B. The embedding model
   keeps the default of 4 since it has no per-slot growing state.
-- `bonsai` sets `--cache-ram 16384` (host RAM, not VRAM; llama-server's default
+- `bonsai` sets `--cache-ram 4096` (host RAM, not VRAM; llama-server's default
   is 8192 MiB). Trial started 2026-10-05: with 8192 the prompt cache was full
   (10 evictions in 34 requests) and prefix reuse measured 26% (143,378 of
   194,413 prompt tokens recomputed). Re-measure reuse from the bonsai log
