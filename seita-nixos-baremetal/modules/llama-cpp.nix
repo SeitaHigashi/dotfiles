@@ -657,6 +657,7 @@ let
       });
   qwenImageDir = "${modelsDir}/Qwen-Image-2.1";
   zImageDir = "${modelsDir}/Z-Image-Turbo";
+  flux2KleinDir = "${modelsDir}/FLUX.2-klein-4B";
   realVisXlDir = "${modelsDir}/RealVisXL-V5.0";
   minimaxH3Dir = "${modelsDir}/MiniMax-H3";
 
@@ -955,6 +956,32 @@ let
           --sampling-method euler
           --negative-prompt "cartoon, painting, deformed, extra fingers, bad hands, blurry"
 
+      # FLUX.2 klein 4B (Black Forest Labs, Apache-2.0) on the 3060 Ti; generates and
+      # edits (POST /v1/images/edits, reference-guided re-render). Measured 2026-10-31
+      # in a standalone prototype with these exact flags: total VRAM 4883 MiB,
+      # generation 7.6 s and edits about 11.5 s at 640x960. Alias "image-edit".
+      "flux2-klein":
+        name: "FLUX.2 klein 4B Q4_0 (image generation + instruction editing)"
+        aliases: ["image-edit"]
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --diffusion-model ${flux2KleinDir}/flux-2-klein-4b-Q4_0.gguf
+          --vae ${flux2KleinDir}/flux2-vae.safetensors
+          --llm ${flux2KleinDir}/Qwen3-4B-Q4_K_M.gguf
+          --diffusion-fa
+          --vae-tiling
+          --cfg-scale 1.0
+          --steps 4
+          --sampling-method euler
+
       # Bonsai Image Ternary 4B (gemlite INT2) on the 3060 Ti: an alternative to
       # qwen-image in the same matrix set, so it evicts bonsai and qwen-image.
       # Call via POST /v1/images/generations with "model": "bonsai-image"
@@ -1038,6 +1065,7 @@ let
               bonsai-image: 10
               z-image-turbo: 10
               realvisxl: 10
+              flux2-klein: 10
               minimax-h3: 10
             sets:
               # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
@@ -1045,7 +1073,7 @@ let
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
               # The image models are alternatives ("|"): same card, and
               # bonsai-image alone peaks at 7.8 of its 8 GiB.
-              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl) & embedding & (laya | jeff-qwen3.5-0.8b)"
+              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | flux2-klein) & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
               video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b)"
   '';

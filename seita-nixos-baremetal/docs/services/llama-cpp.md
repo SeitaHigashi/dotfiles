@@ -46,6 +46,7 @@ GPU/VRAM allocation and measurements are collected in
 | `bonsai-image` (`image`) | Bonsai Image Ternary 4B (FLUX.2 Klein 4B, gemlite INT2; PyTorch + diffusers + Triton, own HTTP wrapper) | 3060 Ti | image generation; alternative to `qwen-image` (mutually exclusive in the matrix) |
 | `z-image-turbo` (`image-photo`) | Z-Image Turbo (`sd-server`), DiT Q4_K + Qwen3-4B-Instruct-2507 Q4_K_M + FLUX ae VAE | 3060 Ti | photorealistic image generation (8 steps, cfg 1.0); alternative in the `image` set |
 | `realvisxl` (`image-sdxl`) | RealVisXL V5.0 (SDXL fp16 checkpoint, `sd-server`) | 3060 Ti | photorealistic image generation (25 steps, cfg 5.0); alternative in the `image` set |
+| `flux2-klein` (`image-edit`) | FLUX.2 klein 4B (`sd-server`), DiT Q4_0 + Qwen3-4B Q4_K_M + flux2 VAE | 3060 Ti | image generation + instruction editing via `/v1/images/edits` (4 steps, cfg 1.0); alternative in the `image` set |
 | `minimax-h3` | MiniMax-H3 (`sd-server`), pruned FL2VA DiT Q4_K_M + Qwen3-VL-32B Q2_K_M + video VAE fp16 + audio VAE fp32 | 3060 Ti | video + stereo audio generation |
 
 **Aliases** (`aliases:` in the llama-swap config) are role names for callers: they work in the
@@ -57,10 +58,11 @@ set: they do not fit the 1660 SUPER together.
 `image` is the role name for `bonsai-image` (like `chat` for `bonsai`); `qwen-image` has no alias,
 so `"model": "image"` always means bonsai-image. The matrix set that is also called `image`
 is a separate namespace and does not conflict (loaded and listed by llama-swap 249, 2026-10-10).
-`image-photo` (`z-image-turbo`) and `image-sdxl` (`realvisxl`) follow the same pattern (added 2026-10-30).
+`image-photo` (`z-image-turbo`) and `image-sdxl` (`realvisxl`) follow the same pattern (added 2026-10-30);
+`image-edit` (`flux2-klein`) too (added 2026-10-31).
 
-`bonsai`, `bonsai-vision`, `qwen-image`, `bonsai-image`, `z-image-turbo`, `realvisxl` and `minimax-h3` occupy
-the same 3060 Ti so none of them coexist (the matrix swaps between them). The four image models
+`bonsai`, `bonsai-vision`, `qwen-image`, `bonsai-image`, `z-image-turbo`, `realvisxl`, `flux2-klein` and `minimax-h3` occupy
+the same 3060 Ti so none of them coexist (the matrix swaps between them). The five image models
 are alternatives (`|`) in the `image` set. Every other combination can be
 loaded at the same time.
 
@@ -86,6 +88,27 @@ rendered the portrait prompt (the one also run on `bonsai-image` / `qwen-image`)
 was not tested on the new models.
 Not yet checked through llama-swap (alias load, `/v1/images/generations` request shape): do that after the
 first `switch`; the numbers above come from direct `sd-cli` runs.
+
+### Calling flux2-klein
+
+```
+POST http://127.0.0.1:8888/v1/images/generations
+{"model": "image-edit", "prompt": "...", "size": "640x960"}      # generation, like the others
+
+POST http://127.0.0.1:8888/v1/images/edits                        # multipart/form-data
+  model=image-edit, image=@reference.png, prompt="..."            # reference-guided re-render
+```
+
+Weights live in `/var/lib/llm-models/FLUX.2-klein-4B/`: `flux-2-klein-4b-Q4_0.gguf` from
+`leejet/FLUX.2-klein-4B-GGUF`, `Qwen3-4B-Q4_K_M.gguf` from `unsloth/Qwen3-4B-GGUF`, and
+`flux2-vae.safetensors` from the `vae` folder of `black-forest-labs/FLUX.2-klein-4B` (Apache-2.0).
+Unlike `z-image-turbo` / `realvisxl` it runs **without** `--offload-to-cpu`.
+
+Measured 2026-10-31 in a standalone prototype with the same flags as the llama-swap entry: total VRAM
+4883 MiB, generation 7.6 s, edits about 11.5 s at 640x960. Checked through llama-swap after the
+2026-10-31 switch: alias load and `/v1/images/edits` passthrough both work (generation 8.9 s
+including load, edit 11.6 s; outputs byte-identical to the prototype). This is a different build from
+`bonsai-image` (PrismML's ternary FLUX.2 Klein 4B via diffusers).
 
 ## Caller-facing notes
 
