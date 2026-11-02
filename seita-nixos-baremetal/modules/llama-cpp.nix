@@ -660,6 +660,10 @@ let
   flux2KleinDir = "${modelsDir}/FLUX.2-klein-4B";
   realVisXlDir = "${modelsDir}/RealVisXL-V5.0";
   minimaxH3Dir = "${modelsDir}/MiniMax-H3";
+  illustriousXlDir = "${modelsDir}/Illustrious-XL-v1.0";
+  animagineXlDir = "${modelsDir}/animagine-xl-4.0";
+  ponyXlDir = "${modelsDir}/Pony-Diffusion-V6-XL";
+  noobaiXlDir = "${modelsDir}/NoobAI-XL-v1.1";
 
   # Blocking front for sd-server's async video API (standard library only).
   # llama-swap only refuses to evict a model while one of its HTTP requests is
@@ -956,6 +960,111 @@ let
           --sampling-method euler
           --negative-prompt "cartoon, painting, deformed, extra fingers, bad hands, blurry"
 
+      # SDXL anime checkpoints (SEI-207), all single-file, on the 3060 Ti, same
+      # flags as realvisxl. Peak VRAM NOT measured; not yet generation-tested.
+      # Illustrious XL v1.0 (OnomaAIResearch). The card gives no sampler
+      # settings; Euler a / CFG 5-7 / ~28 steps is the community default.
+      # Alias "image-illustrious".
+      "illustrious-xl":
+        name: "Illustrious XL v1.0 (SDXL anime image generation)"
+        aliases: ["image-illustrious"]
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --model ${illustriousXlDir}/Illustrious-XL-v1.0.safetensors
+          --offload-to-cpu
+          --fa
+          --vae-tiling
+          --cfg-scale 6.0
+          --steps 28
+          --sampling-method euler_a
+          --negative-prompt "lowres, worst quality, low quality, bad anatomy, bad hands, extra digits, jpeg artifacts, signature, watermark, username, blurry"
+
+      # Animagine XL 4.0 (cagliostrolab). Model card: CFG 4-7 (5), steps 25-28
+      # (28), Euler a, and its recommended negative prompt verbatim.
+      # Alias "image-animagine".
+      "animagine-xl":
+        name: "Animagine XL 4.0 (SDXL anime image generation)"
+        aliases: ["image-animagine"]
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --model ${animagineXlDir}/animagine-xl-4.0.safetensors
+          --offload-to-cpu
+          --fa
+          --vae-tiling
+          --cfg-scale 5.0
+          --steps 28
+          --sampling-method euler_a
+          --negative-prompt "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+
+      # Pony Diffusion V6 XL (v6StartWithThisOne; official release is on
+      # Civitai, no official HF repo, file mirrored in LyliaEngine/Pony_Diffusion_V6_XL
+      # with a matching SHA256). Author guidance: clip skip 2, Euler a, score
+      # tags (prompt must start "score_9, score_8_up, score_7_up"); the
+      # negative prompt uses the low-score tags. Alias "image-pony".
+      "pony-xl":
+        name: "Pony Diffusion V6 XL (SDXL anime/furry image generation)"
+        aliases: ["image-pony"]
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --model ${ponyXlDir}/ponyDiffusionV6XL_v6StartWithThisOne.safetensors
+          --offload-to-cpu
+          --fa
+          --vae-tiling
+          --clip-skip 2
+          --cfg-scale 7.0
+          --steps 25
+          --sampling-method euler_a
+          --negative-prompt "score_6, score_5, score_4, worst quality, low quality, bad anatomy, bad hands, blurry"
+
+      # NoobAI-XL v1.1 (Laxhar, EPS-prediction; the v-pred models are the separate
+      # noobai-XL-Vpred-* repos and are not installed). Model card: CFG 5-6,
+      # steps 25-30, Euler a, negative prompt verbatim. Alias "image-noobai".
+      "noobai-xl":
+        name: "NoobAI-XL v1.1 (SDXL anime image generation)"
+        aliases: ["image-noobai"]
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --model ${noobaiXlDir}/NoobAI-XL-v1.1.safetensors
+          --offload-to-cpu
+          --fa
+          --vae-tiling
+          --cfg-scale 5.5
+          --steps 28
+          --sampling-method euler_a
+          --negative-prompt "nsfw, worst quality, old, early, low quality, lowres, signature, username, logo, bad hands, mutated hands, mammal, anthro, furry, ambiguous form, feral, semi-anthro"
+
       # FLUX.2 klein 4B (Black Forest Labs, Apache-2.0) on the 3060 Ti; generates and
       # edits (POST /v1/images/edits, reference-guided re-render). Measured 2026-10-31
       # in a standalone prototype with these exact flags: total VRAM 4883 MiB,
@@ -1065,6 +1174,10 @@ let
               bonsai-image: 10
               z-image-turbo: 10
               realvisxl: 10
+              illustrious-xl: 10
+              animagine-xl: 10
+              pony-xl: 10
+              noobai-xl: 10
               flux2-klein: 10
               minimax-h3: 10
             sets:
@@ -1073,7 +1186,7 @@ let
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
               # The image models are alternatives ("|"): same card, and
               # bonsai-image alone peaks at 7.8 of its 8 GiB.
-              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | flux2-klein) & embedding & (laya | jeff-qwen3.5-0.8b)"
+              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein) & embedding & (laya | jeff-qwen3.5-0.8b)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
               video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b)"
   '';
