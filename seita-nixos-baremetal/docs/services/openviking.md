@@ -36,6 +36,12 @@ both embedding and generation — no external API key. Previously used `services
   suppress reasoning tokens on JSON-only extraction/expansion calls — see the migration decision
   for the mechanism (llama.cpp always splits reasoning into `reasoning_content`; "none" makes it
   empty).
+- `vlm` additionally sets `max_tokens = 6144` (2026-10-31). Memory extraction (~32K-token prompt,
+  temperature 0) was running away to ~10K generated tokens and hitting the 600 s client timeout,
+  repeating for hours (retry ×3 × ×3) while holding bonsai's single slot (`-np 1`) and blocking
+  image generation. Healthy extractions generate ~100–2,000 tokens. 6144 fits the timeout:
+  ~117 s prefill + 6144 / 17 t/s ≈ 480 s. Revert by dropping `max_tokens`. Unverified: how
+  OpenViking handles `finish_reason=length`; check `eval time` token counts in bonsai's log after switch.
 
 ## Secrets
 

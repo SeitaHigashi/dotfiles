@@ -103,7 +103,10 @@ let
       # docs/decisions/2026-09-08-openviking-vlm-selection.md for the ollama-era
       # mechanics this replaced).
       # extra_request_body = { options.num_ctx = 16384; reasoning_effort = "none"; };
-      extra_request_body = { reasoning_effort = "none"; };
+      # max_tokens caps runaway generation (2026-10-31: temp 0 extraction ran
+      # ~10K tokens and hit the 600s client timeout; healthy ones are <=~2K).
+      # 6144 = 117s prefill + 6144/17 t/s ~ 480s < 600s. To revert, drop max_tokens.
+      extra_request_body = { reasoning_effort = "none"; max_tokens = 6144; };
     };
     query_planner = {
       provider = "openai";
