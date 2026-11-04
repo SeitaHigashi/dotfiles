@@ -36,6 +36,31 @@ tailnet does **not** trigger a restart automatically; run
 `sudo systemctl restart tailscale-serve` by hand after such a rename (hit
 during the 2026-08-01 `seita-nix-baremetal` → `seita-nixos-baremetal` rename).
 
+## Tailscale Service rows (`svc:webui` trial)
+
+A `routes` row may carry `service = "<name>"`. Such a row is advertised as a
+Tailscale Service (`tailscale serve --service=svc:<name> --https=<port> <backend>`)
+instead of a node-level mount, so it gets its own MagicDNS name
+(`https://<name>.tail5426c0.ts.net`) independent of the node FQDN.
+
+Currently one row: Open WebUI as `svc:webui` (`https://webui.tail5426c0.ts.net`),
+same backend (`8080`) as the node-level `443` row. It runs **in parallel** with
+`443` as a trial; the `443` row stays until the Service is judged good enough.
+
+- **Service rows come last.** `reverse-proxy.nix` emits all plain rows first and
+  the Service rows after them. The unit runs under `set -euo pipefail`, so a
+  failing Service command (e.g. missing tag, below) must not abort the plain rows.
+- **The host needs `tag:server`.** A node can only host a Service when it
+  carries a tag the Service allows; without it the `serve --service` command
+  fails.
+- **Rolling back is manual.** `tailscale serve reset` (run at the top of the
+  unit) does *not* clear Service advertisements, so deleting the row leaves
+  `svc:webui` advertised. Drain the Service, then run
+  `tailscale serve clear svc:webui`.
+- Service rows are included in `httpsPorts` (firewall): traffic to a Service VIP
+  still enters via `tailscale0` on its `httpsPort`. `443` is already open, so
+  this trial adds no port.
+
 ## The `--set-path` prefix-stripping trap
 
 Tailscale Serve strips the mount prefix before forwarding to the backend: a

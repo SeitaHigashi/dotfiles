@@ -77,14 +77,30 @@ let
     { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
+    # Tailscale Service trial (svc:webui), same backend as the node-level 443 row above.
+    # A row with `service` is applied after all plain rows (see serveCommand/script).
+    # ★ Removing this row does NOT withdraw the advertisement: `serve reset` leaves
+    #   Services alone. Drain it and run `tailscale serve clear svc:webui` by hand.
+    { path = null;       httpsPort = 443;   port = 8080;   service = "webui";    note = "open-webui as Tailscale Service svc:webui (trial)"; }
   ];
 
-  # HTTPS ports Serve/Funnel use (what the firewall opens)
+  # Plain rows first (routes order), then Service rows (routes order): the unit runs
+  # under set -euo pipefail, so a failing Service row must not abort the plain rows.
+  plainRoutes = lib.filter (r: !(r ? service)) routes;
+  serviceRoutes = lib.filter (r: r ? service) routes;
+
+  # HTTPS ports Serve/Funnel use (what the firewall opens). Service rows are
+  # deliberately included: traffic to a Service VIP still enters via tailscale0
+  # on its httpsPort, so a Service on a port no plain row uses would be blocked
+  # otherwise. 443 duplicates the open-webui row and is absorbed by lib.unique.
   httpsPorts = lib.unique (map (r: r.httpsPort) routes);
 
   tailscaleBin = "${config.services.tailscale.package}/bin/tailscale";
 
   serveCommand = r:
+    if r ? service then
+      "${tailscaleBin} serve --bg --yes --service=svc:${r.service} --https=${toString r.httpsPort} ${toString r.port}  # ${r.note}"
+    else
     let
       setPath = lib.optionalString (r.path != null) "--set-path=${r.path} ";
       # Only funnel = true rows are exposed to the public internet; others are tailnet-only serve.
@@ -100,7 +116,9 @@ in
   #
   # `serve reset` up front is why `routes` is the single source of truth:
   # removing a line here removes the mount from the live host too, instead of
-  # leaving stale state behind.
+  # leaving stale state behind. Exception: Tailscale Service rows (`service`)
+  # — `serve reset` does not clear their advertisement; removing one needs a
+  # manual drain + `tailscale serve clear svc:<name>`.
   #
   # ★ Renaming the host or the tailnet does NOT restart this unit ★ — the
   #   fqdn never appears in ExecStart (only --set-path/ports do). Run
@@ -140,7 +158,7 @@ in
       # Rebuilt from scratch every time (see comment above).
       ${tailscaleBin} serve reset
 
-      ${lib.concatMapStringsSep "\n" serveCommand routes}
+      ${lib.concatMapStringsSep "\n" serveCommand (plainRoutes ++ serviceRoutes)}
     '';
   };
 
