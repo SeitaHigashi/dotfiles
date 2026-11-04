@@ -22,6 +22,8 @@ let
 
   fqdn = "${m.hostName}.${tailnetSuffix}";
   baseUrl = "https://${fqdn}";
+  # Open WebUI as Tailscale Service svc:webui (docs/network.md "Tailscale Services").
+  webuiUrl = "https://webui.${tailnetSuffix}";
 
   # Each of these gets its own port because it can't live under a subpath —
   # see docs/network.md for the per-app reasons.
@@ -77,11 +79,12 @@ let
     { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
-    # Tailscale Service trial (svc:webui), same backend as the node-level 443 row above.
+    # Tailscale Service svc:webui, same backend as the node-level 443 row above. That
+    # row stays during the coexistence period, then goes (SEI-243); /grafana stays.
     # A row with `service` is applied after all plain rows (see serveCommand/script).
     # ★ Removing this row does NOT withdraw the advertisement: `serve reset` leaves
     #   Services alone. Drain it and run `tailscale serve clear svc:webui` by hand.
-    { path = null;       httpsPort = 443;   port = 8080;   service = "webui";    note = "open-webui as Tailscale Service svc:webui (trial)"; }
+    { path = null;       httpsPort = 443;   port = 8080;   service = "webui";    note = "open-webui as Tailscale Service svc:webui"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs
@@ -233,8 +236,9 @@ in
 
   # --- Open WebUI ------------------------------------------------------------
   # Used for generating share-link / email URLs only (listens at / either way).
+  # Points at svc:webui; rollback: set back to baseUrl (docs/network.md).
   services.open-webui.environment = {
-    WEBUI_URL = baseUrl;
+    WEBUI_URL = webuiUrl;
   };
 
   # --- Multica -----------------------------------------------------------

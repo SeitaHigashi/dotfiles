@@ -139,6 +139,10 @@ Listens on `0.0.0.0:8080`, opened only via Tailscale Serve
 only opens ollama's 11434). Open WebUI must be served at the Serve root, not a sub-path: 0.6.9's
 `open_webui/main.py` FastAPI app has no `root_path` support.
 
+URL: `https://webui.tail5426c0.ts.net` (Tailscale Service `svc:webui`, also `WEBUI_URL`). The
+node URL `https://seita-nixos-baremetal.tail5426c0.ts.net/` is kept only for the coexistence
+period (docs/network.md "Tailscale Services").
+
 ## Ops notes
 
 - `systemctl status open-webui`

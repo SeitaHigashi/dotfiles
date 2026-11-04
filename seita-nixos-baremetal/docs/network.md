@@ -36,16 +36,24 @@ tailnet does **not** trigger a restart automatically; run
 `sudo systemctl restart tailscale-serve` by hand after such a rename (hit
 during the 2026-08-01 `seita-nix-baremetal` → `seita-nixos-baremetal` rename).
 
-## Tailscale Service rows (`svc:webui` trial)
+## Tailscale Services
 
 A `routes` row may carry `service = "<name>"`. Such a row is advertised as a
 Tailscale Service (`tailscale serve --service=svc:<name> --https=<port> <backend>`)
 instead of a node-level mount, so it gets its own MagicDNS name
 (`https://<name>.tail5426c0.ts.net`) independent of the node FQDN.
 
-Currently one row: Open WebUI as `svc:webui` (`https://webui.tail5426c0.ts.net`),
-same backend (`8080`) as the node-level `443` row. It runs **in parallel** with
-`443` as a trial; the `443` row stays until the Service is judged good enough.
+Keep this table in sync with the keys of `tailscale serve status --json | jq .Services`
+(last checked 2026-11-04: `svc:webui` only).
+
+| svc | MagicDNS | Port | Backend | Approval | Created | Notes |
+|---|---|---|---|---|---|---|
+| `svc:webui` | `webui.tail5426c0.ts.net` | 443 | `127.0.0.1:8080` (Open WebUI) | Host approval after advertising (SEI-240; method not recorded) | 2026-11-04 | `WEBUI_URL` points here (SEI-243). Node-level `443` `/` row kept during the coexistence period, then removed; `/grafana` stays on the node. |
+| — Multica | — | 9444 / 9445 | `3001` / `8082` | — | — | Node-level (on hold) |
+| — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
+| — AutoMuteUs | — | 9449 / 9450 | `8123` / `8084` | — | — | Node-level (on hold) |
+| — seita-health | — | 9452 | `8090` | — | — | Node-level (on hold) |
+| — Multica webhook Funnel | — | 10000 | `8083` (nginx) | — | — | Node-level (on hold; Funnel) |
 
 - **Service rows come last.** `reverse-proxy.nix` emits all plain rows first and
   the Service rows after them. The unit runs under `set -euo pipefail`, so a
@@ -53,13 +61,19 @@ same backend (`8080`) as the node-level `443` row. It runs **in parallel** with
 - **The host needs `tag:server`.** A node can only host a Service when it
   carries a tag the Service allows; without it the `serve --service` command
   fails.
-- **Rolling back is manual.** `tailscale serve reset` (run at the top of the
-  unit) does *not* clear Service advertisements, so deleting the row leaves
-  `svc:webui` advertised. Drain the Service, then run
-  `tailscale serve clear svc:webui`.
 - Service rows are included in `httpsPorts` (firewall): traffic to a Service VIP
   still enters via `tailscale0` on its `httpsPort`. `443` is already open, so
-  this trial adds no port.
+  `svc:webui` adds no port.
+
+**Rolling back a Service** (in this order):
+
+1. Point callers back at the node URL (for `svc:webui`: `WEBUI_URL = baseUrl`
+   in `reverse-proxy.nix`, and re-add the node-level `443` `/` row if it was removed).
+2. Remove the `service` row and `nixos-rebuild switch`.
+3. `sudo tailscale serve drain svc:<name>`
+4. `sudo tailscale serve clear svc:<name>` — `tailscale serve reset` (run at the
+   top of the unit) does *not* clear Service advertisements, so steps 3–4 are
+   always manual.
 
 ## The `--set-path` prefix-stripping trap
 
