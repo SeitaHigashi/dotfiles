@@ -48,7 +48,7 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
 
 | svc | MagicDNS | Port | Backend | Approval | Created | Notes |
 |---|---|---|---|---|---|---|
-| `svc:webui` | `webui.tail5426c0.ts.net` | 443 | `127.0.0.1:8080` (Open WebUI) | Host approval after advertising (SEI-240; method not recorded) | 2026-11-04 | `WEBUI_URL` points here (SEI-243). Node-level `443` `/` row kept during the coexistence period, then removed; `/grafana` stays on the node. |
+| `svc:webui` | `webui.tail5426c0.ts.net` | 443 | `127.0.0.1:8080` (Open WebUI) | Host approval after advertising (SEI-240; method not recorded) | 2026-11-04 | `WEBUI_URL` points here (SEI-243). Node-level `443` `/` row removed (SEI-243, coexistence ended immediately); `/grafana` stays on the node. |
 | — Multica | — | 9444 / 9445 | `3001` / `8082` | — | — | Node-level (on hold) |
 | — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
 | — AutoMuteUs | — | 9449 / 9450 | `8123` / `8084` | — | — | Node-level (on hold) |
@@ -62,13 +62,13 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
   carries a tag the Service allows; without it the `serve --service` command
   fails.
 - Service rows are included in `httpsPorts` (firewall): traffic to a Service VIP
-  still enters via `tailscale0` on its `httpsPort`. `443` is already open, so
+  still enters via `tailscale0` on its `httpsPort`. `443` stays open for `/grafana`, so
   `svc:webui` adds no port.
 
 **Rolling back a Service** (in this order):
 
 1. Point callers back at the node URL (for `svc:webui`: `WEBUI_URL = baseUrl`
-   in `reverse-proxy.nix`, and re-add the node-level `443` `/` row if it was removed).
+   in `reverse-proxy.nix`, and uncomment the node-level `443` `/` row).
 2. Remove the `service` row and `nixos-rebuild switch`.
 3. `sudo tailscale serve drain svc:<name>`
 4. `sudo tailscale serve clear svc:<name>` — `tailscale serve reset` (run at the
@@ -86,7 +86,7 @@ the Serve root instead.
 
 | App | Placement | Why |
 |---|---|---|
-| Open WebUI | `443` root | No `root_path`/subpath support at all — checked source (open-webui 0.6.9's `open_webui/main.py`, no `root_path` in the whole codebase). Static assets and API calls break under any subpath. |
+| Open WebUI | `svc:webui` `443` root (node-level `443` root until 2026-11-04) | No `root_path`/subpath support at all — checked source (open-webui 0.6.9's `open_webui/main.py`, no `root_path` in the whole codebase). Static assets and API calls break under any subpath. |
 | Grafana | `/grafana` under `443` | `root_url` absolute + `serve_from_sub_path = false` makes Grafana listen at `/` but generate `/grafana/...` URLs — matches the prefix-stripping proxy. Setting `serve_from_sub_path = true` causes an infinite redirect loop (verified: `curl -L` hits `--max-redirs`). |
 | n8n | `8443` root (separate port) | `N8N_PATH` only rewrites the frontend's `window.BASE_PATH`; the backend keeps listening at `/`. Under a prefix-stripping proxy that alone works, but it breaks the LAN's direct `http://<LAN IP>:5678/` access — the HTML references `/n8n/assets/*.js` but the backend serves its catch-all HTML there instead (verified on hardware: white screen). Since n8n must stay open on the LAN too, it gets its own port with no `N8N_PATH` set. |
 | ComfyUI (disabled since 2026-09-24, route commented out) | `9443` root (separate port) | Frontend calls the API via absolute paths; no reverse-proxy subpath support. `443`/`8443` are taken. |
@@ -172,7 +172,7 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 
 | Port | Service | Opened by |
 |---|---|---|
-| 443 | Open WebUI (`/`), Grafana (`/grafana/`) via Serve | `modules/reverse-proxy.nix` (`routes`) |
+| 443 | Grafana (`/grafana/`) via Serve; Open WebUI via `svc:webui` | `modules/reverse-proxy.nix` (`routes`) |
 | 8443 | n8n via Serve | `modules/reverse-proxy.nix` |
 | 9444 | Multica frontend via Serve | `modules/reverse-proxy.nix` |
 | 9445 | Multica backend via Serve | `modules/reverse-proxy.nix` |

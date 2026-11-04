@@ -63,7 +63,9 @@ let
   #   anyone on the tailnet can use the model. Do not set funnel = true here.
   ############################################################################
   routes = [
-    { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
+    # Node-level open-webui row removed (SEI-243): Open WebUI is served only as svc:webui
+    # below. Rollback: uncomment, and set WEBUI_URL back to baseUrl (docs/network.md).
+    # { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
     { path = null;       httpsPort = 9448;  port = 8888;                          note = "llama.cpp (no auth, tailnet only)"; }
     { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
     { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
@@ -79,8 +81,7 @@ let
     { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
-    # Tailscale Service svc:webui, same backend as the node-level 443 row above. That
-    # row stays during the coexistence period, then goes (SEI-243); /grafana stays.
+    # Tailscale Service svc:webui (Open WebUI). /grafana stays on the node-level 443.
     # A row with `service` is applied after all plain rows (see serveCommand/script).
     # ★ Removing this row does NOT withdraw the advertisement: `serve reset` leaves
     #   Services alone. Drain it and run `tailscale serve clear svc:webui` by hand.
@@ -95,7 +96,7 @@ let
   # HTTPS ports Serve/Funnel use (what the firewall opens). Service rows are
   # deliberately included: traffic to a Service VIP still enters via tailscale0
   # on its httpsPort, so a Service on a port no plain row uses would be blocked
-  # otherwise. 443 duplicates the open-webui row and is absorbed by lib.unique.
+  # otherwise. 443 duplicates the /grafana row and is absorbed by lib.unique.
   httpsPorts = lib.unique (map (r: r.httpsPort) routes);
 
   tailscaleBin = "${config.services.tailscale.package}/bin/tailscale";

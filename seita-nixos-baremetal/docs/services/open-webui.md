@@ -140,8 +140,8 @@ only opens ollama's 11434). Open WebUI must be served at the Serve root, not a s
 `open_webui/main.py` FastAPI app has no `root_path` support.
 
 URL: `https://webui.tail5426c0.ts.net` (Tailscale Service `svc:webui`, also `WEBUI_URL`). The
-node URL `https://seita-nixos-baremetal.tail5426c0.ts.net/` is kept only for the coexistence
-period (docs/network.md "Tailscale Services").
+node URL `https://seita-nixos-baremetal.tail5426c0.ts.net/` no longer serves Open WebUI
+(removed in SEI-243; docs/network.md "Tailscale Services").
 
 ## Ops notes
 
