@@ -98,7 +98,7 @@ systemctl status grafana        # a provisioning syntax error shows up here
 ls /etc/grafana/provisioning/alerting/
 ```
 
-Web UI: `https://<host>/grafana/alerting/list` — everything should read Normal;
+Web UI: `https://grafana.tail5426c0.ts.net/alerting/list` — everything should read Normal;
 Error or NoData means a PromQL mistake.
 
 To manually exercise the notification path, add a temporary rule with

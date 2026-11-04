@@ -93,6 +93,8 @@ averaged 1.39% of a core at 30s, measured 2026-10-11 over 269 h of uptime).
 
 ## Grafana
 
+- URL: `https://grafana.tail5426c0.ts.net/` (Tailscale Service `svc:grafana`, SEI-244;
+  `root_url` in `modules/reverse-proxy.nix`). Was `https://<host>/grafana/` before.
 - Listens on `0.0.0.0:3000`, but only reachable through the `tailscale0` firewall
   interface (see Firewall below) — not the LAN. Interface-based filtering is used
   instead of `http_addr` because the Tailscale IP isn't known at build time.

@@ -24,6 +24,8 @@ let
   baseUrl = "https://${fqdn}";
   # Open WebUI as Tailscale Service svc:webui (docs/network.md "Tailscale Services").
   webuiUrl = "https://webui.${tailnetSuffix}";
+  # Grafana as Tailscale Service svc:grafana (SEI-244).
+  grafanaUrl = "https://grafana.${tailnetSuffix}";
 
   # Each of these gets its own port because it can't live under a subpath —
   # see docs/network.md for the per-app reasons.
@@ -67,6 +69,8 @@ let
     # below. Rollback: uncomment, and set WEBUI_URL back to baseUrl (docs/network.md).
     # { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
     { path = null;       httpsPort = 9448;  port = 8888;                          note = "llama.cpp (no auth, tailnet only)"; }
+    # Kept only for the svc:grafana coexistence period (SEI-244); remove afterwards. With
+    # root_url on svc:grafana, Grafana's own redirects/assets no longer carry /grafana.
     { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
     { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
     # Disabled with ComfyUI (2026-09-24, modules/comfyui.nix enable = false); uncomment together.
@@ -86,6 +90,8 @@ let
     # ★ Removing this row does NOT withdraw the advertisement: `serve reset` leaves
     #   Services alone. Drain it and run `tailscale serve clear svc:webui` by hand.
     { path = null;       httpsPort = 443;   port = 8080;   service = "webui";    note = "open-webui as Tailscale Service svc:webui"; }
+    # Tailscale Service svc:grafana (SEI-244). Same drain + clear caveat as svc:webui.
+    { path = null;       httpsPort = 443;   port = 3000;   service = "grafana";  note = "grafana as Tailscale Service svc:grafana"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs
@@ -96,7 +102,7 @@ let
   # HTTPS ports Serve/Funnel use (what the firewall opens). Service rows are
   # deliberately included: traffic to a Service VIP still enters via tailscale0
   # on its httpsPort, so a Service on a port no plain row uses would be blocked
-  # otherwise. 443 duplicates the /grafana row and is absorbed by lib.unique.
+  # otherwise. 443 repeats across rows and is absorbed by lib.unique.
   httpsPorts = lib.unique (map (r: r.httpsPort) routes);
 
   tailscaleBin = "${config.services.tailscale.package}/bin/tailscale";
@@ -217,8 +223,9 @@ in
   # root_url is absolute, so monitoring.nix's `domain` setting is unused now.
   # serve_from_sub_path must stay false — see docs/network.md (setting it
   # true causes an infinite redirect loop, verified on hardware).
+  # Points at svc:grafana (SEI-244); rollback: "${baseUrl}/grafana/" (docs/network.md).
   services.grafana.settings.server = {
-    root_url = "${baseUrl}/grafana/";
+    root_url = "${grafanaUrl}/";
     serve_from_sub_path = false;
   };
 

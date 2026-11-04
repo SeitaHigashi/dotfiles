@@ -10,7 +10,7 @@ Service overview: [services/alerting.md](../services/alerting.md).
    [the mkRule conventions](../services/alerting.md#rule-conventions-the-mkrule-helper)).
 3. Pick `noData`: `"OK"` (default) unless the series disappearing is itself the
    failure mode, in which case `"Alerting"`.
-4. `nixos-rebuild switch`, then check `https://<host>/grafana/alerting/list` — the
+4. `nixos-rebuild switch`, then check `https://grafana.tail5426c0.ts.net/alerting/list` — the
    new rule should read Normal (or Pending, if `for` hasn't elapsed), not Error.
 
 ## Change a threshold
