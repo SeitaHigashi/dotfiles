@@ -50,6 +50,7 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
 |---|---|---|---|---|---|---|
 | `svc:webui` | `webui.tail5426c0.ts.net` | 443 | `127.0.0.1:8080` (Open WebUI) | Host approval after advertising (SEI-240; method not recorded) | 2026-11-04 | `WEBUI_URL` points here (SEI-243). Node-level `443` `/` row removed (SEI-243, coexistence ended immediately); `/grafana` later moved to `svc:grafana` (SEI-244). |
 | `svc:grafana` | `grafana.tail5426c0.ts.net` | 443 | `127.0.0.1:3000` (Grafana) | Manual approval in the admin console (SEI-244). `autoApprovers.services` with key `svc:*` → `["tag:server"]` passed policy validation but did not approve the host (named key `svc:grafana` untested) | 2026-11-04 | Grafana `root_url` points here (SEI-244). Node-level `443` `/grafana` row removed (SEI-244; coexistence impossible, see below) — node `443` has no rows. ACL: reached from a tailnet member PC under the current grants, accepted by Seita 2026-11-04 (no separate tagged-device result recorded). |
+| `svc:share` | `share.tail5426c0.ts.net` | 443 | Directory `/home/seita/share` (static files; `--service` accepts a path backend: same `Path` handler as node-level serve, checked in tailscale 1.98.10 source `cmd/tailscale/cli/serve_v2.go` `applyWebServe` and `ipn/ipnlocal/serve.go`) | Pending (SEI-245) | 2026-11-04 (in git; not yet switched) | Node-level `9451` row stays during coexistence. Known issue, fixed later (not in SEI-245): links in `~/share/index.html` may break under `svc:share`. Callers to move: the default output URL in `~/.claude/CLAUDE.md`. |
 | — Multica | — | 9444 / 9445 | `3001` / `8082` | — | — | Node-level (on hold) |
 | — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
 | — AutoMuteUs | — | 9449 / 9450 | `8123` / `8084` | — | — | Node-level (on hold) |
@@ -76,7 +77,9 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
 1. Point callers back at the node URL (for `svc:webui`: `WEBUI_URL = baseUrl`
    in `reverse-proxy.nix`, and uncomment the node-level `443` `/` row; for
    `svc:grafana`: `root_url = "${baseUrl}/grafana/"`, and restore the node-level
-   `443` `/grafana` row if it was removed).
+   `443` `/grafana` row if it was removed; for `svc:share`: point callers such as
+   `~/.claude/CLAUDE.md` back at `…:9451/` and restore the node-level `9451` row if
+   it was removed).
 2. Remove the `service` row and `nixos-rebuild switch`.
 3. `sudo tailscale serve drain svc:<name>`
 4. `sudo tailscale serve clear svc:<name>` — `tailscale serve reset` (run at the
@@ -189,7 +192,7 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 | 9448 | llama.cpp via Serve | `modules/reverse-proxy.nix` |
 | 9449 | AutoMuteUs galactus via Serve | `modules/reverse-proxy.nix` |
 | 9450 | AutoMuteUs API via Serve | `modules/reverse-proxy.nix` |
-| 9451 | `~/share` static files (HTML/PNG) via Serve, tailnet only. A dedicated dir, never `~` or `/`: tailscaled runs as root, so anything under the served path is readable by the whole tailnet. Directory is created by `systemd.tmpfiles.rules` in the same module. `~/share/index.html` is the homepage (not in git; JS lists `out/<project>/<ts>/`) | `modules/reverse-proxy.nix` |
+| 9451 | `~/share` static files (HTML/PNG) via Serve, tailnet only; also served as `svc:share` on `443` (SEI-245, node row kept during coexistence). A dedicated dir, never `~` or `/`: tailscaled runs as root, so anything under the served path is readable by the whole tailnet. Directory is created by `systemd.tmpfiles.rules` in the same module. `~/share/index.html` is the homepage (not in git; JS lists `out/<project>/<ts>/`) | `modules/reverse-proxy.nix` |
 | 9452 | seita-health (web UI) via Serve, tailnet only | `modules/reverse-proxy.nix` |
 | 10000 | Multica GitHub webhook (Funnel, public internet) | `modules/reverse-proxy.nix` |
 | 1933 | OpenViking (direct) | `modules/openviking.nix` |

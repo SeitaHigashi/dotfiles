@@ -93,6 +93,10 @@ let
     { path = null;       httpsPort = 443;   port = 8080;   service = "webui";    note = "open-webui as Tailscale Service svc:webui"; }
     # Tailscale Service svc:grafana (SEI-244). Same drain + clear caveat as svc:webui.
     { path = null;       httpsPort = 443;   port = 3000;   service = "grafana";  note = "grafana as Tailscale Service svc:grafana"; }
+    # Tailscale Service svc:share (SEI-245): same ~/share dir as the 9451 row, which stays
+    # until the coexistence period ends. Same drain + clear caveat as svc:webui.
+    # Directory backend only ever ~/share (tailscaled runs as root: never ~ or /).
+    { path = null;       httpsPort = 443;   port = "/home/${m.userName}/share"; service = "share"; note = "share dir as Tailscale Service svc:share"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs
@@ -188,7 +192,7 @@ in
   ############################################################################
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = httpsPorts;
 
-  # Directory served on 9451; must exist and be readable by tailscaled.
+  # Directory served on 9451 and svc:share; must exist and be readable by tailscaled.
   systemd.tmpfiles.rules = [ "d /home/${m.userName}/share 0755 ${m.userName} users -" ];
 
   ############################################################################
