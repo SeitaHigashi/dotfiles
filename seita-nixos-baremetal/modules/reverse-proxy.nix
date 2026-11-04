@@ -69,9 +69,10 @@ let
     # below. Rollback: uncomment, and set WEBUI_URL back to baseUrl (docs/network.md).
     # { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
     { path = null;       httpsPort = 9448;  port = 8888;                          note = "llama.cpp (no auth, tailnet only)"; }
-    # Kept only for the svc:grafana coexistence period (SEI-244); remove afterwards. With
-    # root_url on svc:grafana, Grafana's own redirects/assets no longer carry /grafana.
-    { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
+    # Node-level /grafana row removed (SEI-244): Grafana is served only as svc:grafana below
+    # (with root_url on svc:grafana this path already 404'd). Node 443 is now empty.
+    # Rollback: uncomment, and set root_url back to "${baseUrl}/grafana/" (docs/network.md).
+    # { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
     { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
     # Disabled with ComfyUI (2026-09-24, modules/comfyui.nix enable = false); uncomment together.
     # { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
@@ -85,7 +86,7 @@ let
     { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
-    # Tailscale Service svc:webui (Open WebUI). /grafana stays on the node-level 443.
+    # Tailscale Service svc:webui (Open WebUI).
     # A row with `service` is applied after all plain rows (see serveCommand/script).
     # ★ Removing this row does NOT withdraw the advertisement: `serve reset` leaves
     #   Services alone. Drain it and run `tailscale serve clear svc:webui` by hand.
