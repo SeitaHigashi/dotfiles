@@ -44,13 +44,12 @@ instead of a node-level mount, so it gets its own MagicDNS name
 (`https://<name>.tail5426c0.ts.net`) independent of the node FQDN.
 
 Keep this table in sync with the keys of `tailscale serve status --json | jq .Services`
-(last checked 2026-11-04 before the SEI-244 switch: `svc:webui` only; `svc:grafana`
-is in the build but not yet advertised).
+(last checked 2026-11-04 after the SEI-244 switch: `svc:grafana`, `svc:webui`).
 
 | svc | MagicDNS | Port | Backend | Approval | Created | Notes |
 |---|---|---|---|---|---|---|
 | `svc:webui` | `webui.tail5426c0.ts.net` | 443 | `127.0.0.1:8080` (Open WebUI) | Host approval after advertising (SEI-240; method not recorded) | 2026-11-04 | `WEBUI_URL` points here (SEI-243). Node-level `443` `/` row removed (SEI-243, coexistence ended immediately); `/grafana` stays on the node. |
-| `svc:grafana` | `grafana.tail5426c0.ts.net` | 443 | `127.0.0.1:3000` (Grafana) | Host approval after advertising (SEI-244; pending) | 2026-11-04 | Grafana `root_url` points here (SEI-244). Node-level `443` `/grafana` row kept for coexistence, to be removed afterwards (node `443` is then empty). ACL / `autoApprovers` results: SEI-244. |
+| `svc:grafana` | `grafana.tail5426c0.ts.net` | 443 | `127.0.0.1:3000` (Grafana) | Manual approval in the admin console (SEI-244). `autoApprovers.services` with key `svc:*` → `["tag:server"]` passed policy validation but did not approve the host | 2026-11-04 | Grafana `root_url` points here (SEI-244). Node-level `443` `/grafana` row kept for coexistence, to be removed afterwards (node `443` is then empty). ACL / `autoApprovers` results: SEI-244. |
 | — Multica | — | 9444 / 9445 | `3001` / `8082` | — | — | Node-level (on hold) |
 | — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
 | — AutoMuteUs | — | 9449 / 9450 | `8123` / `8084` | — | — | Node-level (on hold) |
@@ -70,7 +69,7 @@ is in the build but not yet advertised).
   on its redirects and asset URLs, so only one of `grafana.<tailnet>/` and
   `<node>/grafana/` can work at a time. After the SEI-244 switch the old
   `/grafana/` path still reaches the backend, but its redirects drop the
-  `/grafana` prefix (expected `/login` → 404 on the node).
+  `/grafana` prefix (measured 2026-11-04: `/grafana/` → `302 /login` → `404` on the node).
 
 **Rolling back a Service** (in this order):
 
