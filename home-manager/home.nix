@@ -54,6 +54,10 @@
 
   gtk = {
     enable = true;
+    # KDE (xrdp session) rewrites ~/.gtkrc-2.0 as a regular file; without force,
+    # HM's backup collides with an existing .gtkrc-2.0.backup and the unit fails.
+    # To revert: remove this line and `rm ~/.gtkrc-2.0.backup` before switching.
+    gtk2.force = true;
     theme = {
       package = pkgs.tokyonight-gtk-theme;
       name = "Tokyonight-Dark";
