@@ -98,6 +98,10 @@ let
     # Tailscale Service svc:share (SEI-245). Same drain + clear caveat as svc:webui.
     # Directory backend only ever ~/share (tailscaled runs as root: never ~ or /).
     { path = null;       httpsPort = 443;   port = "/home/${m.userName}/share"; service = "share"; note = "share dir as Tailscale Service svc:share"; }
+    # Tailscale Service svc:llm (SEI-246): llama-swap. Same drain + clear caveat as svc:webui.
+    # Node-level 9448 row stays until callers (nmtak16 share, other PCs) move here.
+    # ★ No auth: never funnel this (Service rows are serve-only anyway).
+    { path = null;       httpsPort = 443;   port = 8888;   service = "llm";      note = "llama-swap as Tailscale Service svc:llm (no auth, tailnet only)"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs

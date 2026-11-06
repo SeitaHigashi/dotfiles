@@ -44,13 +44,14 @@ instead of a node-level mount, so it gets its own MagicDNS name
 (`https://<name>.tail5426c0.ts.net`) independent of the node FQDN.
 
 Keep this table in sync with the keys of `tailscale serve status --json | jq .Services`
-(last checked 2026-11-07 after the SEI-245 9451 removal: `svc:grafana`, `svc:share`, `svc:webui`).
+(last checked 2026-11-07 after the SEI-245 9451 removal: `svc:grafana`, `svc:share`, `svc:webui`; `svc:llm` added in SEI-246, not yet switched/approved).
 
 | svc | MagicDNS | Port | Backend | Approval | Created | Notes |
 |---|---|---|---|---|---|---|
 | `svc:webui` | `webui.tail5426c0.ts.net` | 443 | `127.0.0.1:8080` (Open WebUI) | Host approval after advertising (SEI-240; method not recorded) | 2026-11-04 | `WEBUI_URL` points here (SEI-243). Node-level `443` `/` row removed (SEI-243, coexistence ended immediately); `/grafana` later moved to `svc:grafana` (SEI-244). |
 | `svc:grafana` | `grafana.tail5426c0.ts.net` | 443 | `127.0.0.1:3000` (Grafana) | Manual approval in the admin console (SEI-244). `autoApprovers.services` with key `svc:*` → `["tag:server"]` passed policy validation but did not approve the host (named key `svc:grafana` untested) | 2026-11-04 | Grafana `root_url` points here (SEI-244). Node-level `443` `/grafana` row removed (SEI-244; coexistence impossible, see below) — node `443` has no rows. ACL: reached from a tailnet member PC under the current grants, accepted by Seita 2026-11-04 (no separate tagged-device result recorded). |
 | `svc:share` | `share.tail5426c0.ts.net` | 443 | Directory `/home/seita/share` (static files; `--service` accepts a path backend: same `Path` handler as node-level serve, checked in tailscale 1.98.10 source `cmd/tailscale/cli/serve_v2.go` `applyWebServe` and `ipn/ipnlocal/serve.go`) | Host approval by Seita (SEI-245; method not recorded) | 2026-11-06 | Measured 2026-11-06 from the host itself: `/` 200 and byte-identical to `:9451/`, a PNG under `out/` 200 with matching size, missing path 404. Node-level `9451` row removed 2026-11-07 (SEI-245; Seita confirmed a member PC reaches svc:share and waived the coexistence period; measured after the switch from the host: `:9451/` connection refused (curl exit 7), `share.` still 200, `.TCP` keys no longer list 9451). Known issue, fixed later (not in SEI-245): links in `~/share/index.html` may break under `svc:share`. Caller moved 2026-11-07 with Seita's approval: the default output URL in `~/.claude/CLAUDE.md` now points here (was `…:9451/`). |
+| `svc:llm` | `llm.tail5426c0.ts.net` | 443 | `127.0.0.1:8888` (llama-swap) | Pending: host approval by Seita (SEI-246) | 2026-11-07 | **No auth — never on Funnel.** Shared to nmtak16 via grant `autogroup:shared` → `svc:llm` `tcp:443` (to be added by Seita). Node-level `9448` row and the existing shared acl row (node IP:9448) kept during coexistence (SEI-246). n8n / Open WebUI keep `127.0.0.1:8888` direct. |
 | — Multica | — | 9444 / 9445 | `3001` / `8082` | — | — | Node-level (on hold) |
 | — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
 | — AutoMuteUs | — | 9449 / 9450 | `8123` / `8084` | — | — | Node-level (on hold) |
@@ -79,7 +80,9 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
    `svc:grafana`: `root_url = "${baseUrl}/grafana/"`, and restore the node-level
    `443` `/grafana` row if it was removed; for `svc:share`: point callers such as
    `~/.claude/CLAUDE.md` back at `…:9451/` and restore the node-level `9451` row if
-   it was removed).
+   it was removed; for `svc:llm`: point nmtak16 and other PCs' base URLs back at
+   `…:9448/v1`, and restore the node-level `9448` row and the shared acl row
+   (node IP:9448) if they were removed).
 2. Remove the `service` row and `nixos-rebuild switch`.
 3. `sudo tailscale serve drain svc:<name>`
 4. `sudo tailscale serve clear svc:<name>` — `tailscale serve reset` (run at the
@@ -106,7 +109,7 @@ the Serve root instead.
 | fukurou-webui | `9446` root (separate port) | Single dev test page, `index.html` embedded in the binary — no subpath awareness. |
 | fukurou-server (wss) | `9447` root (separate port) | See "fukurou-server wss" below. |
 | seita-health | `9452` root (separate port) | Axum app with absolute paths (`/static`, form posts); no subpath support. Backend is `127.0.0.1:8090` (`modules/health.nix`). |
-| llama.cpp | `9448` root (separate port), 2026-09-21 | OpenAI-compatible clients can't always put a path in their base URL, same reasoning as Open WebUI. `443`/`8443` taken. **No auth** — tailnet-reachable but any tailnet member can use the model; deliberately not put on Funnel. |
+| llama.cpp | `svc:llm` `443` root (SEI-246, coexisting) and `9448` root (separate port), 2026-09-21 | OpenAI-compatible clients can't always put a path in their base URL, same reasoning as Open WebUI. `443`/`8443` taken. **No auth** — tailnet-reachable but any tailnet member can use the model; deliberately not put on Funnel. |
 | Ollama | not on Serve at all | See below. |
 
 ## Ollama bypasses Serve entirely
