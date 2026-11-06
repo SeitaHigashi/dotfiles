@@ -82,8 +82,10 @@ let
     { path = null;       httpsPort = 9447;  port = 7878;                          note = "fukurou-server (wss, for fukurou-webui)"; }
     { path = null;       httpsPort = 9449;  port = 8123;                          note = "automuteus-galactus (AmongUsCapture)"; }
     { path = null;       httpsPort = 9450;  port = 8084;                          note = "automuteus-api (capture links)"; }
-    # Static files from ~/share only (tailscaled runs as root: never point this at ~ or /).
-    { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
+    # Node-level 9451 ~/share row removed (SEI-245): ~/share is served only as svc:share below.
+    # Rollback: uncomment, and point ~/.claude/CLAUDE.md's default output URL back at :9451/
+    # (docs/network.md). Never point it at ~ or / (tailscaled runs as root).
+    # { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
     # Tailscale Service svc:webui (Open WebUI).
@@ -93,8 +95,7 @@ let
     { path = null;       httpsPort = 443;   port = 8080;   service = "webui";    note = "open-webui as Tailscale Service svc:webui"; }
     # Tailscale Service svc:grafana (SEI-244). Same drain + clear caveat as svc:webui.
     { path = null;       httpsPort = 443;   port = 3000;   service = "grafana";  note = "grafana as Tailscale Service svc:grafana"; }
-    # Tailscale Service svc:share (SEI-245): same ~/share dir as the 9451 row, which stays
-    # until the coexistence period ends. Same drain + clear caveat as svc:webui.
+    # Tailscale Service svc:share (SEI-245). Same drain + clear caveat as svc:webui.
     # Directory backend only ever ~/share (tailscaled runs as root: never ~ or /).
     { path = null;       httpsPort = 443;   port = "/home/${m.userName}/share"; service = "share"; note = "share dir as Tailscale Service svc:share"; }
   ];
@@ -192,7 +193,7 @@ in
   ############################################################################
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = httpsPorts;
 
-  # Directory served on 9451 and svc:share; must exist and be readable by tailscaled.
+  # Directory served by svc:share; must exist and be readable by tailscaled.
   systemd.tmpfiles.rules = [ "d /home/${m.userName}/share 0755 ${m.userName} users -" ];
 
   ############################################################################
