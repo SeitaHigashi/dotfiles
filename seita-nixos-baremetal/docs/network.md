@@ -44,7 +44,7 @@ instead of a node-level mount, so it gets its own MagicDNS name
 (`https://<name>.tail5426c0.ts.net`) independent of the node FQDN.
 
 Keep this table in sync with the keys of `tailscale serve status --json | jq .Services`
-(last checked 2026-11-07 after the SEI-245 9451 removal: `svc:grafana`, `svc:share`, `svc:webui`; re-checked 2026-11-07 after the SEI-246 switch: `svc:grafana`, `svc:llm`, `svc:share`, `svc:webui`).
+(last checked 2026-11-07 after the SEI-245 9451 removal: `svc:grafana`, `svc:share`, `svc:webui`; re-checked 2026-11-07 after the SEI-246 switch: `svc:grafana`, `svc:llm`, `svc:share`, `svc:webui`; `svc:n8n` added in SEI-247, not yet switched/approved).
 
 | svc | MagicDNS | Port | Backend | Approval | Created | Notes |
 |---|---|---|---|---|---|---|
@@ -52,6 +52,7 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
 | `svc:grafana` | `grafana.tail5426c0.ts.net` | 443 | `127.0.0.1:3000` (Grafana) | Manual approval in the admin console (SEI-244). `autoApprovers.services` with key `svc:*` → `["tag:server"]` passed policy validation but did not approve the host (named key `svc:grafana` untested) | 2026-11-04 | Grafana `root_url` points here (SEI-244). Node-level `443` `/grafana` row removed (SEI-244; coexistence impossible, see below) — node `443` has no rows. ACL: reached from a tailnet member PC under the current grants, accepted by Seita 2026-11-04 (no separate tagged-device result recorded). |
 | `svc:share` | `share.tail5426c0.ts.net` | 443 | Directory `/home/seita/share` (static files; `--service` accepts a path backend: same `Path` handler as node-level serve, checked in tailscale 1.98.10 source `cmd/tailscale/cli/serve_v2.go` `applyWebServe` and `ipn/ipnlocal/serve.go`) | Host approval by Seita (SEI-245; method not recorded) | 2026-11-06 | Measured 2026-11-06 from the host itself: `/` 200 and byte-identical to `:9451/`, a PNG under `out/` 200 with matching size, missing path 404. Node-level `9451` row removed 2026-11-07 (SEI-245; Seita confirmed a member PC reaches svc:share and waived the coexistence period; measured after the switch from the host: `:9451/` connection refused (curl exit 7), `share.` still 200, `.TCP` keys no longer list 9451). Known issue, fixed later (not in SEI-245): links in `~/share/index.html` may break under `svc:share`. Caller moved 2026-11-07 with Seita's approval: the default output URL in `~/.claude/CLAUDE.md` now points here (was `…:9451/`). |
 | `svc:llm` | `llm.tail5426c0.ts.net` | 443 | `127.0.0.1:8888` (llama-swap) | Host approval by Seita (SEI-246; method not recorded) | 2026-11-07 | **No auth — never on Funnel.** Measured 2026-11-07 from the host after the switch: `/v1/models` 200. First cert took ~3m45s (00:33:10 → 00:36:54 JST; `SetDNS` to controlplane repeatedly hit `context deadline exceeded`, TLS handshakes hung until then) vs ~33s for `svc:grafana`/`svc:share` — expect a few minutes of timeouts right after a new Service is approved. Shared to nmtak16 via grant `autogroup:shared` → `svc:llm` `tcp:443` (to be added by Seita). Node-level `9448` row and the existing shared acl row (node IP:9448) kept during coexistence (SEI-246). n8n / Open WebUI keep `127.0.0.1:8888` direct. |
+| `svc:n8n` | `n8n.tail5426c0.ts.net` | 443 | `127.0.0.1:5678` (n8n editor + webhooks) | Pending: host approval by Seita (SEI-247) | 2026-11-07 | `WEBHOOK_URL` and `N8N_EDITOR_BASE_URL` point here (SEI-247). Node-level `8443` row kept during coexistence (2+ weeks, or until Tasker is repointed). LAN `http://<LAN IP>:5678/` unchanged (standing decision). Only external caller of `:8443`: the phone Tasker profile (`~/src/seita-n8n-workflows/tasker/health-to-n8n.tsk.xml`, `/webhook/health-…`); Grafana alerting, host-notify, discord-bot and the n8n MCP use `127.0.0.1:5678` directly. |
 | — Multica | — | 9444 / 9445 | `3001` / `8082` | — | — | Node-level (on hold) |
 | — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
 | — AutoMuteUs | — | 9449 / 9450 | `8123` / `8084` | — | — | Node-level (on hold) |
@@ -82,7 +83,10 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
    `~/.claude/CLAUDE.md` back at `…:9451/` and restore the node-level `9451` row if
    it was removed; for `svc:llm`: point nmtak16 and other PCs' base URLs back at
    `…:9448/v1`, and restore the node-level `9448` row and the shared acl row
-   (node IP:9448) if they were removed).
+   (node IP:9448) if they were removed; for `svc:n8n`: set `n8nUrl` back to
+   `"https://${fqdn}:8443"` in `reverse-proxy.nix`, point Tasker and the
+   seita-n8n-workflows docs back at `…:8443`, and restore the node-level `8443` row if
+   it was removed).
 2. Remove the `service` row and `nixos-rebuild switch`.
 3. `sudo tailscale serve drain svc:<name>`
 4. `sudo tailscale serve clear svc:<name>` — `tailscale serve reset` (run at the
@@ -102,7 +106,7 @@ the Serve root instead.
 |---|---|---|
 | Open WebUI | `svc:webui` `443` root (node-level `443` root until 2026-11-04) | No `root_path`/subpath support at all — checked source (open-webui 0.6.9's `open_webui/main.py`, no `root_path` in the whole codebase). Static assets and API calls break under any subpath. |
 | Grafana | `svc:grafana` `443` root (SEI-244; node-level `/grafana` under `443` before, removed) | Under the old subpath: `root_url` absolute + `serve_from_sub_path = false` makes Grafana listen at `/` but generate `/grafana/...` URLs — matches the prefix-stripping proxy. Setting `serve_from_sub_path = true` causes an infinite redirect loop (verified: `curl -L` hits `--max-redirs`). |
-| n8n | `8443` root (separate port) | `N8N_PATH` only rewrites the frontend's `window.BASE_PATH`; the backend keeps listening at `/`. Under a prefix-stripping proxy that alone works, but it breaks the LAN's direct `http://<LAN IP>:5678/` access — the HTML references `/n8n/assets/*.js` but the backend serves its catch-all HTML there instead (verified on hardware: white screen). Since n8n must stay open on the LAN too, it gets its own port with no `N8N_PATH` set. |
+| n8n | `svc:n8n` `443` root (SEI-247, coexisting) and `8443` root (separate port) | `N8N_PATH` only rewrites the frontend's `window.BASE_PATH`; the backend keeps listening at `/`. Under a prefix-stripping proxy that alone works, but it breaks the LAN's direct `http://<LAN IP>:5678/` access — the HTML references `/n8n/assets/*.js` but the backend serves its catch-all HTML there instead (verified on hardware: white screen). Since n8n must stay open on the LAN too, it gets its own port with no `N8N_PATH` set. |
 | ComfyUI (disabled since 2026-09-24, route commented out) | `9443` root (separate port) | Frontend calls the API via absolute paths; no reverse-proxy subpath support. `443`/`8443` are taken. |
 | Multica (frontend) | `9444` root (separate port) | Next.js frontend assumes `window.origin`-relative absolute paths (`/api`, `/ws`); incompatible with prefix stripping. |
 | Multica (backend) | `9445` root (separate port) | See "Multica has two Serve ports" below. |
@@ -186,8 +190,8 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 
 | Port | Service | Opened by |
 |---|---|---|
-| 443 | Grafana via `svc:grafana`; Open WebUI via `svc:webui` (no node-level rows on 443) | `modules/reverse-proxy.nix` (`routes`) |
-| 8443 | n8n via Serve | `modules/reverse-proxy.nix` |
+| 443 | Grafana via `svc:grafana`; Open WebUI via `svc:webui`; n8n via `svc:n8n` (no node-level rows on 443) | `modules/reverse-proxy.nix` (`routes`) |
+| 8443 | n8n via Serve (coexisting with `svc:n8n` on `443`, SEI-247) | `modules/reverse-proxy.nix` |
 | 9444 | Multica frontend via Serve | `modules/reverse-proxy.nix` |
 | 9445 | Multica backend via Serve | `modules/reverse-proxy.nix` |
 | 9446 | fukurou-webui via Serve | `modules/reverse-proxy.nix` |

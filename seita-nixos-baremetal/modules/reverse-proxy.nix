@@ -29,7 +29,8 @@ let
 
   # Each of these gets its own port because it can't live under a subpath —
   # see docs/network.md for the per-app reasons.
-  n8nUrl = "https://${fqdn}:8443";
+  # n8n as Tailscale Service svc:n8n (SEI-247); rollback: "https://${fqdn}:8443".
+  n8nUrl = "https://n8n.${tailnetSuffix}";
   comfyuiUrl = "https://${fqdn}:9443";
   multicaUrl = "https://${fqdn}:9444";
   # Backend-direct URL for multica-cli's daemon/runtime (docs/network.md).
@@ -73,6 +74,7 @@ let
     # (with root_url on svc:grafana this path already 404'd). Node 443 is now empty.
     # Rollback: uncomment, and set root_url back to "${baseUrl}/grafana/" (docs/network.md).
     # { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
+    # Node-level 8443 row stays until Tasker moves to svc:n8n and the coexistence period ends (SEI-247).
     { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
     # Disabled with ComfyUI (2026-09-24, modules/comfyui.nix enable = false); uncomment together.
     # { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
@@ -102,6 +104,9 @@ let
     # Node-level 9448 row stays until callers (nmtak16 share, other PCs) move here.
     # ★ No auth: never funnel this (Service rows are serve-only anyway).
     { path = null;       httpsPort = 443;   port = 8888;   service = "llm";      note = "llama-swap as Tailscale Service svc:llm (no auth, tailnet only)"; }
+    # Tailscale Service svc:n8n (SEI-247): editor + webhooks. Same drain + clear caveat as svc:webui.
+    # LAN :5678 (plain HTTP) is unchanged — opening n8n to the LAN is a standing decision.
+    { path = null;       httpsPort = 443;   port = 5678;   service = "n8n";      note = "n8n as Tailscale Service svc:n8n"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs

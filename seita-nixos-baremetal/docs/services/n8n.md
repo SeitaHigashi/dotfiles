@@ -14,7 +14,9 @@ anything that needs a model in the loop. Also receives Grafana alert webhooks
 ## Access
 
 - LAN: `http://<LAN IP>:5678/` (plaintext HTTP — never expose past the LAN).
-- Tailnet: `https://<fqdn>:8443/` via Tailscale Serve, root of its own port
+- Tailnet: `https://n8n.tail5426c0.ts.net/` (Tailscale Service `svc:n8n`, SEI-247;
+  `WEBHOOK_URL` / `N8N_EDITOR_BASE_URL` point here). The old node-level
+  `https://<fqdn>:8443/` stays during coexistence. Either way it is a root mount
   (not a subpath — see [`docs/network.md`](../network.md) for why n8n can't
   share the `443` root the way Grafana does).
 - `/metrics` shares the same port as the Web UI (Prometheus format, scraped
