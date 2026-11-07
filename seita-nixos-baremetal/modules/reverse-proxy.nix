@@ -74,8 +74,10 @@ let
     # (with root_url on svc:grafana this path already 404'd). Node 443 is now empty.
     # Rollback: uncomment, and set root_url back to "${baseUrl}/grafana/" (docs/network.md).
     # { path = "/grafana"; httpsPort = 443;   port = 3000;                          note = "grafana"; }
-    # Node-level 8443 row stays until Tasker moves to svc:n8n and the coexistence period ends (SEI-247).
-    { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
+    # Node-level 8443 n8n row removed (SEI-247): n8n is served only as svc:n8n below.
+    # Tasker moved first; Seita waived the coexistence period. Rollback: uncomment, and set
+    # n8nUrl back to "https://${fqdn}:8443" and Tasker back to :8443 (docs/network.md).
+    # { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
     # Disabled with ComfyUI (2026-09-24, modules/comfyui.nix enable = false); uncomment together.
     # { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
     { path = null;       httpsPort = 9444;  port = 3001;                          note = "multica-frontend"; }
