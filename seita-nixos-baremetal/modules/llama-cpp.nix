@@ -870,7 +870,10 @@ let
           --embeddings
           --pooling last
           -ngl 99
-          -c 8192
+          -c 4096
+          --cache-type-k q8_0
+          --cache-type-v q8_0
+          -fa on
 
       # Laya multilingual (322M) — decision model (PyTorch) for n8n's flow branching.
       # Called via POST /upstream/laya/decide (docs/services/llama-cpp.md).
