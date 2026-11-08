@@ -628,6 +628,38 @@ let
       });
 
   ##########################################################################
+  # Upstream ggml-org/llama.cpp, side by side with the prism fork above. Only
+  # lfm3-audio uses it (macro serverUpstream): LFM3 support landed upstream in
+  # b11960, after the fork's base. Pinned to the v0.9.0 release
+  # (docs/decisions/2026-11-08-llama-cpp-upstream-for-lfm3.md).
+  ##########################################################################
+  upstreamRev = "cd959bae99ff4bed22bef2604f45241c09bbb8c8"; # v0.9.0
+  upstreamHash = "sha256-6LqtpfqTAbYUr/wPPBAM/dXHv3LDTg+1A81k/cFcAjY=";
+
+  llamaCppUpstream =
+    (pkgs.unstable.llama-cpp.override { cudaSupport = true; }).overrideAttrs
+      (old: {
+        pname = "llama-cpp-upstream";
+        version = "0.9.0";
+        # WebUI npm deps differ from nixpkgs' pinned rev (hash from the build error).
+        npmDepsHash = "sha256-XLtEZsSFdk+2SyfXzBp8HQ2e27PQPpDCn1YjePU1/9w=";
+        src = pkgs.fetchFromGitHub {
+          owner = "ggml-org";
+          repo = "llama.cpp";
+          rev = upstreamRev;
+          hash = upstreamHash;
+        };
+        patches = [ ];
+        doCheck = false;
+        # Same 2-card architecture list as llamaCppPrism.
+        cmakeFlags =
+          (builtins.filter
+            (f: !(lib.hasPrefix "-DCMAKE_CUDA_ARCHITECTURES" f))
+            old.cmakeFlags)
+          ++ [ "-DCMAKE_CUDA_ARCHITECTURES:STRING=75;86" ];
+      });
+
+  ##########################################################################
   # stable-diffusion.cpp — image generation (Qwen-Image-2.1), served by its
   # sd-server under llama-swap's [qwen-image]. Not llama.cpp, but it shares
   # the 3060 Ti with bonsai, so it lives in the same matrix.
@@ -775,6 +807,8 @@ let
       # PORT is a variable llama-swap assigns per model, not Nix interpolation
       # (escaped with a doubled single quote).
       "server": "${llamaCppPrism}/bin/llama-server --port ''${PORT}"
+      # Upstream build, for lfm3-audio only.
+      "serverUpstream": "${llamaCppUpstream}/bin/llama-server --port ''${PORT}"
 
     models:
       # Bonsai 2 / PTQ1_0, alone on the 3060 Ti.
@@ -856,6 +890,22 @@ let
           - "HF_HUB_OFFLINE=1"
         cmd: |
           ${layaVenv}/bin/python ${layaServer} --port ''${PORT}
+
+      # LFM3-Audio-2B (Liquid AI): speech in/out, served by the upstream build
+      # (the prism fork predates LFM3 support). Q4_K_M + audio mmproj, ~1.3 GB.
+      # Alternative to laya/jeff in the matrix (same 1660 SUPER, VRAM not measured
+      # together yet). ttl frees the card when idle.
+      "lfm3-audio":
+        name: "LFM3 Audio 2B"
+        ttl: 600
+        env:
+          - "CUDA_VISIBLE_DEVICES=0"
+        cmd: |
+          ''${serverUpstream}
+          --model ${modelsDir}/LFM3-Audio-2B-GGUF/LFM3-Audio-2B-Q4_K_M.gguf
+          --mmproj ${modelsDir}/LFM3-Audio-2B-GGUF/mmproj-LFM3-Audio-2B-Q4_K_M.gguf
+          -ngl 99
+          -c 8192
 
       # Jeff v1.2 Qwen3.5-0.8B (Jev-compatible decision model, PyTorch), the
       # English-trained but Japanese-capable alternative to laya. Alias
@@ -1168,6 +1218,7 @@ let
               # synchronously; cheaper to evict than bonsai.
               laya: 30
               jeff-qwen3.5-0.8b: 30
+              lfm3-audio: 30
               # Cheap to reload relative to bonsai (weights are staged from RAM
               # per request anyway), so it's the first to go when bonsai returns.
               qwen-image: 10
@@ -1182,13 +1233,13 @@ let
               minimax-h3: 10
             sets:
               # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
-              generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b)"
+              generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
               # The image models are alternatives ("|"): same card, and
               # bonsai-image alone peaks at 7.8 of its 8 GiB.
-              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein) & embedding & (laya | jeff-qwen3.5-0.8b)"
+              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
-              video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b)"
+              video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
   '';
 in
 {

@@ -42,6 +42,7 @@ GPU/VRAM allocation and measurements are collected in
 | `embedding` | Qwen3-Embedding-4B Q4_K_M, 2560 dims | 1660 SUPER | OpenViking, Open WebUI's RAG |
 | `laya` | Laya multilingual 322M (PyTorch, fp16) | 1660 SUPER | decision model for n8n's flow branching |
 | `jeff-qwen3.5-0.8b` (`decision`, `jeff`) | Jeff v1.2 Qwen3.5 0.8B (PyTorch, text-only, fp16 weights / fp32 matmul) | 1660 SUPER | Jev-compatible decision model; alternative to `laya` (mutually exclusive in the matrix) |
+| `lfm3-audio` | LFM3-Audio-2B Q4_K_M + audio mmproj (~1.2 GB, **upstream** llama-server v0.9.0 via macro `serverUpstream`) | 1660 SUPER | speech in/out incl. `/v1/realtime`; third alternative next to `laya`/`jeff` in the matrix (VRAM not yet measured together with `embedding`) |
 | `qwen-image` | Qwen-Image-2.1 (stable-diffusion.cpp `sd-server`), DiT Q4_K + Qwen3-VL-8B Q4_K_M + VAE bf16 | 3060 Ti | image generation / editing |
 | `bonsai-image` (`image`) | Bonsai Image Ternary 4B (FLUX.2 Klein 4B, gemlite INT2; PyTorch + diffusers + Triton, own HTTP wrapper) | 3060 Ti | image generation; alternative to `qwen-image` (mutually exclusive in the matrix) |
 | `z-image-turbo` (`image-photo`) | Z-Image Turbo (`sd-server`), DiT Q4_K + Qwen3-4B-Instruct-2507 Q4_K_M + FLUX ae VAE | 3060 Ti | photorealistic image generation (8 steps, cfg 1.0); alternative in the `image` set |
@@ -53,7 +54,7 @@ GPU/VRAM allocation and measurements are collected in
 `"model"` field and in `/upstream/<alias>/...` (verified on llama-swap 249, 2026-10-03), resolve to the
 same process as the real ID, and show up in `/v1/models` only under `meta.llamaswap.aliases`.
 The matrix and `evict_costs` use the **real ID**. IDs and aliases must not contain `/`
-(`/upstream/a/b/` is a 404). `laya` and `jeff-qwen3.5-0.8b` are alternatives (`|`) in every matrix
+(`/upstream/a/b/` is a 404). `laya`, `jeff-qwen3.5-0.8b` and `lfm3-audio` are alternatives (`|`) in every matrix
 set: they do not fit the 1660 SUPER together.
 `image` is the role name for `bonsai-image` (like `chat` for `bonsai`); `qwen-image` has no alias,
 so `"model": "image"` always means bonsai-image. The matrix set that is also called `image`
