@@ -16,6 +16,11 @@
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
 
+  # Headless host: cut the coredump -> drkonqi hookup (self-multiplying launcher loop, 2026-11-08).
+  # The plasma6 module wires drkonqi-coredump-processor@ into systemd-coredump@ unconditionally.
+  # Way back: remove this line.
+  systemd.services."drkonqi-coredump-processor@".wantedBy = lib.mkForce [ ];
+
   # X11, not Wayland — see docs/services/desktop.md (projector hot-plug via xrandr/autorandr).
   services.displayManager.defaultSession = "plasmax11";
 

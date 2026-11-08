@@ -48,3 +48,19 @@ to keep running). Disabled at two layers so PowerDevil settings can't reintroduc
 `fonts.packages = [ pkgs.noto-fonts-cjk-sans ]` in `modules/desktop.nix`. Without a CJK font,
 headless Chromium (Playwright) renders Japanese as tofu. It is system-wide, so it applies to
 headless use too, not only the Plasma session. Check after switch: `fc-list :lang=ja | grep -i "Noto Sans CJK"`.
+
+## drkonqi coredump hookup cut
+
+On this headless host drkonqi's coredump launcher looped (no display -> Qt abort -> new coredump ->
+launcher again) and piled up 10,524 failed units after the 2026-10-30 llama-server crash.
+`environment.plasma6.excludePackages` cannot remove drkonqi (the plasma6 module pulls it in separately),
+so instead:
+
+- System: `modules/desktop.nix` sets `systemd.services."drkonqi-coredump-processor@".wantedBy = lib.mkForce [ ]`,
+  cutting the unconditional `systemd-coredump@.service` -> processor hookup.
+- User: `../home-manager/home.nix` declares `/dev/null` mask links under `~/.config/systemd/user` for
+  `drkonqi-coredump-launcher.socket`, `drkonqi-coredump-launcher@.service`, `drkonqi-coredump-pickup.service`.
+  HM is a NixOS module here, so `nixos-rebuild switch` applies both. Remove the runtime masks made by
+  `systemctl --user mask` (same three paths) right before switching, or HM refuses to overwrite them.
+
+To undo: drop the `wantedBy` line and the three `xdg.configFile` entries.

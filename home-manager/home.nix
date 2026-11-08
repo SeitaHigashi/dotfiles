@@ -163,6 +163,14 @@
     extraConfig = builtins.readFile ../wezterm/wezterm.lua;
   };
 
+  # Mask the drkonqi coredump launcher units (headless loop, 2026-11-08). Declarative form of
+  # `systemctl --user mask`. Way back: delete these three entries.
+  xdg.configFile = lib.genAttrs [
+    "systemd/user/drkonqi-coredump-launcher.socket"
+    "systemd/user/drkonqi-coredump-launcher@.service"
+    "systemd/user/drkonqi-coredump-pickup.service"
+  ] (_: { source = config.lib.file.mkOutOfStoreSymlink "/dev/null"; });
+
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 }
