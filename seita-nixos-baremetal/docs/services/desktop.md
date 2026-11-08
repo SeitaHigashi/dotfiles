@@ -48,10 +48,3 @@ to keep running). Disabled at two layers so PowerDevil settings can't reintroduc
 `fonts.packages = [ pkgs.noto-fonts-cjk-sans ]` in `modules/desktop.nix`. Without a CJK font,
 headless Chromium (Playwright) renders Japanese as tofu. It is system-wide, so it applies to
 headless use too, not only the Plasma session. Check after switch: `fc-list :lang=ja | grep -i "Noto Sans CJK"`.
-
-## drkonqi excluded
-
-`environment.plasma6.excludePackages = [ drkonqi ]` in `modules/desktop.nix`. On this headless host
-drkonqi's coredump launcher looped (no display -> Qt abort -> new coredump -> launcher again) and piled
-up 10,524 failed units after the 2026-10-30 llama-server crash. Excluded 2026-11-08. To undo: remove the
-line (and any user-level mask links under `~/.config/systemd/user`).
