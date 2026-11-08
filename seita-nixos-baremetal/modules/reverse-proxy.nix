@@ -69,7 +69,10 @@ let
     # Node-level open-webui row removed (SEI-243): Open WebUI is served only as svc:webui
     # below. Rollback: uncomment, and set WEBUI_URL back to baseUrl (docs/network.md).
     # { path = null;       httpsPort = 443;   port = 8080;                          note = "open-webui"; }
-    { path = null;       httpsPort = 9448;  port = 8888;                          note = "llama.cpp (no auth, tailnet only)"; }
+    # Node-level 9448 llama.cpp row removed (SEI-255): llama-swap is served only as svc:llm below.
+    # nmtak16 did not use it. Rollback: uncomment, and restore the shared acl row (node IP:9448)
+    # in the ACL policy (docs/network.md).
+    # { path = null;       httpsPort = 9448;  port = 8888;                          note = "llama.cpp (no auth, tailnet only)"; }
     # Node-level /grafana row removed (SEI-244): Grafana is served only as svc:grafana below
     # (with root_url on svc:grafana this path already 404'd). Node 443 is now empty.
     # Rollback: uncomment, and set root_url back to "${baseUrl}/grafana/" (docs/network.md).
@@ -103,7 +106,7 @@ let
     # Directory backend only ever ~/share (tailscaled runs as root: never ~ or /).
     { path = null;       httpsPort = 443;   port = "/home/${m.userName}/share"; service = "share"; note = "share dir as Tailscale Service svc:share"; }
     # Tailscale Service svc:llm (SEI-246): llama-swap. Same drain + clear caveat as svc:webui.
-    # Node-level 9448 row stays until callers (nmtak16 share, other PCs) move here.
+    # Node-level 9448 row removed (SEI-255); see the commented row above.
     # ★ No auth: never funnel this (Service rows are serve-only anyway).
     { path = null;       httpsPort = 443;   port = 8888;   service = "llm";      note = "llama-swap as Tailscale Service svc:llm (no auth, tailnet only)"; }
     # Tailscale Service svc:n8n (SEI-247): editor + webhooks. Same drain + clear caveat as svc:webui.
