@@ -16,6 +16,10 @@
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
 
+  # drkonqi coredump launcher loops on this headless host; see docs/services/desktop.md.
+  # Way back: drop this line.
+  environment.plasma6.excludePackages = with pkgs.kdePackages; [ drkonqi ];
+
   # X11, not Wayland — see docs/services/desktop.md (projector hot-plug via xrandr/autorandr).
   services.displayManager.defaultSession = "plasmax11";
 
