@@ -54,6 +54,18 @@ both embedding and generation — no external API key. Previously used `services
   restart: 502 count at 600 s in `journalctl -u llama-cpp` should fall. Unverified: that the
   container image (`:latest`) honours `vlm.max_concurrent` as the host's 0.4.17 install does.
   Other 2026-11 anomaly not investigated: 367 × HTTP 500 in <120 s on 2026-11-05.
+- `embedding.max_input_tokens = 2500` (2026-11-09; OpenViking default 4096). Since `7543de5`
+  (2026-11-08, `embedding -c 8192 → 4096`) 18 embeddings failed with HTTP 400 `exceed_context_size`
+  (4,503–5,865 real tokens vs `n_ctx` 4096; CRITICAL `Failed to generate embedding`, the document
+  gets no vector). OpenViking's estimate undercounts Qwen3 tokens ≈1.43–1.45× (5,865 / 4096), so
+  2500 estimated ≈ 3,600 real < 4096. `-c 4096` is a VRAM figure for lfm3 coexistence and stays;
+  the input is shrunk instead. Cost: input longer than ~2,500 estimated tokens is cut, so only the
+  head of a long document is searchable (it previously got no vector at all; before 7543de5 up to
+  ~5.9K tokens were embedded in full). Recall impact not measured. Revert by dropping the key
+  (or raise `-c` to 8192 to embed in full). Unverified: that every code path honours it (the field
+  is documented as the raw-text-fallback limit); recount `Failed to generate embedding` after restart.
+  The separate bonsai overflow (long-term extraction prompts of 83K–159K tokens vs `-c 81920`,
+  15 × `Phase 2 step long_term failed` since 2026-11-05) has no OpenViking knob and is not fixed.
 
 ## Secrets
 

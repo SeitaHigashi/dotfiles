@@ -83,6 +83,13 @@ let
       # produced by a different embedding backend than the ones already
       # stored).
       allow_metadata_override = true;
+
+      # The llama.cpp embedding preset runs -c 4096 (modules/llama-cpp.nix);
+      # OpenViking's estimate undercounts Qwen3 tokens ~1.45x (5.9K real for a
+      # 4096 estimate), so the default 4096 overflowed (HTTP 400). Measured
+      # ceiling stays; shrink the input instead. docs/services/openviking.md.
+      # To revert, drop max_input_tokens (default 4096).
+      max_input_tokens = 2500;
     };
     vlm = {
       provider = "openai";
