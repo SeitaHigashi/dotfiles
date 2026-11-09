@@ -2,11 +2,12 @@
 
 ##############################################################################
 # fukurou (local voice-conversation loop, Rust, developed at ~/src/fukurou):
-# fukurou-server (STT -> LLM -> TTS) and fukurou-webui (browser test page).
+# fukurou-server (STT -> LLM -> TTS; STT/TTS via lfm3-audio on llama-swap, no
+# GPU use in the server itself) and fukurou-webui (browser test page).
 #
-# Docs: docs/services/fukurou.md (what it is, ports, PATH injection, Vulkan
-# GPU pinning), docs/runbooks/fukurou.md (rebuild/restart, troubleshooting),
-# docs/decisions/2026-09-22-fukurou-vulkan-gpu-split.md.
+# Docs: docs/services/fukurou.md (what it is, ports, PATH injection, GPU
+# history), docs/runbooks/fukurou.md (rebuild/restart, troubleshooting),
+# docs/decisions/2026-09-22-fukurou-vulkan-gpu-split.md (superseded).
 #
 # When you change this file, update the docs above in the same commit.
 ##############################################################################
@@ -35,12 +36,19 @@ in
   systemd.services.fukurou-server = {
     description = "fukurou-server (voice conversation loop: STT -> LLM -> TTS)";
 
-    after = [ "network.target" "nvidia-persistenced.service" ];
-    wants = [ "nvidia-persistenced.service" ];
+    # Ordering only (no wants/requires): llama-swap loads lfm3-audio on demand,
+    # and fukurou must neither pull llama-cpp up nor be restarted by it.
+    after = [ "network.target" "llama-cpp.service" ];
+    # No GPU use since 2026-11-08. To restore the old wiring: use the line
+    # below instead of the `after` above and re-enable `wants`.
+    # after = [ "network.target" "nvidia-persistenced.service" ];
+    # wants = [ "nvidia-persistenced.service" ];
     wantedBy = [ "multi-user.target" ];
 
     path = [ userNixProfile userHomeManagerProfile ];
 
+    # No GPU use since 2026-11-08 (whisper.cpp/Vulkan removed; STT/TTS go to
+    # lfm3-audio via llama-swap). To restore the old Vulkan pin, uncomment:
     # Pins whisper.cpp (STT) to the GTX 1660 SUPER via Vulkan, not CUDA.
     # ★ CUDA_VISIBLE_DEVICES/CUDA_DEVICE_ORDER have no effect on this unit —
     #   this process only touches the GPU through Vulkan.
@@ -49,7 +57,7 @@ in
     #   measured via `vulkaninfo --summary`). Re-measure independently of the
     #   CUDA side after any GPU change. Full mapping and rationale:
     #   docs/services/fukurou.md, docs/decisions/2026-09-22-fukurou-vulkan-gpu-split.md.
-    environment.GGML_VK_VISIBLE_DEVICES = "1";
+    # environment.GGML_VK_VISIBLE_DEVICES = "1";
 
     serviceConfig = {
       Type = "simple";

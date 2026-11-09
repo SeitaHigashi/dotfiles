@@ -48,7 +48,7 @@ possible because llama-swap runs each model as a separate process
 
 fukurou-server (478 MiB) was on this card as of 2026-09-21, but was moved to
 the 1660 SUPER on 2026-09-22 via `GGML_VK_VISIBLE_DEVICES`
-(`modules/fukurou.nix`). The projector HDMI is also wired to this card, so
+(`modules/fukurou.nix`); as of 2026-11-08 it holds no VRAM at all (not re-measured). The projector HDMI is also wired to this card, so
 Xorg's VRAM use adds on top while projecting
 ([projector decision](decisions/2026-08-25-projector-hdmi-to-3060ti.md)).
 
@@ -117,7 +117,7 @@ as "total capacity of 5.61 GiB").
 
 | resident | amount |
 |---|---|
-| fukurou (whisper.cpp, pinned by `modules/fukurou.nix`) | 479 MiB |
+| fukurou (whisper.cpp, pinned by `modules/fukurou.nix`) | 479 MiB as measured 2026-09-23; no VRAM since 2026-11-08 (whisper.cpp removed; not re-measured), total below not re-measured |
 | `embedding` (Qwen3-Embedding-4B Q4_K_M, `-c 8192`) | 3926 MiB |
 | `laya` (Laya multilingual 322M, fp16) | ~748 MiB (reference value, varies) |
 | **total** | **~5153 MiB** |

@@ -27,7 +27,7 @@ services fall back to CPU). Reboot to fix.
      error at startup, see [NVIDIA's CUDA GPUs list](https://developer.nvidia.com/cuda-gpus)).
    - `modules/comfyui.nix`: `gpuIndex`.
    - `modules/desktop.nix`: `deviceSection`'s `BusID` (X11 output card).
-   - `modules/fukurou.nix`: `GGML_VK_VISIBLE_DEVICES` — **Vulkan's enumeration order is
+   - `modules/fukurou.nix`: (no longer applicable since 2026-11-08, no GPU use) `GGML_VK_VISIBLE_DEVICES` — **Vulkan's enumeration order is
      independent of the CUDA/`nvidia-smi` order and must be re-measured separately**
      with `vulkaninfo --summary` (do not assume it matches the CUDA index).
 3. If the removed/added card changes generation mix, revisit `hardware.nvidia.open` and

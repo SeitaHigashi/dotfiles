@@ -22,15 +22,15 @@ Nix does not build fukurou — this module only launches the already-built
   `SessionEnd` hook). If either is missing, check that those directories still exist and
   contain the expected binaries.
 
-## If STT (whisper.cpp) doesn't seem to use the GPU, or uses the wrong one
+## If STT/TTS fail
 
-Confirm with `vulkaninfo --summary` which Vulkan index maps to which card — **this is not
-the same numbering as `nvidia-smi`** (see [services/fukurou.md](../services/fukurou.md)
-for the current mapping). Set `GGML_VK_VISIBLE_DEVICES` in `modules/fukurou.nix` to match.
+STT and TTS are lfm3-audio behind llama-swap (see [services/fukurou.md](../services/fukurou.md)).
 
-## GPU swap
-
-See [runbooks/gpu.md](gpu.md)'s "After swapping GPU hardware" — `fukurou.nix`'s
-`GGML_VK_VISIBLE_DEVICES` must be re-measured with `vulkaninfo --summary` independently of
-the CUDA-side re-measurement; they are unrelated enumeration systems that happen to
-currently agree with each other in reverse of `nvidia-smi`'s order.
+- `curl -s http://127.0.0.1:8888/running` — lfm3-audio should be listed once a session
+  starts (llama-swap loads it on demand; it is mutually exclusive with `laya`/`jeff`, so
+  one of those being loaded can evict or block it).
+- The realtime URL in `~/src/fukurou/config/server.toml` `[speech]` must be the
+  `/upstream/lfm3-audio/v1/realtime` form; plain `/v1/realtime?model=...` does not upgrade
+  to a WebSocket on llama-swap.
+- `journalctl -u fukurou-server -e` for connect/upgrade errors, and
+  `journalctl -u llama-cpp -e` for lfm3-audio load failures (VRAM on the 1660 SUPER).

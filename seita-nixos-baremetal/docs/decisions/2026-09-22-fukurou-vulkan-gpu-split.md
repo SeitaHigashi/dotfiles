@@ -1,5 +1,9 @@
 # fukurou: pin whisper.cpp to the 1660 SUPER via Vulkan
 
+> **Superseded 2026-11-08.** fukurou-server dropped whisper.cpp/VOICEVOX and no longer uses
+> any GPU; STT/TTS now go to lfm3-audio via llama-swap. The pin is commented out in
+> `modules/fukurou.nix`. Body below kept as history.
+
 - Decided: 2026-09-22
 - Module: `modules/fukurou.nix`
 
