@@ -48,6 +48,7 @@ GPU/VRAM allocation and measurements are collected in
 | `z-image-turbo` (`image-photo`) | Z-Image Turbo (`sd-server`), DiT Q4_K + Qwen3-4B-Instruct-2507 Q4_K_M + FLUX ae VAE | 3060 Ti | photorealistic image generation (8 steps, cfg 1.0); alternative in the `image` set |
 | `realvisxl` (`image-sdxl`) | RealVisXL V5.0 (SDXL fp16 checkpoint, `sd-server`) | 3060 Ti | photorealistic image generation (25 steps, cfg 5.0); alternative in the `image` set |
 | `flux2-klein` (`image-edit`) | FLUX.2 klein 4B (`sd-server`), DiT Q4_0 + Qwen3-4B Q4_K_M + flux2 VAE | 3060 Ti | image generation + instruction editing via `/v1/images/edits` (4 steps, cfg 1.0); alternative in the `image` set |
+| `moss-image` | MOSS-Image-SFT_clear (`sd-server`), self-converted DiT Q4_K + Qwen3.5-9B Q4_K_M + flux2 VAE (+ `tokenizer.json`) | 3060 Ti | anime image generation from natural-language prompts (30 steps, cfg 3.5); alternative in the `image` set |
 | `minimax-h3` | MiniMax-H3 (`sd-server`), pruned FL2VA DiT Q4_K_M + Qwen3-VL-32B Q2_K_M + video VAE fp16 + audio VAE fp32 | 3060 Ti | video + stereo audio generation |
 
 **Aliases** (`aliases:` in the llama-swap config) are role names for callers: they work in the
@@ -110,6 +111,34 @@ Measured 2026-10-31 in a standalone prototype with the same flags as the llama-s
 2026-10-31 switch: alias load and `/v1/images/edits` passthrough both work (generation 8.9 s
 including load, edit 11.6 s; outputs byte-identical to the prototype). This is a different build from
 `bonsai-image` (PrismML's ternary FLUX.2 Klein 4B via diffusers).
+
+### Calling moss-image
+
+```
+POST http://127.0.0.1:8888/v1/images/generations
+{"model": "moss-image", "prompt": "<natural-language sentence(s)>", "size": "1024x1024"}
+```
+
+MOSS-Image-SFT_clear is an anime fine-tune (easygoing0114) of OpenMOSS's MOSS-Image
+(DiT 5B + Qwen3.5-9B encoder + flux2 VAE, Apache-2.0). It takes **natural-language prompts**, not
+Danbooru tags, and has no alias. Weights live in `/var/lib/llm-models/MOSS-Image-SFT_clear/`
+(`README.md` there has the sha256 of each file and how they were made): the DiT is **self-converted**
+from the BF16 safetensors with `sd-cli -M convert --type q4_K` (nobody distributes a `_clear`
+GGUF); the distributed `INT8_ConvRot_HQ` file does not load in sd.cpp (`invalid ComfyUI convrot
+group size`, convrot_groupsize 1024 vs 256 accepted; Comfy-Org's own INT8 DiT loads). sd.cpp
+needs `--tokenizer` with the official Qwen3.5 `tokenizer.json`.
+
+Needs **sd.cpp master-1056** (MOSS-Image arrived in master-970); `sdCppRev` was bumped from
+master-913 for it on 2026-11-09 (SEI-258). That bump affects every `sd-server` preset: after the
+switch, regenerate once with `illustrious-xl` (and the other presets you use) to check for regressions.
+Roll back by restoring master-913 and its hash (kept in a comment at `sdCppRev`) and dropping `moss-image`.
+
+Measured 2026-11-09 with standalone `sd-cli` master-1056 (not through llama-swap yet), 3060 Ti alone,
+1024x1024, 30 steps, cfg 3.5, euler, `--fa --offload-to-cpu`, 3 prompts: VRAM peak 4181-4897 MiB
+(nvidia-smi, 0.5 s sampling), text encoder 3.8 s warm / 23 s cold, sampling 118-131 s (about 4 s/it),
+123-156 s per image, RSS 8.3 GB. The SFT base with the same flags measured the same. Slower than the
+30-60 s estimated in SEI-248. Not measured: line art, hand/finger failure rate over many images, speed
+vs Illustrious XL.
 
 ## Caller-facing notes
 

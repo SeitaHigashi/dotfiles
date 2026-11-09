@@ -667,7 +667,10 @@ let
   # support; master-913 is the first tag measured to work on this host
   # (docs/services/llama-cpp.md).
   ##########################################################################
-  sdCppRev = "master-913-b167b94";
+  # master-913 -> master-1056 (SEI-258, 2026-11-09) for MOSS-Image support (first in master-970).
+  # To roll back: restore the master-913 rev and hash below (hash was sha256-DsrOvHL+UmgnaywaZeZdOQcaqSyzn8hn2MZOyuhU61c=).
+  # sdCppRev = "master-913-b167b94";
+  sdCppRev = "master-1056-9234ad8";
   sdCpp =
     (pkgs.unstable.stable-diffusion-cpp.override { cudaSupport = true; }).overrideAttrs
       (old: {
@@ -677,7 +680,7 @@ let
           repo = "stable-diffusion.cpp";
           tag = sdCppRev;
           # was sha256-n6qulTZD/v5ovp+GQuZiKanDWV1G+Iy93vpTB0J5xO8= before the 2026-10-01 unstable bump (fetcher output changed)
-          hash = "sha256-DsrOvHL+UmgnaywaZeZdOQcaqSyzn8hn2MZOyuhU61c=";
+          hash = "sha256-cb2BBZYmulNPoQR3H0xnWHZxilzMlzSq82F/x61A+8M=";
           fetchSubmodules = true;
         };
         # Same 2 architectures as llamaCppPrism above.
@@ -688,6 +691,7 @@ let
           ++ [ "-DCMAKE_CUDA_ARCHITECTURES:STRING=75;86" ];
       });
   qwenImageDir = "${modelsDir}/Qwen-Image-2.1";
+  mossImageDir = "${modelsDir}/MOSS-Image-SFT_clear";
   zImageDir = "${modelsDir}/Z-Image-Turbo";
   flux2KleinDir = "${modelsDir}/FLUX.2-klein-4B";
   realVisXlDir = "${modelsDir}/RealVisXL-V5.0";
@@ -1144,6 +1148,35 @@ let
           --steps 4
           --sampling-method euler
 
+      # MOSS-Image-SFT_clear (easygoing0114's anime fine-tune of OpenMOSS MOSS-Image;
+      # DiT 5B self-converted to Q4_K + Qwen3.5-9B Q4_K_M encoder + flux2 VAE) on the 3060 Ti
+      # (SEI-258). Natural-language prompts (not Danbooru tags). Measured 2026-11-09
+      # with sd-cli master-1056 and these flags at 1024x1024, 30 steps: VRAM peak
+      # 4181-4897 MiB, sampling 118-131 s, 123-156 s per image, RSS 8.3 GB.
+      # sd.cpp needs --tokenizer (the official Qwen3.5 tokenizer.json). Provenance and
+      # sha256 of the files: ${mossImageDir}/README.md.
+      "moss-image":
+        name: "MOSS-Image-SFT_clear Q4_K (anime image generation, natural-language prompts)"
+        checkEndpoint: /v1/models
+        concurrencyLimit: 1
+        ttl: 600
+        env:
+          - "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ${sdCpp}/bin/sd-server
+          --listen-ip 127.0.0.1
+          --listen-port ''${PORT}
+          --diffusion-model ${mossImageDir}/MOSS-Image-SFT_clear-Q4_K.gguf
+          --llm ${mossImageDir}/Qwen3.5-9B-Q4_K_M.gguf
+          --vae ${mossImageDir}/flux2-vae_small.safetensors
+          --tokenizer ${mossImageDir}/tokenizer.json
+          --offload-to-cpu
+          --fa
+          --cfg-scale 3.5
+          --steps 30
+          --sampling-method euler
+
       # Bonsai Image Ternary 4B (gemlite INT2) on the 3060 Ti: an alternative to
       # qwen-image in the same matrix set, so it evicts bonsai and qwen-image.
       # Call via POST /v1/images/generations with "model": "bonsai-image"
@@ -1233,6 +1266,7 @@ let
               pony-xl: 10
               noobai-xl: 10
               flux2-klein: 10
+              moss-image: 10
               minimax-h3: 10
             sets:
               # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
@@ -1240,7 +1274,7 @@ let
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
               # The image models are alternatives ("|"): same card, and
               # bonsai-image alone peaks at 7.8 of its 8 GiB.
-              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
+              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein | moss-image) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
               video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
   '';
