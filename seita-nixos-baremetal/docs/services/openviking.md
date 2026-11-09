@@ -42,6 +42,18 @@ both embedding and generation — no external API key. Previously used `services
   image generation. Healthy extractions generate ~100–2,000 tokens. 6144 fits the timeout:
   ~117 s prefill + 6144 / 17 t/s ≈ 480 s. Revert by dropping `max_tokens`. Unverified: how
   OpenViking handles `finish_reason=length`; check `eval time` token counts in bonsai's log after switch.
+- `vlm` also sets `max_concurrent = 1` (2026-11-09). Measured on llama-swap (7 days, `AsyncOpenAI`
+  chat calls): 237×200 / 420×502, 398 of the 502s at exactly 600 s (client timeout; llama-swap logs a
+  cancelled client as 502). `max_tokens = 6144` was already live (`/slots` showed `n_predict 6144`,
+  ~15.5 t/s decode), so the 600 s was mostly queue wait, not generation: bonsai has one slot
+  (`-np 1`), OpenViking's `vlm.max_concurrent` defaults to 32, and on 2026-11-09 00:00–05:30
+  ~5.5 requests (max 8) were in flight at each request start. n8n also posts to bonsai (5 of the 6
+  successes that night were n8n, 450–563 s), so some contention remains. Raising `vlm.timeout`
+  (default 600 s, valid key in `vlm_config.py`) was rejected: it lengthens the queue wait without
+  adding capacity. Revert by dropping `max_concurrent`. Verify after switch + `podman-openviking`
+  restart: 502 count at 600 s in `journalctl -u llama-cpp` should fall. Unverified: that the
+  container image (`:latest`) honours `vlm.max_concurrent` as the host's 0.4.17 install does.
+  Other 2026-11 anomaly not investigated: 367 × HTTP 500 in <120 s on 2026-11-05.
 
 ## Secrets
 

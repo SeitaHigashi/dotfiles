@@ -107,6 +107,10 @@ let
       # ~10K tokens and hit the 600s client timeout; healthy ones are <=~2K).
       # 6144 = 117s prefill + 6144/17 t/s ~ 480s < 600s. To revert, drop max_tokens.
       extra_request_body = { reasoning_effort = "none"; max_tokens = 6144; };
+      # bonsai runs -np 1; OV's default of 32 concurrent calls queued ~5 deep in
+      # front of it and requests hit the 600s client timeout (llama-swap 502s,
+      # 2026-11-09). docs/services/openviking.md. To revert, drop max_concurrent.
+      max_concurrent = 1;
     };
     query_planner = {
       provider = "openai";
