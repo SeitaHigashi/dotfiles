@@ -914,6 +914,26 @@ let
           -ngl 99
           -c 8192
 
+      # d1-2B (Liquid AI LFM3 decision model), GGUF Q4_K_M on the upstream build.
+      # Alternative to laya/jeff/lfm3-audio on the 1660 SUPER. Measured with
+      # embedding resident: +1382 MiB at -ub 2048 (+2356 MiB at -ub 8192; Q8_0 at
+      # 8192 OOMs). -b/-ub cap state+question at 2048 tokens: do not shrink or
+      # feed longer inputs without re-measuring. Call via
+      # POST /upstream/d1-2b/v1/systemone (docs/decisions/2026-11-11-d1-2b-in-llama-swap.md).
+      # No "decision"/"jeff" alias: those stay with jeff-qwen3.5-0.8b.
+      "d1-2b":
+        name: "d1-2B (decision)"
+        ttl: 600
+        env:
+          - "CUDA_VISIBLE_DEVICES=0"
+        cmd: |
+          ''${serverUpstream}
+          --model ${modelsDir}/d1-2B-GGUF/d1-2B-Q4_K_M.gguf
+          -ngl 99
+          -c 8192
+          -b 2048
+          -ub 2048
+
       # Jeff v1.2 Qwen3.5-0.8B (Jev-compatible decision model, PyTorch), the
       # English-trained but Japanese-capable alternative to laya. Alias
       # "decision" is the role name; laya keeps its own id and is not an alias.
@@ -1255,6 +1275,7 @@ let
               laya: 30
               jeff-qwen3.5-0.8b: 30
               lfm3-audio: 30
+              d1-2b: 30
               # Cheap to reload relative to bonsai (weights are staged from RAM
               # per request anyway), so it's the first to go when bonsai returns.
               qwen-image: 10
@@ -1270,13 +1291,13 @@ let
               minimax-h3: 10
             sets:
               # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
-              generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
+              generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio | d1-2b)"
               # Shares the 3060 Ti with bonsai: requesting one evicts the other.
               # The image models are alternatives ("|"): same card, and
               # bonsai-image alone peaks at 7.8 of its 8 GiB.
-              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein | moss-image) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
+              image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein | moss-image) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio | d1-2b)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
-              video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio)"
+              video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio | d1-2b)"
   '';
 in
 {
