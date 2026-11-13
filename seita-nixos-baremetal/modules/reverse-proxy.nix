@@ -6,7 +6,7 @@
 # Docs:
 #   docs/network.md   network boundary, why Serve not nginx, per-app subpath
 #                      quirks, port list, and each service's dedicated-port
-#                      rationale (Ollama bypass, Multica's two ports, the
+#                      rationale (Ollama bypass, Multica on one port, the
 #                      GitHub webhook Funnel nginx, fukurou wss)
 #
 # When you change this file, update docs/network.md in the same commit.
@@ -32,9 +32,16 @@ let
   # n8n as Tailscale Service svc:n8n (SEI-247); rollback: "https://${fqdn}:8443".
   n8nUrl = "https://n8n.${tailnetSuffix}";
   comfyuiUrl = "https://${fqdn}:9443";
-  multicaUrl = "https://${fqdn}:9444";
-  # Backend-direct URL for multica-cli's daemon/runtime (docs/network.md).
-  multicaBackendUrl = "https://${fqdn}:9445";
+  # Multica as Tailscale Service svc:multica (SEI-260), one port for browser and
+  # multica-cli alike: the frontend proxies /api, /v1, /ws, /health, /auth to the
+  # backend (daemon pre-test on :9444 passed 2026-11-13). Rollback: "https://${fqdn}:9444".
+  multicaUrl = "https://multica.${tailnetSuffix}";
+  # Node-level frontend URL, unused since the 9444 row was removed (SEI-260). Rollback:
+  # uncomment together with the 9444 row and add it back to CORS_ALLOWED_ORIGINS.
+  # multicaNodeUrl = "https://${fqdn}:9444";
+  # Backend-direct URL, no longer used by any env var (SEI-260). Rollback: uncomment and
+  # set MULTICA_PUBLIC_URL back to it (docs/network.md).
+  # multicaBackendUrl = "https://${fqdn}:9445";
   # GitHub App webhook, reachable from the public internet (docs/network.md).
   multicaGithubWebhookUrl = "https://${fqdn}:10000";
   fukurouWebuiUrl = "https://${fqdn}:9446";
@@ -54,7 +61,7 @@ let
   ############################################################################
   # Route table. path = null mounts at the root (/). httpsPort is the
   # listening HTTPS port. Full rationale (why each app needs its own port,
-  # the Ollama /ollama trap, the Multica two-port split, the GitHub webhook
+  # the Ollama /ollama trap, Multica on one port, the GitHub webhook
   # Funnel nginx, fukurou wss) is in docs/network.md — keep it updated when
   # you touch this table.
   #
@@ -83,8 +90,12 @@ let
     # { path = null;       httpsPort = 8443;  port = 5678;                          note = "n8n"; }
     # Disabled with ComfyUI (2026-09-24, modules/comfyui.nix enable = false); uncomment together.
     # { path = null;       httpsPort = 9443;  port = 8188;                          note = "comfyui"; }
-    { path = null;       httpsPort = 9444;  port = 3001;                          note = "multica-frontend"; }
-    { path = null;       httpsPort = 9445;  port = 8082;                          note = "multica-backend"; }
+    # Multica node-level rows removed (SEI-260): Multica is served only as svc:multica below.
+    # Host daemon moved 2026-11-13; Moko VM's CLI reaches 127.0.0.1:8082 over an SSH tunnel
+    # and never used these. Rollback: uncomment, uncomment multicaNodeUrl and add it back to
+    # CORS_ALLOWED_ORIGINS, point multica-cli server_url back at …:9444 (docs/network.md).
+    # { path = null;       httpsPort = 9444;  port = 3001;                          note = "multica-frontend"; }
+    # { path = null;       httpsPort = 9445;  port = 8082;                          note = "multica-backend"; }
     { path = null;       httpsPort = 9446;  port = 8765;                          note = "fukurou-webui"; }
     { path = null;       httpsPort = 9447;  port = 7878;                          note = "fukurou-server (wss, for fukurou-webui)"; }
     { path = null;       httpsPort = 9449;  port = 8123;                          note = "automuteus-galactus (AmongUsCapture)"; }
@@ -112,6 +123,10 @@ let
     # Tailscale Service svc:n8n (SEI-247): editor + webhooks. Same drain + clear caveat as svc:webui.
     # LAN :5678 (plain HTTP) is unchanged — opening n8n to the LAN is a standing decision.
     { path = null;       httpsPort = 443;   port = 5678;   service = "n8n";      note = "n8n as Tailscale Service svc:n8n"; }
+    # Tailscale Service svc:multica (SEI-260): frontend only; it proxies the backend paths
+    # multica-cli needs, so no second port. Same drain + clear caveat as svc:webui.
+    # The GitHub webhook Funnel (10000 -> nginx -> 8082) is unaffected.
+    { path = null;       httpsPort = 443;   port = 3001;   service = "multica";  note = "multica-frontend as Tailscale Service svc:multica"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs
@@ -274,15 +289,17 @@ in
   # the backend's Upgrader.CheckOrigin rejects anything else, and
   # modules/multica.nix only knows the internal http://multica-frontend:3000.
   # Omitting this silently breaks the /ws websocket (docs/network.md,
-  # confirmed on hardware 2026-08-12).
-  # MULTICA_PUBLIC_URL uses the backend-direct URL, not multicaUrl, because
-  # it's used to build webhook URLs that non-browser clients must be able to
-  # reach directly.
+  # confirmed on hardware 2026-08-12). It is comma-separated (server
+  # cmd/server/router.go allowedOrigins); the node :9444 origin was listed
+  # during the SEI-260 coexistence and dropped with the 9444 row.
+  # MULTICA_PUBLIC_URL builds webhook / plugin / daemon-setup URLs. They all sit
+  # under /api or /v1, which the frontend proxies, so it points at svc:multica
+  # too (SEI-260; was the backend-direct :9445 URL).
   virtualisation.oci-containers.containers.multica-backend.environment = {
     FRONTEND_ORIGIN = multicaUrl;
-    CORS_ALLOWED_ORIGINS = multicaUrl;
+    CORS_ALLOWED_ORIGINS = multicaUrl;  # SEI-260 coexistence: "${multicaUrl},${multicaNodeUrl}"
     MULTICA_APP_URL = multicaUrl;
-    MULTICA_PUBLIC_URL = multicaBackendUrl;
+    MULTICA_PUBLIC_URL = multicaUrl;
   };
 
   # AutoMuteUs: HOST is the galactus URL and API_SERVER_URL the API URL that

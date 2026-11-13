@@ -18,12 +18,11 @@ for free — no dedicated ZFS dataset was created.
 
 | URL | What |
 |---|---|
-| `https://<fqdn>:9444/` | Browser (frontend, via Tailscale Serve) |
-| `https://<fqdn>:9445/` | `multica-cli`'s `--server-url` (backend directly) |
+| `https://multica.tail5426c0.ts.net/` | Tailscale Service `svc:multica`: browser and `multica-cli`'s `server_url` / `app_url` (SEI-260) |
 | `http://127.0.0.1:3001/` | Frontend, direct (debug, via SSH port-forward) |
 | `http://127.0.0.1:8082/` | Backend, direct (debug, via SSH port-forward) |
 
-Why two Serve ports and what each is for: [`docs/network.md`](../network.md#multica-has-two-serve-ports).
+Why one Serve port is enough: [`docs/network.md`](../network.md#multica-one-serve-port).
 
 Host-side listen ports were chosen to avoid the fixed ports already used by
 Grafana (3000) and Open WebUI (8080): frontend → 3001, backend → 8082.

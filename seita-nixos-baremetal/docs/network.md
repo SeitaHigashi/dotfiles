@@ -53,7 +53,7 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
 | `svc:share` | `share.tail5426c0.ts.net` | 443 | Directory `/home/seita/share` (static files; `--service` accepts a path backend: same `Path` handler as node-level serve, checked in tailscale 1.98.10 source `cmd/tailscale/cli/serve_v2.go` `applyWebServe` and `ipn/ipnlocal/serve.go`) | Host approval by Seita (SEI-245; method not recorded) | 2026-11-06 | Measured 2026-11-06 from the host itself: `/` 200 and byte-identical to `:9451/`, a PNG under `out/` 200 with matching size, missing path 404. Node-level `9451` row removed 2026-11-07 (SEI-245; Seita confirmed a member PC reaches svc:share and waived the coexistence period; measured after the switch from the host: `:9451/` connection refused (curl exit 7), `share.` still 200, `.TCP` keys no longer list 9451). Known issue, fixed later (not in SEI-245): links in `~/share/index.html` may break under `svc:share`. Caller moved 2026-11-07 with Seita's approval: the default output URL in `~/.claude/CLAUDE.md` now points here (was `…:9451/`). |
 | `svc:llm` | `llm.tail5426c0.ts.net` | 443 | `127.0.0.1:8888` (llama-swap) | Host approval by Seita (SEI-246; method not recorded) | 2026-11-07 | **No auth — never on Funnel.** Measured 2026-11-07 from the host after the switch: `/v1/models` 200. First cert took ~3m45s (00:33:10 → 00:36:54 JST; `SetDNS` to controlplane repeatedly hit `context deadline exceeded`, TLS handshakes hung until then) vs ~33s for `svc:grafana`/`svc:share` — expect a few minutes of timeouts right after a new Service is approved. Shared to nmtak16 via grant `autogroup:shared` → `svc:llm` `tcp:443` (to be added by Seita). Node-level `9448` row removed in SEI-255 (nmtak16 did not use it; its Muse client could not reach `llm.`/`webui.`/`grafana.` — all `000` Empty reply via the Muse tunnel proxy on 2026-11-07, so the grant is unverified from nmtak16). The shared acl row (node IP:9448) is deleted by Seita in the ACL policy. Measured 2026-11-08 from the host after switch: `https://seita-nixos-baremetal.tail5426c0.ts.net:9448/v1/models` → connection refused (000); `https://llm.tail5426c0.ts.net/v1/models` → 200. n8n / Open WebUI keep `127.0.0.1:8888` direct. |
 | `svc:n8n` | `n8n.tail5426c0.ts.net` | 443 | `127.0.0.1:5678` (n8n editor + webhooks) | Host approval by Seita (SEI-247; method not recorded) | 2026-11-07 | `WEBHOOK_URL` and `N8N_EDITOR_BASE_URL` point here (SEI-247). Measured 2026-11-07 from the host after the switch: `n8n.` `/healthz` 200 and `/` 200, node `:8443/healthz` still 200 (coexistence works: n8n routes webhooks by path). Seita confirmed a member PC reaches `n8n.` and Tasker posts through it (2026-11-07). Callers moved 2026-11-07: Tasker export and seita-n8n-workflows docs (`9c0f16d` in that repo). Node-level `8443` row removed 2026-11-07 (SEI-247; Seita waived the coexistence period). Measured after the switch (10:01 JST) from the host: `:8443/healthz` connection refused (curl exit 7), `n8n.` `/healthz` and `/` 200, `.TCP` keys no longer list 8443. **Caveat found then:** Tasker's hourly run at 10:00:02 JST (executions 10877/10878, `StepsRecord` only) still posted to `Host: …:8443` — the manually run task was repointed, the hourly one was not. Resolved the same day: from the 11:00 JST hourly run on (executions 10882–10893), every Tasker post arrives with `Host: n8n.tail5426c0.ts.net`. LAN `http://<LAN IP>:5678/` unchanged (standing decision). Only external caller of `:8443`: the phone Tasker profile (`~/src/seita-n8n-workflows/tasker/health-to-n8n.tsk.xml`, `/webhook/health-…`); Grafana alerting, host-notify, discord-bot and the n8n MCP use `127.0.0.1:5678` directly. |
-| — Multica | — | 9444 / 9445 | `3001` / `8082` | — | — | Node-level (on hold) |
+| `svc:multica` | `multica.tail5426c0.ts.net` | 443 | `127.0.0.1:3001` (Multica frontend; it proxies `/api`, `/v1`, `/ws`, `/health`, `/auth` to the backend) | Host approval by Seita (SEI-260; method not recorded) | 2026-11-13 | One port for browser and `multica-cli` (see "Multica: one Serve port"). `FRONTEND_ORIGIN` / `CORS_ALLOWED_ORIGINS` / `MULTICA_APP_URL` / `MULTICA_PUBLIC_URL` point here. Measured 2026-11-13 from the host after the switch: `/health` 200 JSON, `/api/me` 401 (backend), `/` 200 HTML, CLI `issue get` OK. Callers moved 2026-11-13: browser (Seita), host daemon `server_url`/`app_url` (21:07 JST; runs claimed and reported through it), Moko VM `app_url` (Moko; its `server_url` stays an SSH tunnel to `127.0.0.1:8082` because the VM cannot resolve Service names, curl 000). Node-level `9444` / `9445` rows and the `:9444` CORS origin removed afterwards (SEI-260; nothing else referenced them). GitHub webhook Funnel (`10000`) unaffected. |
 | — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
 | — AutoMuteUs | — | 9449 / 9450 | `8123` / `8084` | — | — | Node-level (on hold) |
 | — seita-health | — | 9452 | `8090` | — | — | Node-level (on hold) |
@@ -86,7 +86,9 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
    (node IP:9448) if they were removed; for `svc:n8n`: set `n8nUrl` back to
    `"https://${fqdn}:8443"` in `reverse-proxy.nix`, point Tasker and the
    seita-n8n-workflows docs back at `…:8443`, and restore the node-level `8443` row if
-   it was removed).
+   it was removed; for `svc:multica`: set `multicaUrl` back to `"https://${fqdn}:9444"`,
+   uncomment the node-level `9444` / `9445` rows and `multicaNodeUrl`, and point the host
+   daemon's and Moko VM's `server_url` / `app_url` back at `…:9444`).
 2. Remove the `service` row and `nixos-rebuild switch`.
 3. `sudo tailscale serve drain svc:<name>`
 4. `sudo tailscale serve clear svc:<name>` — `tailscale serve reset` (run at the
@@ -108,8 +110,7 @@ the Serve root instead.
 | Grafana | `svc:grafana` `443` root (SEI-244; node-level `/grafana` under `443` before, removed) | Under the old subpath: `root_url` absolute + `serve_from_sub_path = false` makes Grafana listen at `/` but generate `/grafana/...` URLs — matches the prefix-stripping proxy. Setting `serve_from_sub_path = true` causes an infinite redirect loop (verified: `curl -L` hits `--max-redirs`). |
 | n8n | `svc:n8n` `443` root (SEI-247; the node-level `8443` root row was removed 2026-11-07) | `N8N_PATH` only rewrites the frontend's `window.BASE_PATH`; the backend keeps listening at `/`. Under a prefix-stripping proxy that alone works, but it breaks the LAN's direct `http://<LAN IP>:5678/` access — the HTML references `/n8n/assets/*.js` but the backend serves its catch-all HTML there instead (verified on hardware: white screen). Since n8n must stay open on the LAN too, it gets its own port with no `N8N_PATH` set. |
 | ComfyUI (disabled since 2026-09-24, route commented out) | `9443` root (separate port) | Frontend calls the API via absolute paths; no reverse-proxy subpath support. `443`/`8443` are taken. |
-| Multica (frontend) | `9444` root (separate port) | Next.js frontend assumes `window.origin`-relative absolute paths (`/api`, `/ws`); incompatible with prefix stripping. |
-| Multica (backend) | `9445` root (separate port) | See "Multica has two Serve ports" below. |
+| Multica | `svc:multica` `443` root (SEI-260; node-level `9444` / `9445` roots removed) | Next.js frontend assumes `window.origin`-relative absolute paths (`/api`, `/ws`); incompatible with prefix stripping. |
 | fukurou-webui | `9446` root (separate port) | Single dev test page, `index.html` embedded in the binary — no subpath awareness. |
 | fukurou-server (wss) | `9447` root (separate port) | See "fukurou-server wss" below. |
 | seita-health | `9452` root (separate port) | Axum app with absolute paths (`/static`, form posts); no subpath support. Backend is `127.0.0.1:8090` (`modules/health.nix`). |
@@ -138,16 +139,23 @@ As of 2026-09-21, `modules/ollama.nix` has `enable = false` (superseded by
 llama.cpp — see [2026-09-23 ollama → llama.cpp](decisions/2026-09-23-ollama-to-llama-cpp.md)),
 so nothing currently listens on 11434.
 
-## Multica has two Serve ports
+## Multica: one Serve port
 
-- `9444` → `multica-frontend` (Next.js SSR). This is what browsers use.
-- `9445` → `multica-backend` directly. `multica-cli`'s local daemon/runtime
-  isn't a browser and can't go through the Next.js SSR proxy — it appears to
-  distinguish "is this the backend itself" by content-type/response headers,
-  and treats the frontend's HTML response as "not reachable" (verified on
-  hardware 2026-08-12). So `--server-url` for `multica-cli` must point at the
-  `9445` backend URL, not the `9444` frontend URL. See
-  [`docs/services/multica.md`](services/multica.md).
+`svc:multica` (443 → `multica-frontend` 3001) serves both browsers and
+`multica-cli` (SEI-260). The frontend's Next.js rewrites forward `/api/*`,
+`/v1/*`, `/ws`, `/health` and `/auth/*` to the backend (`apps/web/next.config.ts`
+upstream), which covers the daemon API (`/api/daemon/*`) and every URL built
+from `MULTICA_PUBLIC_URL` (webhooks under `/api/webhooks/*`, plugin actions
+under `/v1`). Not forwarded: `/uploads/*`, `/readyz`, `/plugin-surfaces/*`
+(measured 2026-11-13: Next.js HTML 404 on `:9444`, backend 404/200 on `:9445`).
+
+History: until 2026-11-13 there was a second port, `9445` → `multica-backend`,
+because on 2026-08-12 the daemon treated the frontend URL as "not reachable".
+That no longer reproduces: on 2026-11-13 the host daemon ran with
+`server_url = …:9444`, claimed a task and finished it end to end (SEI-260
+pre-test). Once every caller had moved to `https://multica.tail5426c0.ts.net`,
+the node-level `9444` / `9445` rows were removed (SEI-260). See
+[`docs/services/multica.md`](services/multica.md).
 
 ## Multica GitHub webhook: Funnel through a local nginx
 
