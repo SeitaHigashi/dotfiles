@@ -16,7 +16,7 @@ let
   # Built by seita-health's own flake (crane), pinned in flake.lock via the
   # `seita-health` input. Pick up app changes with:
   #   nix flake update seita-health   (after committing in ~/src/seita-health)
-  seitaHealth = inputs.seita-health.packages.${pkgs.system}.default;
+  seitaHealth = inputs.seita-health.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
   # The production DB stays where the CLI/MCP default points (cli.rs default_db),
   # so `seita-health` run by hand and this service share one file.

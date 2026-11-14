@@ -38,7 +38,7 @@ in
   boot.kernelPackages = lib.mkDefault pkgs.linuxPackages;
 
   # Hibernation can corrupt a ZFS pool, so it stays disabled.
-  boot.zfs.allowHibernation = false;
+  boot.zfs.unsafeAllowHibernation = false; # renamed from allowHibernation
 
   # Directory scanned at import time (same as the NixOS default). disko creates
   # pools under /dev/disk/by-partlabel/disk-<disk>-<part>, but ZFS matches on the

@@ -89,6 +89,7 @@ in
       description = "Report the boot (and whether the previous shutdown was clean)";
       wantedBy = [ "multi-user.target" ];
       after = [ "local-fs.target" "n8n.service" "network-online.target" ];
+      wants = [ "network-online.target" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

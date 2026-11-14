@@ -64,15 +64,17 @@
       # package = pkgs.nightfox-gtk-theme;
       # name = "Nightfox-Dark-hdpi";
     };
+    # keep the legacy default (HM default changes to null at stateVersion 26.05); set null to adopt it
+    gtk4.theme = config.gtk.theme;
   };
 
   imports = [ ./wm/hyprland.nix ./nvim.nix ];
 
   programs.git = {
     enable = true;
-    userName = "Seita Higashi";
-    userEmail = "higashi110902@gmail.com";
-    extraConfig = {
+    settings = {
+      user.name = "Seita Higashi";
+      user.email = "higashi110902@gmail.com";
       init.defaultBranch = "main";
     };
   };

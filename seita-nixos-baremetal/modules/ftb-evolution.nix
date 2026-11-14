@@ -185,6 +185,7 @@ in
     description = "lazymc (on-demand Minecraft start/stop)";
     wantedBy = [ "multi-user.target" ];
     after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
     serviceConfig = {
       # Root: the wrapper runs systemctl start/stop on the container unit.
       ExecStart = "${lib.getExe pkgs.lazymc} -c ${lazymcConfig} start";

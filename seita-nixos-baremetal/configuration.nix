@@ -177,9 +177,9 @@ in
   #   seconds to about a minute, so 3 minutes leaves margin against false
   #   positives triggering a hard reset.
   ############################################################################
-  systemd.watchdog = {
-    runtimeTime = "30s";
-    rebootTime = "3min";
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = "30s";
+    RebootWatchdogSec = "3min";
   };
 
   # NixOS version at first install. Do not change while this system keeps running.

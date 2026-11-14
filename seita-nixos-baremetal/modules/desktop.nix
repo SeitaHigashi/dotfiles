@@ -51,9 +51,9 @@
   systemd.targets.hibernate.enable = false;
   systemd.targets.hybrid-sleep.enable = false;
 
-  services.logind.lidSwitch = "ignore";
-  services.logind.lidSwitchExternalPower = "ignore";
-  services.logind.lidSwitchDocked = "ignore";
+  services.logind.settings.Login.HandleLidSwitch = "ignore";
+  services.logind.settings.Login.HandleLidSwitchExternalPower = "ignore";
+  services.logind.settings.Login.HandleLidSwitchDocked = "ignore";
   # 26.05 removed logind.extraConfig; structured settings instead.
   services.logind.settings.Login.IdleAction = "ignore";
 }

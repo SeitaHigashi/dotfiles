@@ -11,7 +11,7 @@
 
 let
   pythonEnv = pkgs.python3.withPackages (ps: [ ps.websockets ]);
-  agenixPkg = inputs.agenix.packages.${pkgs.system}.default;
+  agenixPkg = inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 {
   environment.systemPackages = [ agenixPkg ];

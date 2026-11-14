@@ -320,7 +320,7 @@ in
               opts = { };
               dependencies = [ "nui.nvim" "plenary.nvim" "telescope.nvim" ];
             })
-            (p "codeium.nvim" vp.codeium-nvim {
+            (p "codeium.nvim" vp.windsurf-nvim {
               # disabled when free memory is below 1GB
               enabled = raw "function() return require('utils').memory_available() > 1024 and vim.env.HOME_ENV end";
               event = "VeryLazy";
