@@ -7,7 +7,7 @@
 #
 # Docs:
 #   docs/services/automuteus.md   what it is, access, secrets, operations
-#   docs/network.md               Serve ports 9449 (galactus) / 9450 (api)
+#   docs/network.md               svc:automuteus 443 (galactus) / 9450 (api)
 #
 # When you change this file, update the docs above in the same commit.
 ##############################################################################
@@ -22,7 +22,7 @@ let
   apiContainerPort = 5000;
 
   # Host-side (127.0.0.1) publish ports; exposed to the tailnet only via
-  # Tailscale Serve (modules/reverse-proxy.nix, 9449/9450). 8080 is taken by
+  # Tailscale Serve (modules/reverse-proxy.nix, svc:automuteus). 8080 is taken by
   # Open WebUI, 8082/8083 by Multica.
   galactusHostPort = 8123;
   apiHostPort = 8084;

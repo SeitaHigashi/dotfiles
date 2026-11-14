@@ -49,8 +49,9 @@ let
   fukurouServerWssUrl = "wss://${fqdn}:9447";
   llamaCppUrl = "https://${fqdn}:9448";
   # AutoMuteUs: AmongUsCapture connects to galactus and the API (tailnet only).
-  automuteusGalactusUrl = "https://${fqdn}:9449";
-  automuteusApiUrl = "https://${fqdn}:9450";
+  # svc:automuteus (SEI-263): 443 -> galactus, 9450 -> API. Rollback: "https://${fqdn}:9449" / ":9450".
+  automuteusGalactusUrl = "https://automuteus.${tailnetSuffix}";
+  automuteusApiUrl = "https://automuteus.${tailnetSuffix}:9450";
 
   # Must match modules/multica.nix's backendHostPort — the webhook relay
   # nginx below forwards to it.
@@ -98,8 +99,10 @@ let
     # { path = null;       httpsPort = 9445;  port = 8082;                          note = "multica-backend"; }
     { path = null;       httpsPort = 9446;  port = 8765;                          note = "fukurou-webui"; }
     { path = null;       httpsPort = 9447;  port = 7878;                          note = "fukurou-server (wss, for fukurou-webui)"; }
-    { path = null;       httpsPort = 9449;  port = 8123;                          note = "automuteus-galactus (AmongUsCapture)"; }
-    { path = null;       httpsPort = 9450;  port = 8084;                          note = "automuteus-api (capture links)"; }
+    # Node-level 9449/9450 AutoMuteUs rows removed (SEI-263): served only as svc:automuteus below.
+    # Rollback: uncomment both, and set automuteusGalactusUrl/ApiUrl back to "https://${fqdn}:9449" / ":9450".
+    # { path = null;       httpsPort = 9449;  port = 8123;                          note = "automuteus-galactus (AmongUsCapture)"; }
+    # { path = null;       httpsPort = 9450;  port = 8084;                          note = "automuteus-api (capture links)"; }
     # Node-level 9451 ~/share row removed (SEI-245): ~/share is served only as svc:share below.
     # Rollback: uncomment, and point ~/.claude/CLAUDE.md's default output URL back at :9451/
     # (docs/network.md). Never point it at ~ or / (tailscaled runs as root).
@@ -127,6 +130,11 @@ let
     # multica-cli needs, so no second port. Same drain + clear caveat as svc:webui.
     # The GitHub webhook Funnel (10000 -> nginx -> 8082) is unaffected.
     { path = null;       httpsPort = 443;   port = 3001;   service = "multica";  note = "multica-frontend as Tailscale Service svc:multica"; }
+    # Tailscale Service svc:automuteus (SEI-263): ONE service, two ports (443 galactus = bot HOST,
+    # 9450 API = API_SERVER_URL). Same drain + clear caveat as svc:webui. The node-level 9449/9450
+    # rows were removed after a capture client was verified (2026-11-14).
+    { path = null;       httpsPort = 443;   port = 8123;   service = "automuteus"; note = "automuteus-galactus as Tailscale Service svc:automuteus"; }
+    { path = null;       httpsPort = 9450;  port = 8084;   service = "automuteus"; note = "automuteus-api as Tailscale Service svc:automuteus"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs

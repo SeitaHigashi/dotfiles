@@ -17,10 +17,15 @@ Containers reach each other by name over podman's default network.
 
 ## Access (tailnet only)
 
-Exposed through Tailscale Serve (`modules/reverse-proxy.nix`), not Funnel:
+Exposed through Tailscale Serve (`modules/reverse-proxy.nix`), not Funnel, as one
+Tailscale Service `svc:automuteus` (SEI-263, two ports):
 
-- galactus: `https://seita-nixos-baremetal.tail5426c0.ts.net:9449` (bot `HOST`)
-- API: `https://seita-nixos-baremetal.tail5426c0.ts.net:9450` (bot `API_SERVER_URL`)
+- galactus: `https://automuteus.tail5426c0.ts.net` (443 → `127.0.0.1:8123`, bot `HOST`)
+- API: `https://automuteus.tail5426c0.ts.net:9450` (→ `127.0.0.1:8084`, bot `API_SERVER_URL`)
+
+The old node-level `:9449` / `:9450` rows were removed 2026-11-14 (capture links made before the switch no longer work: run `/new` again).
+Rollback: see `docs/network.md` "Rolling back a Service".
+
 
 The PC running AmongUsCapture must be on the tailnet. Discord players who don't run
 capture need nothing.
