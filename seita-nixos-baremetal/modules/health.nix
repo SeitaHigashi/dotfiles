@@ -45,4 +45,8 @@ in
       RestartSec = "5s";
     };
   };
+
+  # The CLI on PATH for interactive/SSH use (recipe intake, stock checks).
+  # It shares the production DB with the service (see dbPath above).
+  environment.systemPackages = [ seitaHealth ];
 }

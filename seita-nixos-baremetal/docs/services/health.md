@@ -19,6 +19,9 @@ in the same binary share the DB.
   whose ExecStart path changed only by store hash — check `systemctl status`).
 - Unit `seita-health.service`: `User=seita`, `WorkingDirectory=~/src/seita-health`,
   `serve` on `127.0.0.1:8090` (`SEITA_HEALTH_ADDR`).
+- CLI: the same package is in `environment.systemPackages`
+  (`modules/health.nix`), so `seita-health` is on PATH for SSH/interactive
+  use (recipe intake, stock checks) and shares the production DB.
 - DB: `~/src/seita-health/data/health.db` (`SEITA_HEALTH_DB`), the same file
   the CLI defaults to. Run as `seita` so WAL/SHM files stay owned by one user.
 - Exposure: Tailscale Serve `9452 -> 8090`, tailnet only
