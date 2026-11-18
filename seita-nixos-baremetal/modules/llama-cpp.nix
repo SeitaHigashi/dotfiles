@@ -660,6 +660,44 @@ let
       });
 
   ##########################################################################
+  # SenseTime's fork (OpenSenseNova/llama.cpp), third backend, only for
+  # sensenova-loop-9b (macro serverSensenova). Only this orphan commit works
+  # (not in master). WebUI is skipped: the fork base moved the UI to
+  # ui/apps/chat, which nixpkgs' npm hook and preConfigure don't expect.
+  # Rollback: drop this block, the macro and the model.
+  ##########################################################################
+  sensenovaRev = "24ea7bb78410e0f0f7bbb362e37c60cd9ecfc761";
+  sensenovaHash = "sha256-s0BHmu0z8x1nIxdVKTpMR6DUx1/mJr2+FvpaP4kTISo=";
+
+  llamaCppSensenova =
+    (pkgs.unstable.llama-cpp.override { cudaSupport = true; }).overrideAttrs
+      (old: {
+        pname = "llama-cpp-sensenova";
+        version = builtins.substring 0 7 sensenovaRev;
+        src = pkgs.fetchFromGitHub {
+          owner = "OpenSenseNova";
+          repo = "llama.cpp";
+          rev = sensenovaRev;
+          hash = sensenovaHash;
+        };
+        patches = [ ];
+        doCheck = false;
+        # No WebUI: drop the npm hook, preConfigure and npmDeps.
+        nativeBuildInputs = builtins.filter
+          (p: (p.pname or "") != "npm-config-hook" && !(lib.hasInfix "npm-config-hook" (p.name or "")))
+          old.nativeBuildInputs;
+        preConfigure = "";
+        npmDeps = null;
+        npmRoot = ".";
+        # Same 2-card architecture list as llamaCppPrism.
+        cmakeFlags =
+          (builtins.filter
+            (f: !(lib.hasPrefix "-DCMAKE_CUDA_ARCHITECTURES" f))
+            old.cmakeFlags)
+          ++ [ "-DCMAKE_CUDA_ARCHITECTURES:STRING=75;86" "-DLLAMA_USE_PREBUILT_UI=OFF" ];
+      });
+
+  ##########################################################################
   # stable-diffusion.cpp — image generation (Qwen-Image-2.1), served by its
   # sd-server under llama-swap's [qwen-image]. Not llama.cpp, but it shares
   # the 3060 Ti with bonsai, so it lives in the same matrix.
@@ -813,6 +851,8 @@ let
       "server": "${llamaCppPrism}/bin/llama-server --port ''${PORT}"
       # Upstream build, for lfm3-audio only.
       "serverUpstream": "${llamaCppUpstream}/bin/llama-server --port ''${PORT}"
+      # SenseTime fork, for sensenova-loop-9b only.
+      "serverSensenova": "${llamaCppSensenova}/bin/llama-server --port ''${PORT}"
 
     models:
       # Bonsai 2 / PTQ1_0, alone on the 3060 Ti.
@@ -1256,6 +1296,21 @@ let
           --rng cpu
           --cfg-scale 1.0
 
+      # SenseNova-Loop-9B Q4_K_M on the 3060 Ti (SenseTime fork build), text only
+      # (no mmproj yet), so it evicts bonsai. Measured (SEI-284, BF16 KV):
+      # -c 4096 6011 MiB, -c 16384 6695 MiB, 12.8 tok/s decode; KV ~57 KiB/token.
+      # Do not raise -c without re-measuring (8 GiB card).
+      "sensenova-loop-9b":
+        name: "SenseNova-Loop-9B (16K)"
+        ttl: 600
+        env:
+          - "CUDA_VISIBLE_DEVICES=1"
+        cmd: |
+          ''${serverSensenova}
+          --model ${modelsDir}/SenseNova-Loop-9B-GGUF/SenseNova-Loop-9B-Q4_K_M.gguf
+          -ngl 99
+          -c 16384
+
     # Remote peer, not a local model (no matrix entry): "orfree/auto" goes to
     # modules/orfree-shim.nix (OpenRouter :free first, local "chat" fallback).
     # Harmless while the shim is disabled: requests to it just fail.
@@ -1301,6 +1356,7 @@ let
               flux2-klein: 10
               moss-image: 10
               minimax-h3: 10
+              sensenova-loop-9b: 10
             sets:
               # laya and jeff are alternatives ("|"): both would not fit the 1660 SUPER.
               generation: "(bonsai | bonsai-vision) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio | d1-2b)"
@@ -1310,6 +1366,8 @@ let
               image: "(qwen-image | bonsai-image | z-image-turbo | realvisxl | illustrious-xl | animagine-xl | pony-xl | noobai-xl | flux2-klein | moss-image) & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio | d1-2b)"
               # Same card; its ~29 GB RSS also rules out pairing with anything big.
               video: "minimax-h3 & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio | d1-2b)"
+              # Same card as bonsai (6.7 GiB at 16K ctx): requesting it evicts bonsai.
+              sensenova: "sensenova-loop-9b & embedding & (laya | jeff-qwen3.5-0.8b | lfm3-audio | d1-2b)"
   '';
 in
 {

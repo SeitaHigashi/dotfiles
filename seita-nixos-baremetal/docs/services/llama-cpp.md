@@ -51,6 +51,7 @@ GPU/VRAM allocation and measurements are collected in
 | `flux2-klein` (`image-edit`) | FLUX.2 klein 4B (`sd-server`), DiT Q4_0 + Qwen3-4B Q4_K_M + flux2 VAE | 3060 Ti | image generation + instruction editing via `/v1/images/edits` (4 steps, cfg 1.0); alternative in the `image` set |
 | `moss-image` | MOSS-Image-SFT_clear (`sd-server`), self-converted DiT Q4_K + Qwen3.5-9B Q4_K_M + flux2 VAE (+ `tokenizer.json`) | 3060 Ti | anime image generation from natural-language prompts (30 steps, cfg 3.5); alternative in the `image` set |
 | `minimax-h3` | MiniMax-H3 (`sd-server`), pruned FL2VA DiT Q4_K_M + Qwen3-VL-32B Q2_K_M + video VAE fp16 + audio VAE fp32 | 3060 Ti | video + stereo audio generation |
+| `sensenova-loop-9b` | SenseNova-Loop-9B Q4_K_M (5.5 GiB, text only, 16K ctx, **SenseTime fork** llama-server via macro `serverSensenova`) | 3060 Ti | general generation / reasoning; evicts bonsai (own `sensenova` matrix set, evict cost 10) |
 
 **Aliases** (`aliases:` in the llama-swap config) are role names for callers: they work in the
 `"model"` field and in `/upstream/<alias>/...` (verified on llama-swap 249, 2026-10-03), resolve to the
@@ -64,7 +65,7 @@ is a separate namespace and does not conflict (loaded and listed by llama-swap 2
 `image-photo` (`z-image-turbo`) and `image-sdxl` (`realvisxl`) follow the same pattern (added 2026-10-30);
 `image-edit` (`flux2-klein`) too (added 2026-10-31).
 
-`bonsai`, `bonsai-vision`, `qwen-image`, `bonsai-image`, `z-image-turbo`, `realvisxl`, `flux2-klein` and `minimax-h3` occupy
+`bonsai`, `bonsai-vision`, `qwen-image`, `bonsai-image`, `z-image-turbo`, `realvisxl`, `flux2-klein`, `minimax-h3` and `sensenova-loop-9b` occupy
 the same 3060 Ti so none of them coexist (the matrix swaps between them). The five image models
 are alternatives (`|`) in the `image` set. Every other combination can be
 loaded at the same time.
@@ -568,3 +569,19 @@ Step words: `auto|overflow`, `bonsai-idle|bonsai-busy|bonsai-not-loaded|busy-che
 Caller: OpenViking `vlm` ([openviking.md](openviking.md)).
 The default list ends with `openrouter/free` (OpenRouter's random, capability-filtered free router), tried only after the pinned `:free` picks fail.
 Self-check: `python3 modules/orfree-shim/test_shim.py`.
+
+## SenseNova-Loop-9B and the third backend (SEI-286, 2026-11-19)
+
+- **Backend `llamaCppSensenova`** (`modules/llama-cpp.nix`, macro `serverSensenova`): SenseTime's
+  fork `OpenSenseNova/llama.cpp` at the orphan commit `24ea7bb78410e0f0f7bbb362e37c60cd9ecfc761`
+  (not in the fork's master; it is the only revision measured to load the model, SEI-284). Built
+  like `llamaCppUpstream` (CUDA archs 75;86) but **without the WebUI**: the fork moved it to
+  `ui/apps/chat`, which nixpkgs' npm hook and `preConfigure` don't expect, so those are removed
+  and `-DLLAMA_USE_PREBUILT_UI=OFF` is set. No `/` web page on this model's port.
+- **Model `sensenova-loop-9b`**: `/var/lib/llm-models/SenseNova-Loop-9B-GGUF/SenseNova-Loop-9B-Q4_K_M.gguf`
+  (sha256 `5528b06c...eeed`, 5,818,631,072 bytes), `-ngl 99 -c 16384`, ttl 600, no mmproj yet.
+- **Measured** (SEI-284, RTX 3060 Ti, BF16 KV): ctx 4096 = 6011 MiB, ctx 16384 = 6695 MiB, decode
+  12.8 tok/s in both; KV ~57 KiB/token. Do not raise `-c` without re-measuring.
+- **Matrix**: GPU 1 (3060 Ti) like bonsai, so it evicts bonsai and vice versa. Set `sensenova`
+  = `sensenova-loop-9b & embedding & (laya | jeff | lfm3-audio | d1-2b)`; evict cost 10.
+- Rollback: remove the backend, macro, model, `evict_costs` entry and set; the GGUF can stay.
