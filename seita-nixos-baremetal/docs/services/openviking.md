@@ -54,6 +54,17 @@ both embedding and generation — no external API key. Previously used `services
   restart: 502 count at 600 s in `journalctl -u llama-cpp` should fall. Unverified: that the
   container image (`:latest`) honours `vlm.max_concurrent` as the host's 0.4.17 install does.
   Other 2026-11 anomaly not investigated: 367 × HTTP 500 in <120 s on 2026-11-05.
+- `vlm.model = "orfree/overflow"` (2026-11-15, SEI-279; was `bonsai`). Measured from llama-swap
+  `/api/metrics/activity` 17:17–19:31 (start = end − duration, bonsai is `-np 1`): 25 of 41 OV
+  calls arrived while bonsai was busy (so `max_concurrent = 1` does not serialize OV in practice),
+  queue wait p50 60 s / p75 184 s, service p50 135 s; 3 of 4 600 s timeouts were mostly wait
+  (414 / 224 / 353 s). All 41 were memory extraction (45K–169K chars, 12K–57K prompt tokens);
+  `query_planner` had 0 calls, so it stays on `bonsai`. The shim sends to OpenRouter :free only
+  while bonsai is busy; otherwise local. Free cap measured 50 requests/day (`/api/v1/key`, no
+  credits); past the cap everything is local again (old behaviour). nemotron passed OV's own
+  `intent_analysis` and `ov_wm_v2_update` tool-call prompts 6/6 each (synthetic input,
+  `~/lab/2026-11-ov-orfree/`). Not tested: the multi-turn `ExtractLoop`, and one loop mixing
+  bonsai and nemotron turns. Revert: `model = "bonsai"` in `modules/openviking.nix`.
 - `embedding.max_input_tokens = 2500` (2026-11-09; OpenViking default 4096). Since `7543de5`
   (2026-11-08, `embedding -c 8192 → 4096`) 18 embeddings failed with HTTP 400 `exceed_context_size`
   (4,503–5,865 real tokens vs `n_ctx` 4096; CRITICAL `Failed to generate embedding`, the document

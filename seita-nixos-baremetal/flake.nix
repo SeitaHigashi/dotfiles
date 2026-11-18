@@ -118,6 +118,7 @@
         ./modules/resource-priority.nix # cross-service CPU / memory priority
         ./modules/automuteus.nix       # AutoMuteUs (Among Us auto-mute Discord bot) via podman
         ./modules/discord-bot.nix      # Discord Gateway bot -> n8n webhook
+        ./modules/orfree-shim.nix      # OpenRouter-free-first + local fallback shim (off until services.orfreeShim.enable)
         ./modules/fukurou.nix          # systemd wiring for fukurou (voice dialogue loop, ~/src/fukurou)
         ./modules/health.nix           # seita-health web UI / ingest endpoint (flake input ~/src/seita-health, Serve 9452)
         home-manager.nixosModules.home-manager

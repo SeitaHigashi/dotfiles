@@ -100,7 +100,12 @@ let
       # docs/decisions/2026-09-21-openviking-llama-cpp-migration.md for the
       # benchmark.
       # model = "qwen3.5:9b";
-      model = "bonsai";
+      # model = "bonsai";
+      # SEI-279 (2026-11-15): orfree/overflow = bonsai while it is idle, OpenRouter
+      # :free while bonsai is busy (25 of 41 OV calls arrived busy; median queue
+      # wait 60 s, 3 of 4 600 s timeouts were mostly wait). Credential-looking
+      # bodies always stay local. Revert: restore model = "bonsai" above.
+      model = "orfree/overflow";
       # llama.cpp has no per-request context override (fixed per preset at
       # server startup, see modules/llama-cpp.nix for [bonsai]'s current
       # value) so the num_ctx this used to carry under ollama was dropped.

@@ -11,4 +11,5 @@ in
   "multica-env.age".publicKeys = [ host ];
   "multica-github-app-key.age".publicKeys = [ host ];
   "openviking-root-api-key.age".publicKeys = [ host ];
+  "orfree-env.age".publicKeys = [ host ];
 }

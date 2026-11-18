@@ -113,6 +113,8 @@ in
   # ~/.claude/remote/ccd-cli; without nix-ld it fails with CLI_NOT_RUNNABLE
   # (stub-ld). Way back: set enable = false (2026-10-14).
   programs.nix-ld.enable = true;
+  # OpenRouter :free first, local "chat" fallback (modules/orfree-shim.nix). Off: set false.
+  services.orfreeShim.enable = true;
 
   ############################################################################
   # Base packages

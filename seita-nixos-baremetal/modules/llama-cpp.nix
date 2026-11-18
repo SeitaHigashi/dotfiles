@@ -1256,6 +1256,18 @@ let
           --rng cpu
           --cfg-scale 1.0
 
+    # Remote peer, not a local model (no matrix entry): "orfree/auto" goes to
+    # modules/orfree-shim.nix (OpenRouter :free first, local "chat" fallback).
+    # Harmless while the shim is disabled: requests to it just fail.
+    peers:
+      orfree:
+        proxy: http://127.0.0.1:8795
+        models:
+          - auto
+          - overflow  # local while bonsai is idle, OpenRouter while busy (SEI-279)
+        timeouts:
+          responseHeader: 0  # shim decides; local fallback may load the chat model
+
     # Combinations allowed to run at the same time. Subsets of a set are also
     # allowed, so one is enough. bonsai and bonsai-vision are separate
     # branches because they occupy the same 3060 Ti.

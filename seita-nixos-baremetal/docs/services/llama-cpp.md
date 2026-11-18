@@ -537,3 +537,34 @@ nix run ~/.dotfiles/seita-nixos-baremetal/llm#bench -- ...
 ```
 
 Operational procedures: [runbooks/llama-cpp.md](../runbooks/llama-cpp.md).
+
+## orfree/auto: OpenRouter free first, local fallback (2026-11-15)
+
+`orfree/auto` is a llama-swap **peer** (`peers:` in `modules/llama-cpp.nix`) pointing at
+`modules/orfree-shim.nix` (`127.0.0.1:8795`, `services.orfreeShim.enable`, default off).
+The shim tries the models in `services.orfreeShim.models` on OpenRouter and, on any
+non-2xx / timeout / `{"error"}` body before the first byte reaches the client, replays the
+request to `llama-swap :8888` with `model=chat` (the role alias, so swapping the model behind `chat` needs no shim change). Reason: llama-swap has no response-based
+fallback. Response headers `X-Route: openrouter|local` and `X-Route-Model`; one journal line
+per request (`journalctl -u orfree-shim`). A 429 sets a cooldown (Retry-After, or until
+00:00 UTC if the body mentions the daily cap; 401/402/403: 5 min).
+Only `/v1/chat/completions` and `/v1/models` (`auto`, `overflow`).
+Privacy policy (owner, 2026-11-15, SEI-279): only credentials must stay on the host. Any body
+matching `SECRET_RE` in `shim.py` (OpenRouter/OpenAI/Anthropic keys, GitHub tokens, AWS key ids,
+private-key blocks, age keys, Tailscale keys, Bearer headers, `api_key|token|secret|password = …`)
+is served locally in every mode. Regex screen, not DLP. Earlier policy was "keep health/n8n data
+on local models".
+
+`orfree/overflow` (SEI-279): local first. OpenRouter only while `ORFREE_BUSY_MODEL` (default
+`bonsai`, the real model behind `chat`) is not `ready` in `/running` or a slot in
+`/upstream/bonsai/slots` is `is_processing` (slots is only queried when loaded, so the check never
+triggers a load). OpenRouter header timeout 120 s on this path (`ORFREE_OVERFLOW_HEADER_TIMEOUT`;
+30 s elsewhere) because callers are non-stream extraction.
+Routing reason: every response carries `X-Route-Reason` (also visible in llama-swap's Capture view)
+and the journal line ends `reason=…`: space-separated steps, e.g. `overflow bonsai-busy
+gemma-4-31b-it:free:429 nemotron-3-ultra-550b-a55b:free:ok` or `auto secret-in-body local`.
+Step words: `auto|overflow`, `bonsai-idle|bonsai-busy|bonsai-not-loaded|busy-check-failed`,
+`secret-in-body`, `no-key`, `<model>:ok|<status>|cooldown|timeout|conn-error|error-body`, `local`.
+Caller: OpenViking `vlm` ([openviking.md](openviking.md)).
+The default list ends with `openrouter/free` (OpenRouter's random, capability-filtered free router), tried only after the pinned `:free` picks fail.
+Self-check: `python3 modules/orfree-shim/test_shim.py`.
