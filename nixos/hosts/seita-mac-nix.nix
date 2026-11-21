@@ -7,7 +7,7 @@
       ../commons
       inputs.hyprland.nixosModules.default
       inputs.dms.nixosModules.dank-material-shell
-      inputs.dms.nixosModules.greeter
+      inputs.dank-greeter.nixosModules.default
     ];
 
   # Bootloader.
@@ -31,7 +31,7 @@
   # Enable the GNOME Desktop Environment.
   services.desktopManager.cosmic.enable = true;
 
-  programs.dank-material-shell.greeter = {
+  programs.dms-greeter = {
     enable = true;
     compositor.name = "hyprland";  # Or "hyprland" or "sway"
   };

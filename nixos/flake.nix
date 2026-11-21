@@ -15,6 +15,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     agenix.url = "github:ryantm/agenix";
+    # greeter moved out of dms (dms 2026-11: nixosModules.greeter is now an empty stub)
+    dank-greeter = {
+      url = "github:duxlabs-dev/dux-greeter";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     hermes-agent.url = "github:NousResearch/hermes-agent";
   };
 
