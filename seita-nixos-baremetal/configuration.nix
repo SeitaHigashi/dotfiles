@@ -128,6 +128,9 @@ in
     tmux
     pciutils
     usbutils
+    # Headless Orca server (stablyai/orca), run as `orca-ide serve`. Needs nix-ld (above).
+    # Way back: delete this line (2026-11-21, SEI-290).
+    (callPackage ./pkgs/orca-server.nix { })
   ];
   # multica-cli isn't in stable, so it's added via modules/unstable.nix (pkgs.unstable.multica-cli).
 
