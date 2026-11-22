@@ -105,7 +105,11 @@ let
       # :free while bonsai is busy (25 of 41 OV calls arrived busy; median queue
       # wait 60 s, 3 of 4 600 s timeouts were mostly wait). Credential-looking
       # bodies always stay local. Revert: restore model = "bonsai" above.
-      model = "orfree/overflow";
+      # model = "orfree/overflow";
+      # SEI-294: orfree/hybrid = OpenRouter :free first, local chat on failure
+      # (120 s header timeout, same credential guard). Revert: restore the
+      # orfree/overflow line above.
+      model = "orfree/hybrid";
       # llama.cpp has no per-request context override (fixed per preset at
       # server startup, see modules/llama-cpp.nix for [bonsai]'s current
       # value) so the num_ctx this used to carry under ollama was dropped.
