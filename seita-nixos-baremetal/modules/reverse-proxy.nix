@@ -108,8 +108,10 @@ let
     # (docs/network.md). Never point it at ~ or / (tailscaled runs as root).
     # { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
-    { path = null;       httpsPort = 9453;  port = 19119;                         note = "hermes dashboard (hermes-box, tailnet only)"; }
-    { path = null;       httpsPort = 9454;  port = 18642;                         note = "hermes gateway API (hermes-box, key auth, tailnet only)"; }
+    # Node-level 9453/9454 Hermes rows removed (SEI-301): served only as svc:hermes below.
+    # Rollback: uncomment both (and drain + clear svc:hermes, docs/network.md).
+    # { path = null;       httpsPort = 9453;  port = 19119;                         note = "hermes dashboard (hermes-box, tailnet only)"; }
+    # { path = null;       httpsPort = 9454;  port = 18642;                         note = "hermes gateway API (hermes-box, key auth, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
     # Tailscale Service svc:webui (Open WebUI).
     # A row with `service` is applied after all plain rows (see serveCommand/script).
@@ -137,6 +139,10 @@ let
     # rows were removed after a capture client was verified (2026-11-14).
     { path = null;       httpsPort = 443;   port = 8123;   service = "automuteus"; note = "automuteus-galactus as Tailscale Service svc:automuteus"; }
     { path = null;       httpsPort = 9450;  port = 8084;   service = "automuteus"; note = "automuteus-api as Tailscale Service svc:automuteus"; }
+    # Tailscale Service svc:hermes (SEI-301): ONE service, two ports (443 dashboard, no auth;
+    # 9454 gateway API, key auth). Same drain + clear caveat as svc:webui.
+    { path = null;       httpsPort = 443;   port = 19119;  service = "hermes";   note = "hermes dashboard as Tailscale Service svc:hermes"; }
+    { path = null;       httpsPort = 9454;  port = 18642;  service = "hermes";   note = "hermes gateway API as Tailscale Service svc:hermes"; }
   ];
 
   # Plain rows first (routes order), then Service rows (routes order): the unit runs
