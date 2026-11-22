@@ -7,6 +7,8 @@ model=ORFREE_LOCAL_MODEL. Response header X-Route: openrouter|local.
 
 Model "overflow" (SEI-279): local while the local model is idle; OpenRouter only
 while it is busy (a slot is processing) or not loaded, so callers skip the queue.
+Model "hybrid" (SEI-294): OpenRouter :free chain first (like auto, but with the
+120 s header timeout), local "chat" on failure; general-purpose, e.g. extraction.
 A request whose body looks like it carries a credential never leaves the host.
 """
 import http.client, json, os, re, ssl, sys, time, threading
@@ -116,7 +118,7 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.rstrip("/") == "/v1/models":
-            self.send_json(200, {"object": "list", "data": [{"id": m, "object": "model", "owned_by": "orfree"} for m in ("auto", "overflow")]})
+            self.send_json(200, {"object": "list", "data": [{"id": m, "object": "model", "owned_by": "orfree"} for m in ("auto", "overflow", "hybrid")]})
         elif self.path == "/health":
             self.send_json(200, {"ok": True})
         else:
@@ -133,10 +135,13 @@ class H(BaseHTTPRequestHandler):
             return self.send_json(400, {"error": "invalid json"})
         stream = bool(req.get("stream"))
         hd = {"Content-Type": "application/json"}
-        overflow = str(req.get("model", "")).endswith("overflow")
-        hdr_timeout = OVERFLOW_HDR_TIMEOUT if overflow else HDR_TIMEOUT
+        m = str(req.get("model", ""))
+        mode = next((x for x in ("overflow", "hybrid") if m.endswith(x)), "auto")
+        overflow = mode == "overflow"
+        # hybrid = auto's chain with overflow's long header timeout (large extraction payloads).
+        hdr_timeout = OVERFLOW_HDR_TIMEOUT if mode != "auto" else HDR_TIMEOUT
         # trail = why this request ended where it did; sent as X-Route-Reason and logged.
-        trail = ["overflow" if overflow else "auto"]
+        trail = [mode]
         if SECRET_RE.search(raw.decode("utf-8", "replace")):
             models = []
             trail.append("secret-in-body")

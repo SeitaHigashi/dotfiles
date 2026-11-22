@@ -1320,6 +1320,7 @@ let
         models:
           - auto
           - overflow  # local while bonsai is idle, OpenRouter while busy (SEI-279)
+          - hybrid    # OpenRouter :free chain first, local chat fallback; 120 s header timeout (SEI-294)
         timeouts:
           responseHeader: 0  # shim decides; local fallback may load the chat model
 

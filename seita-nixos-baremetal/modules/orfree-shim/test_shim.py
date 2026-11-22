@@ -50,6 +50,10 @@ try:
         assert call(False, "orfree/overflow")[0] == want, (loaded, busy, want)
         assert LAST["reason"] == why, LAST
     LOCAL_STATE.update(loaded=True, busy=False)
+    # hybrid: OpenRouter first even when local is idle; secrets stay local
+    assert call(False, "orfree/hybrid")[0] == "openrouter" and LAST["reason"] == "hybrid good:free:ok", LAST
+    r, b = call(False, "orfree/hybrid", messages=[{"role": "user", "content": "ghp_" + "B" * 36}])
+    assert r == "local" and LAST["reason"] == "hybrid secret-in-body local", LAST
     # credentials never go to OpenRouter, in any mode
     for secret in ("sk-or-v1-" + "a" * 64, "ghp_" + "B" * 36, 'api_key: "abcdefghijklmnop1234"'):
         r, b = call(False, messages=[{"role": "user", "content": "x " + secret}])
@@ -62,5 +66,7 @@ try:
     assert LAST["reason"] == "auto bad:free:429 bad:free:cooldown local", LAST
     r, b = call(True); assert r == "local" and b"[DONE]" in b   # second call hits cooldown path
     assert LAST["reason"] == "auto bad:free:cooldown bad:free:cooldown local", LAST
+    r, b = call(False, "orfree/hybrid"); assert r == "local" and b'"chat"' in b, (r, b)
+    assert LAST["reason"] == "hybrid bad:free:cooldown bad:free:cooldown local", LAST
 finally: p.kill(); p.wait()
 print("ok")
