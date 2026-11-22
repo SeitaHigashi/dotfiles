@@ -57,6 +57,7 @@ Keep this table in sync with the keys of `tailscale serve status --json | jq .Se
 | — fukurou | — | 9446 / 9447 | `8765` / `7878` | — | — | Node-level (on hold) |
 | `svc:automuteus` | `automuteus.tail5426c0.ts.net` | 443 / 9450 | `127.0.0.1:8123` (galactus, bot `HOST`) / `127.0.0.1:8084` (API, `API_SERVER_URL`) | Approved by Seita (SEI-263; method not recorded) | 2026-11-14 | One Service, two ports. Node-level `9449` / `9450` rows removed 2026-11-14 after Seita confirmed capture works. Rollback: `automuteusGalactusUrl`/`ApiUrl` back to `…:9449`/`:9450`. Measured 2026-11-14 from the host: `https://automuteus.…/` 200, `:9450/` 404 (API has no root route); bot/API units run with the svc URLs; galactus log shows a live capture session. |
 | — seita-health | — | 9452 | `8090` | — | — | Node-level (on hold) |
+| — hermes-box | — | 9453 / 9454 | `19119` (dashboard, no auth) / `18642` (gateway API, key auth) | Approved by Seita (SEI-298) | — | Node-level. Effective after Seita's switch (not yet applied). |
 | — Multica webhook Funnel | — | 10000 | `8083` (nginx) | — | — | Node-level (on hold; Funnel) |
 
 - **Service rows come last.** `reverse-proxy.nix` emits all plain rows first and
@@ -209,6 +210,7 @@ Open on `tailscale0` (`networking.firewall.interfaces."tailscale0".allowedTCPPor
 | 9450 | AutoMuteUs API via `svc:automuteus` (SEI-263; the node-level row was removed) | `modules/reverse-proxy.nix` |
 | ~~9451~~ | Closed 2026-11-07: `~/share` static files (HTML/PNG) moved to `svc:share` on `443` (SEI-245); the node-level row is commented out in `routes`. A dedicated dir, never `~` or `/`: tailscaled runs as root, so anything under the served path is readable by the whole tailnet. Directory is created by `systemd.tmpfiles.rules` in the same module. `~/share/index.html` is the homepage (not in git; JS lists `out/<project>/<ts>/`) | `modules/reverse-proxy.nix` |
 | 9452 | seita-health (web UI) via Serve, tailnet only | `modules/reverse-proxy.nix` |
+| 9453 / 9454 | Hermes dashboard / gateway API (hermes-box) via Serve, tailnet only (SEI-298) | `modules/reverse-proxy.nix` |
 | 10000 | Multica GitHub webhook (Funnel, public internet) | `modules/reverse-proxy.nix` |
 | 1933 | OpenViking (direct) | `modules/openviking.nix` |
 | 7878 | fukurou-server (direct WebSocket) | `modules/fukurou.nix` |

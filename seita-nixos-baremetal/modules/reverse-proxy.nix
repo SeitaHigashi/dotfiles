@@ -108,6 +108,8 @@ let
     # (docs/network.md). Never point it at ~ or / (tailscaled runs as root).
     # { path = null;       httpsPort = 9451;  port = "/home/${m.userName}/share";   note = "share dir (static files, tailnet only)"; }
     { path = null;       httpsPort = 9452;  port = 8090;                          note = "seita-health (web UI + ingest, tailnet only)"; }
+    { path = null;       httpsPort = 9453;  port = 19119;                         note = "hermes dashboard (hermes-box, tailnet only)"; }
+    { path = null;       httpsPort = 9454;  port = 18642;                         note = "hermes gateway API (hermes-box, key auth, tailnet only)"; }
     { path = null;       httpsPort = 10000; port = multicaGithubWebhookProxyPort; note = "multica-github-webhook (via nginx)"; funnel = true; }
     # Tailscale Service svc:webui (Open WebUI).
     # A row with `service` is applied after all plain rows (see serveCommand/script).
